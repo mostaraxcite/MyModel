@@ -1,0 +1,79 @@
+{
+  "count": 1000,
+  "classification_report": {
+    "SAFE": {
+      "precision": 0.4856175972927242,
+      "recall": 0.7175,
+      "f1-score": 0.579212916246216,
+      "support": 400.0
+    },
+    "POSSIBLE_XSS": {
+      "precision": 1.0,
+      "recall": 0.195,
+      "f1-score": 0.3263598326359833,
+      "support": 200.0
+    },
+    "XSS": {
+      "precision": 0.5405405405405406,
+      "recall": 0.5,
+      "f1-score": 0.5194805194805194,
+      "support": 400.0
+    },
+    "accuracy": 0.526,
+    "macro avg": {
+      "precision": 0.6753860459444215,
+      "recall": 0.4708333333333334,
+      "f1-score": 0.4750177561209062,
+      "support": 1000.0
+    },
+    "weighted avg": {
+      "precision": 0.6104632551333059,
+      "recall": 0.526,
+      "f1-score": 0.5047493408178908,
+      "support": 1000.0
+    }
+  },
+  "false_rates": {
+    "SAFE": {
+      "false_positive_rate": 0.5066666666666667,
+      "false_negative_rate": 0.2825
+    },
+    "POSSIBLE_XSS": {
+      "false_positive_rate": 0.0,
+      "false_negative_rate": 0.805
+    },
+    "XSS": {
+      "false_positive_rate": 0.2833333333333333,
+      "false_negative_rate": 0.5
+    }
+  },
+  "confusion_matrix": {
+    "labels": [
+      "SAFE",
+      "POSSIBLE_XSS",
+      "XSS"
+    ],
+    "matrix": [
+      [
+        287,
+        0,
+        113
+      ],
+      [
+        104,
+        39,
+        57
+      ],
+      [
+        200,
+        0,
+        200
+      ]
+    ]
+  },
+  "promotion": {
+    "threshold_macro_f1": 0.9,
+    "observed_macro_f1": 0.4750177561209062,
+    "passed": false
+  }
+}

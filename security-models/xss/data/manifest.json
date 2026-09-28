@@ -1,0 +1,94 @@
+{
+  "version": "v0.4",
+  "seed": 2027,
+  "generated_at": "2026-09-27T22:41:13+00:00",
+  "splits": {
+    "train": {
+      "count": 13564,
+      "labels": {
+        "POSSIBLE_XSS": 2619,
+        "SAFE": 5237,
+        "XSS": 5708
+      }
+    },
+    "validation": {
+      "count": 1023,
+      "labels": {
+        "POSSIBLE_XSS": 205,
+        "SAFE": 408,
+        "XSS": 410
+      }
+    },
+    "test": {
+      "count": 1000,
+      "labels": {
+        "POSSIBLE_XSS": 200,
+        "SAFE": 400,
+        "XSS": 400
+      }
+    },
+    "hard_test_v4": {
+      "count": 465,
+      "labels": {
+        "POSSIBLE_XSS": 80,
+        "SAFE": 155,
+        "XSS": 230
+      }
+    }
+  },
+  "external_breakdown": {
+    "curated_in_train": {
+      "count": 46,
+      "labels": {
+        "POSSIBLE_XSS": 10,
+        "SAFE": 15,
+        "XSS": 21
+      }
+    },
+    "curated_in_validation": {
+      "count": 18,
+      "labels": {
+        "POSSIBLE_XSS": 4,
+        "SAFE": 6,
+        "XSS": 8
+      }
+    },
+    "curated_in_hard_test_v4": {
+      "count": 63,
+      "labels": {
+        "POSSIBLE_XSS": 14,
+        "SAFE": 21,
+        "XSS": 28
+      }
+    },
+    "shape_in_train": {
+      "count": 4000,
+      "labels": {
+        "POSSIBLE_XSS": 750,
+        "SAFE": 1464,
+        "XSS": 1786
+      }
+    },
+    "shape_in_hard_test_v4": {
+      "count": 250,
+      "labels": {
+        "POSSIBLE_XSS": 42,
+        "SAFE": 94,
+        "XSS": 114
+      }
+    },
+    "adversarial_in_hard_test_v4": {
+      "count": 152,
+      "labels": {
+        "POSSIBLE_XSS": 24,
+        "SAFE": 40,
+        "XSS": 88
+      }
+    }
+  },
+  "policy": {
+    "hard_test_v4_locked": true,
+    "standard_test_unchanged": true,
+    "promotion_threshold_macro_f1": 0.9
+  }
+}

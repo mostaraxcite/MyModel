@@ -1,0 +1,73 @@
+{
+  "promotion_threshold": 0.9,
+  "standard_test": {
+    "macro_f1": 1.0,
+    "passed": true,
+    "per_label_f1": {
+      "SAFE": 1.0,
+      "POSSIBLE_XSS": 1.0,
+      "XSS": 1.0
+    },
+    "xss_false_positive_rate": 0.0,
+    "xss_false_negative_rate": 0.0,
+    "confusion_matrix": {
+      "labels": [
+        "SAFE",
+        "POSSIBLE_XSS",
+        "XSS"
+      ],
+      "matrix": [
+        [
+          400,
+          0,
+          0
+        ],
+        [
+          0,
+          200,
+          0
+        ],
+        [
+          0,
+          0,
+          400
+        ]
+      ]
+    }
+  },
+  "hard_test_v4": {
+    "macro_f1": 0.9091944844453206,
+    "passed": true,
+    "per_label_f1": {
+      "SAFE": 0.9297658862876255,
+      "POSSIBLE_XSS": 0.8757396449704142,
+      "XSS": 0.922077922077922
+    },
+    "xss_false_positive_rate": 0.08085106382978724,
+    "xss_false_negative_rate": 0.07391304347826087,
+    "confusion_matrix": {
+      "labels": [
+        "SAFE",
+        "POSSIBLE_XSS",
+        "XSS"
+      ],
+      "matrix": [
+        [
+          139,
+          3,
+          13
+        ],
+        [
+          0,
+          74,
+          6
+        ],
+        [
+          5,
+          12,
+          213
+        ]
+      ]
+    }
+  }
+}

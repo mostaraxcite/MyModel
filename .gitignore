@@ -1,5 +1,6 @@
 runs/
 models/
+security-models/xss/model/
 data/raw/*.html
 __pycache__/
 *.pyc

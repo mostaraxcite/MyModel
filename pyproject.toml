@@ -37,3 +37,9 @@ testpaths = ["tests"]
 
 [dependency-groups]
 dev = ["pytest>=8.0"]
+slm = [
+    "accelerate>=1.2",
+    "datasets>=3.2",
+    "torch>=2.4",
+    "transformers>=4.47",
+]

@@ -120,6 +120,11 @@ RAG holds *volatile* knowledge, training holds *stable reusable* knowledge, eval
 
 ## Kev-style XSS decision model
 
+For the smaller CPU-first classifier path (`SAFE / POSSIBLE_XSS / XSS`), see
+[`security-models/xss/README.md`](security-models/xss/README.md). It includes a deterministic
+10,000-record dataset, a roughly 11M-parameter encoder, isolated evaluation, and honest hard-set
+results. This path is intentionally independent of the 0.8B decision-model experiment below.
+
 The project now includes the foundation for a compact XSS decision model: one code state,
 independent typed questions, and probability distributions for vulnerability, XSS family, execution
 context, defenses, and the need for browser verification. It does not generate a free-form verdict

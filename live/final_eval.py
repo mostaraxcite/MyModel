@@ -25,7 +25,8 @@ V1_CAPS = {"interactions": False, "js_code_probe": False, "quoted_split": False}
 
 def _run_config(port, caps, stored_enabled):
     enf = Enforcer(Scope(base_url=f"http://127.0.0.1:{port}/", allowed_prefixes=["/"],
-                         max_requests=6000, rate_limit_rps=100))
+                         max_requests=6000, rate_limit_rps=100,
+                         allowed_test_classes=["reflected", "dom", "stored"]))
     correct, positive_by_path = {}, {}
     stored_status = "NOT_VULNERABLE"
     if stored_enabled:

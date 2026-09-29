@@ -115,3 +115,88 @@ def test_monitoring_uses_summary_metadata_only(tmp_path):
     assert snapshot["metrics"]["inconclusive_rate"] == 1 / 3
     dashboard = (tmp_path / "monitoring" / "dashboard.html").read_text()
     assert "PILOT-1" in dashboard and "do-not-copy" not in dashboard
+
+
+def test_scope_normalizes_paths_before_exclusion():
+    s = Scope(base_url="http://127.0.0.1:8099/app/", excluded_paths=["/app/admin"])
+    assert not s.in_scope("http://127.0.0.1:8099/app/admin/delete")[0]
+    assert not s.in_scope("http://127.0.0.1:8099/app/x/../admin/delete")[0]
+    assert not s.in_scope("http://127.0.0.1:8099/app/%61dmin/delete")[0]
+    assert not s.in_scope("http://127.0.0.1:8099/app/%2561dmin")[0]
+    assert not s.in_scope("http://127.0.0.1:8099/app/..%2fadmin")[0]
+    assert not s.in_scope("http://127.0.0.1:8099/app/../../etc")[0]
+    assert s.in_scope("http://127.0.0.1:8099/app/x/../ok")[0]
+
+
+def test_scope_prefix_is_segment_aware():
+    s = Scope(base_url="http://127.0.0.1:8099/app")
+    assert s.in_scope("http://127.0.0.1:8099/app")[0]
+    assert s.in_scope("http://127.0.0.1:8099/app/x")[0]
+    assert not s.in_scope("http://127.0.0.1:8099/application")[0]
+
+
+def test_scope_refuses_external_hosts_without_authorization():
+    s = Scope(base_url="http://127.0.0.1:8099/", allowed_subdomains=["example.com"])
+    assert not s.in_scope("https://www.example.com/")[0]
+    s2 = Scope(base_url="http://127.0.0.1:8099/", allowed_subdomains=["example.com"],
+               authorized_external=True)
+    assert s2.in_scope("https://www.example.com/")[0]
+
+
+def test_enforcer_logs_max_depth():
+    e = Enforcer(Scope(base_url="http://127.0.0.1:8099/", max_depth=1))
+    assert not e.check("http://127.0.0.1:8099/x", depth=2)[0]
+    assert e.blocked_log[-1]["reason"] == "max_depth"
+
+
+def test_pilot_loopback_target_with_external_host_is_external():
+    from live.pilot import PilotAuthorization, authorize
+    a = PilotAuthorization(target="http://127.0.0.1/", operator_identity="op", assessment_id="x",
+                           authorization_acknowledged=True, allowed_subdomains=["example.com"])
+    try:
+        authorize(a, authorized_external=False)
+        assert False
+    except SystemExit:
+        pass
+
+
+def test_pilot_enforces_test_classes():
+    from live.pilot import PilotAuthorization, authorize
+    base = dict(target="http://127.0.0.1/", operator_identity="op", assessment_id="x",
+                authorization_acknowledged=True)
+    assert authorize(PilotAuthorization(**base), False).allowed_test_classes == ["reflected", "dom"]
+    try:
+        authorize(PilotAuthorization(**base, allowed_test_classes=["reflected", "stored"]), False)
+        assert False
+    except SystemExit:
+        pass
+    s = authorize(PilotAuthorization(**base, stored_xss_permitted=True), False)
+    assert s.allows("stored") and not s.allows("post")
+
+
+def test_executor_refuses_unauthorized_test_class():
+    from live.executor import execute
+    e = Enforcer(Scope(base_url="http://127.0.0.1:8099/"))
+    cand = {"url": "http://127.0.0.1:8099/f", "param": "q", "context": "html_text", "delivery": "form"}
+    probe = plan(cand, "marker")[0]
+    r = execute(cand, probe, e)
+    assert r["blocked"] and r["reason"] == "test_class_not_authorized:post"
+    assert e.requests_made == 0
+
+
+def test_stored_requires_opt_in():
+    from live.stored import assess_stored
+    e = Enforcer(Scope(base_url="http://127.0.0.1:8099/"))
+    r = assess_stored("http://127.0.0.1:8099/s", "http://127.0.0.1:8099/v", e, "S")
+    assert r["status"] == "INCONCLUSIVE" and e.requests_made == 0
+
+
+def test_acceptance_gate_is_not_a_committed_file():
+    import subprocess
+    from live.assess import ACCEPT_GATE, ROOT
+    rel = ACCEPT_GATE.relative_to(ROOT)
+    assert ACCEPT_GATE.is_absolute()
+    tracked = subprocess.run(["git", "ls-files", "--error-unmatch", str(rel)], cwd=ROOT,
+                             capture_output=True).returncode == 0
+    ignored = subprocess.run(["git", "check-ignore", "-q", str(rel)], cwd=ROOT).returncode == 0
+    assert not tracked and ignored

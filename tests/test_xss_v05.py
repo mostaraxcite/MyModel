@@ -144,3 +144,21 @@ def test_external_test_v5_manifest_declares_training_disallowed():
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert manifest["training_allowed"] is False
     assert manifest["partition"] == "external_test_v5_locked"
+
+
+def test_peft_load_failure_is_not_masked_by_random_head(tmp_path: Path, monkeypatch):
+    """A PEFT adapter that cannot be applied must fail loudly, never serve a fresh random head."""
+    from xss_specialist import adapter_registry as ar
+
+    monkeypatch.setattr(ar.AutoTokenizer, "from_pretrained", lambda *a, **k: object())
+    monkeypatch.setattr(ar.AutoModelForSequenceClassification, "from_pretrained",
+                        lambda *a, **k: object())
+
+    def boom(*a, **k):
+        raise KeyError("classifier")
+
+    monkeypatch.setattr(ar.PeftModel, "from_pretrained", boom)
+    reg = ar.Registry(tmp_path / "REGISTRY.json", {
+        "x": ar.AdapterSpec(name="x", kind="peft", base_model="base", path=str(tmp_path))}, "x")
+    with pytest.raises(RuntimeError, match="classifier"):
+        ar.load_classifier(registry=reg)

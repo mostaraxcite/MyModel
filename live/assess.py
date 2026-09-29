@@ -10,32 +10,36 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from urllib.parse import urlparse
 
 from live.crawler import crawl, map_inputs
+from live.executor import DELIVERY_TEST_CLASS
 from live.pipeline import assess_candidate
 from live.report import save_assessment
-from live.scope import Enforcer, Scope
+from live.scope import TEST_CLASSES, Enforcer, Scope, is_loopback
 
-_ACCEPT_GATE = Path("reports/live_assessments/local_eval/metrics.json")
-
-
-def _is_loopback(url: str) -> bool:
-    h = urlparse(url).hostname or ""
-    return h in ("127.0.0.1", "localhost", "::1")
+ROOT = Path(__file__).resolve().parents[1]
+# Written by `python -m live.evaluate` on THIS machine. It lives under runs/ (git-ignored) so a
+# fresh clone never inherits a passed gate from the committed evidence in reports/.
+ACCEPT_GATE = ROOT / "runs" / "live_acceptance_gate.json"
 
 
 def local_eval_passed() -> bool:
-    if not _ACCEPT_GATE.exists():
+    if not ACCEPT_GATE.exists():
         return False
     try:
-        return bool(json.loads(_ACCEPT_GATE.read_text()).get("ACCEPTED"))
+        return bool(json.loads(ACCEPT_GATE.read_text()).get("ACCEPTED"))
     except Exception:
         return False
 
 
+def external_hosts(scope: Scope) -> list[str]:
+    """Every non-loopback host the scope could reach (target, extra hosts, subdomain suffixes)."""
+    hosts = [h for h in scope.allowed_hosts if not is_loopback(h)]
+    return hosts + [f"*.{d}" for d in scope.allowed_subdomains]
+
+
 def run_assessment(scope: Scope, name: str) -> dict:
-    if not _is_loopback(scope.base_url):
+    if external_hosts(scope):
         if not local_eval_passed():
             raise SystemExit("REFUSED: external target requires a PASSED local acceptance evaluation "
                              "(run `python -m live.evaluate`). Not touching an external target.")
@@ -45,6 +49,15 @@ def run_assessment(scope: Scope, name: str) -> dict:
     enf = Enforcer(scope)
     crawl_result = crawl(enf)
     candidates = map_inputs(crawl_result)
+    allowed = []
+    for cand in candidates:     # record what the authorized test classes leave untested
+        cls = DELIVERY_TEST_CLASS.get(cand["delivery"])
+        if scope.allows(cls):
+            allowed.append(cand)
+        else:
+            enf.blocked_log.append({"url": cand["url"], "param": cand["param"], "kind": "candidate",
+                                    "reason": f"test_class_not_authorized:{cls}"})
+    candidates = allowed
     results = []
     for i, cand in enumerate(candidates):
         if enf.budget_left() <= 0:
@@ -71,11 +84,14 @@ def main():
     ap.add_argument("--exclude", action="append", default=[])
     ap.add_argument("--authorized-external", action="store_true",
                     help="explicit per-target authorization to test a non-loopback host")
+    ap.add_argument("--test-class", action="append", choices=[c for c in TEST_CLASSES if c != "stored"],
+                    help="test classes to run (default: reflected, dom); 'post' sends POST forms")
     a = ap.parse_args()
     scope = Scope(base_url=a.target, allowed_prefixes=a.allowed_prefix or None,
                   excluded_paths=a.exclude, max_depth=a.max_depth,
                   max_requests=a.max_requests, rate_limit_rps=a.rate,
-                  authorized_external=a.authorized_external)
+                  authorized_external=a.authorized_external,
+                  allowed_test_classes=a.test_class or ["reflected", "dom"])
     saved = run_assessment(scope, a.name)
     print(json.dumps(saved["summary"], indent=2))
     print("artifacts ->", saved["dir"])

@@ -101,6 +101,11 @@ def run(out_dir="reports/live_assessments/local_eval", port=8099):
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     write_json(out / "metrics.json", metrics)
+    # the gate that unlocks external targets is local to this checkout (runs/ is git-ignored)
+    from live.assess import ACCEPT_GATE
+    ACCEPT_GATE.parent.mkdir(parents=True, exist_ok=True)
+    write_json(ACCEPT_GATE, {"ACCEPTED": metrics["ACCEPTED"], "created_at": time.time(),
+                             "metrics": str(out / "metrics.json")})
     (out / "rows.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n")
     return metrics, rows
 

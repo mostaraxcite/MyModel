@@ -108,17 +108,78 @@ def verify_dom_case(case: dict, payload: str = PAYLOAD, timeout_ms: int = 3000) 
             "scope": "in_scope", "js_error": err}
 
 
+# Bounded, same-page interactions. Each only touches elements that carry the probe marker in an
+# attribute (the injected element itself), never unrelated page controls, and never submits forms.
+_MARKED = ("m => Array.from(document.querySelectorAll('*')).filter(e => "
+           "Array.from(e.attributes).some(a => a.name.includes(m) || a.value.includes(m)))")
+_INTERACTIONS = {
+    "hover": f"m => ({_MARKED})(m).forEach(e => {{"
+             "e.dispatchEvent(new MouseEvent('mouseover', {bubbles: true}));"
+             "e.dispatchEvent(new MouseEvent('mouseenter', {bubbles: false}));})",
+    "focus": f"m => ({_MARKED})(m).forEach(e => {{try {{e.focus && e.focus();"
+             "e.dispatchEvent(new FocusEvent('focus', {bubbles: true}))}} catch (_) {{}}}})",
+    "click": f"m => ({_MARKED})(m).forEach(e => {{try {{e.click && e.click()}} catch (_) {{}}}})",
+    "hashnav": "m => window.dispatchEvent(new HashChangeEvent('hashchange'))",
+}
+_EXECUTED = "m => !!(window.__X && window.__X[m])"
+
+
+def install_scope_guard(context, in_scope, blocked: list, post: dict | None = None) -> None:
+    """Enforce scope INSIDE the browser: requests the browser issues (navigations, subresources,
+    XHR) are checked before they leave the browser and aborted when out of scope.
+
+    KNOWN GAP (see tests/test_live_browser.py): server-side redirect hops are not re-intercepted, so
+    a redirect to an out-of-scope URL is still followed; callers detect it afterwards via the final
+    URL (`Enforcer.note_request`).
+
+    `post` = {"url": ..., "data": {...}} turns the first navigation to that URL into a form POST.
+    """
+    pending = dict(post) if post else None
+
+    def handle(route):
+        req = route.request
+        url = req.url
+        if not url.startswith(("http://", "https://")):
+            return route.continue_()
+        ok, reason = in_scope(url) if in_scope else (True, "in_scope")
+        if not ok:
+            blocked.append({"url": url, "reason": f"browser_out_of_scope:{reason}",
+                            "resource_type": req.resource_type})
+            return route.abort("blockedbyclient")
+        nonlocal pending
+        is_post = pending is not None and req.is_navigation_request() and url == pending["url"]
+        if not (is_post or (in_scope and req.is_navigation_request())):
+            return route.continue_()
+        kwargs = {"max_redirects": 0}
+        if is_post:
+            from urllib.parse import urlencode
+            kwargs.update(method="POST", post_data=urlencode(pending["data"]),
+                          headers={**req.headers,
+                                   "content-type": "application/x-www-form-urlencoded"})
+            pending = None
+        try:
+            resp = route.fetch(**kwargs)
+        except Exception:
+            return route.abort("failed")
+        route.fulfill(response=resp)
+
+    context.route("**/*", handle)
+
+
 def run_probe_on_url(url: str, marker: str, delivery: str = "query", param: str = "q",
                      timeout_ms: int = 4000, extra_headers: dict | None = None,
                      cookies: list | None = None, raw_signature: str = "",
-                     interactions: list | None = None) -> dict:
+                     interactions: list | None = None, in_scope=None,
+                     post_data: dict | None = None) -> dict:
     """AUTHORITATIVE live execution check. Navigates a real (in-scope) URL with the probe already
-    embedded in `url`, installs a per-marker sentinel (window.__X), and reports what the BROWSER
-    actually did: reflection in HTML source, reflection in the live DOM, whether execution fired
-    (window.__X[marker] set), console messages, final URL and status. The LLM is never consulted.
+    embedded in `url` (or, for `post_data`, POSTs it to `url`), installs a per-marker sentinel
+    (window.__X), and reports what the BROWSER actually did: reflection in HTML source, reflection
+    in the live DOM, whether execution fired (window.__X[marker] set), console messages, final URL
+    and status. The LLM is never consulted.
 
-    Non-destructive: it only reads flags/DOM/console. It does not click through, submit unrelated
-    forms, or leave the given URL.
+    `in_scope(url) -> (ok, reason)` is enforced on every browser request; blocked requests are
+    returned in `scope_blocked`. Non-destructive: it only reads flags/DOM/console, interacts only
+    with the element carrying the marker, never submits forms, and does not leave the given URL.
     """
     try:
         from playwright.sync_api import sync_playwright
@@ -128,21 +189,35 @@ def run_probe_on_url(url: str, marker: str, delivery: str = "query", param: str 
     result = {"requested_url": url, "final_url": None, "status": None,
               "reflected_html": False, "reflected_dom": False, "executed": False,
               "raw_reflected": False, "console": [], "marker": marker,
-              "interactions_performed": []}
+              "interactions_performed": [], "scope_blocked": []}
+    if post_data is not None:
+        result["method"] = "POST"
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         try:
-            context = browser.new_context(extra_http_headers=extra_headers or {})
+            context = browser.new_context(extra_http_headers=extra_headers or {},
+                                          service_workers="block")
             if cookies:
                 try:
                     context.add_cookies(cookies)
                 except Exception:
                     pass
+            if in_scope is not None or post_data is not None:
+                install_scope_guard(context, in_scope, result["scope_blocked"],
+                                    post={"url": url, "data": post_data}
+                                    if post_data is not None else None)
             page = context.new_page()
             page.add_init_script("window.__X = window.__X || {};")
             msgs = []
             page.on("console", lambda m: msgs.append({"type": m.type, "text": m.text[:300]}))
-            resp = page.goto(url, wait_until="load", timeout=timeout_ms)
+            try:
+                resp = page.goto(url, wait_until="load", timeout=timeout_ms)
+            except Exception as e:
+                # timeouts / aborted navigations are evidence of "no result", not a crash
+                result["error"] = f"navigation_failed:{str(e).splitlines()[0][:200]}"
+                result["final_url"] = page.url
+                result["console"] = msgs[:20]
+                return result
             page.wait_for_timeout(250)
             result["status"] = resp.status if resp else None
             result["final_url"] = page.url
@@ -156,31 +231,19 @@ def run_probe_on_url(url: str, marker: str, delivery: str = "query", param: str 
                 dom_txt = page.evaluate("document.documentElement.outerHTML")
                 result["reflected_html"] = marker in raw_body
                 result["reflected_dom"] = marker in dom_txt
-                result["executed"] = bool(page.evaluate(f"!!(window.__X && window.__X['{marker}'])"))
+                result["executed"] = bool(page.evaluate(_EXECUTED, marker))
                 # Interaction-aware confirmation (Phase 3): if not yet executed, perform the bounded,
-                # context-derived interactions and re-check the sentinel. Non-destructive: only fires
-                # events on same-page elements / navigates the fragment; never submits off-target.
+                # context-derived interactions on the marker-bearing element and re-check.
                 if not result["executed"] and interactions:
                     for act in interactions:
+                        js = _INTERACTIONS.get(act)
+                        if js is None:
+                            continue           # unknown / disallowed interaction (e.g. submit)
                         try:
-                            if act == "hover":
-                                page.eval_on_selector_all("*", "els=>els.forEach(e=>e.dispatchEvent("
-                                    "new MouseEvent('mouseover',{bubbles:true})))")
-                            elif act == "focus":
-                                page.eval_on_selector_all("[onfocus],[autofocus],input,button,a",
-                                    "els=>els.forEach(e=>{try{e.focus&&e.focus();e.dispatchEvent("
-                                    "new FocusEvent('focus',{bubbles:true}))}catch(_){}})")
-                            elif act == "click":
-                                page.eval_on_selector_all("[onclick],a,button,#lnk,#out,#t",
-                                    "els=>els.forEach(e=>{try{e.click&&e.click()}catch(_){}})")
-                            elif act == "hashnav":
-                                page.evaluate("window.dispatchEvent(new HashChangeEvent('hashchange'))")
-                            elif act == "submit":
-                                page.eval_on_selector_all("form",
-                                    "els=>els.forEach(f=>{try{f.requestSubmit?f.requestSubmit():f.submit()}catch(_){}})")
+                            page.evaluate(js, marker)
                             result["interactions_performed"].append(act)
                             page.wait_for_timeout(80)
-                            if page.evaluate(f"!!(window.__X && window.__X['{marker}'])"):
+                            if page.evaluate(_EXECUTED, marker):
                                 result["executed"] = True
                                 break
                         except Exception:

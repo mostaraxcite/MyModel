@@ -13,10 +13,8 @@ import json
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from urllib.parse import urlparse
-
-from live.assess import local_eval_passed
-from live.scope import Scope
+from live.assess import external_hosts, local_eval_passed
+from live.scope import TEST_CLASSES, Scope
 
 
 @dataclass
@@ -36,27 +34,34 @@ class PilotAuthorization:
     stored_xss_permitted: bool = False
 
 
-def _is_loopback(url):
-    return (urlparse(url).hostname or "") in ("127.0.0.1", "localhost", "::1")
-
-
 def authorize(auth: PilotAuthorization, authorized_external: bool) -> Scope:
     """Validate all gates and build a Scope, or refuse BEFORE any network access."""
     if not auth.authorization_acknowledged:
         raise SystemExit("REFUSED: authorization not acknowledged.")
     if not auth.operator_identity or not auth.assessment_id:
         raise SystemExit("REFUSED: operator identity and assessment id are required.")
-    if not _is_loopback(auth.target):
-        if not local_eval_passed():
-            raise SystemExit("REFUSED: external pilot requires a PASSED local acceptance evaluation.")
-        if not authorized_external:
-            raise SystemExit("REFUSED: external target requires --authorized-external.")
+    classes = list(auth.allowed_test_classes)
+    unknown = set(classes) - set(TEST_CLASSES)
+    if unknown:
+        raise SystemExit(f"REFUSED: unknown test classes {sorted(unknown)}.")
+    if "stored" in classes and not auth.stored_xss_permitted:
+        raise SystemExit("REFUSED: stored-XSS testing persists data and requires stored_xss_permitted.")
+    if auth.stored_xss_permitted and "stored" not in classes:
+        classes.append("stored")
     scope = Scope(base_url=auth.target, allowed_hosts=list(auth.allowed_hosts),
                   allowed_subdomains=list(auth.allowed_subdomains),
                   allowed_prefixes=auth.allowed_prefixes or None,
                   excluded_paths=list(auth.excluded_paths),
                   max_requests=auth.request_budget, rate_limit_rps=auth.rate_limit_rps,
-                  auth=dict(auth.auth_config), authorized_external=authorized_external)
+                  auth=dict(auth.auth_config), authorized_external=authorized_external,
+                  allowed_test_classes=classes)
+    # every host the scope can reach counts, not just the target: a loopback target with an
+    # external allowed host/subdomain is an external pilot
+    if external_hosts(scope):
+        if not local_eval_passed():
+            raise SystemExit("REFUSED: external pilot requires a PASSED local acceptance evaluation.")
+        if not authorized_external:
+            raise SystemExit("REFUSED: external target requires --authorized-external.")
     return scope
 
 
@@ -85,6 +90,8 @@ def main():
     ap.add_argument("--budget", type=int, default=300)
     ap.add_argument("--rate", type=float, default=3.0)
     ap.add_argument("--stored-xss", action="store_true")
+    ap.add_argument("--test-class", action="append", choices=list(TEST_CLASSES),
+                    help="test classes to run (default: reflected, dom); 'post' sends POST forms")
     ap.add_argument("--authorized-external", action="store_true")
     a = ap.parse_args()
     auth = PilotAuthorization(
@@ -92,7 +99,8 @@ def main():
         authorization_acknowledged=a.acknowledge_authorization,
         allowed_subdomains=a.allowed_subdomain, allowed_prefixes=a.allowed_prefix,
         excluded_paths=a.exclude, request_budget=a.budget, rate_limit_rps=a.rate,
-        stored_xss_permitted=a.stored_xss)
+        stored_xss_permitted=a.stored_xss,
+        **({"allowed_test_classes": a.test_class} if a.test_class else {}))
     saved = run_pilot(auth, a.authorized_external)
     print(json.dumps(saved["summary"], indent=2))
     print("evidence ->", saved["dir"])

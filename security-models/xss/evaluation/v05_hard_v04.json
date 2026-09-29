@@ -1,4 +1,8 @@
 {
+  "adapter": "v0.4-baseline",
+  "adapter_kind": "full",
+  "base_model": "google/bert_uncased_L-4_H-256_A-4",
+  "dataset": "hard_test.jsonl",
   "count": 465,
   "classification_report": {
     "SAFE": {
@@ -75,5 +79,6 @@
     "threshold_macro_f1": 0.9,
     "observed_macro_f1": 0.9091944844453206,
     "passed": true
-  }
+  },
+  "latency": null
 }

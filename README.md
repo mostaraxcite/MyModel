@@ -139,6 +139,13 @@ and it can never declare a finding `CONFIRMED`; browser execution remains author
 | Qwen3.5-0.8B LoRA + pointer-head checkpoint | Experimental; pipeline validated, gate rejected |
 | Calibrated released weights | Not yet available |
 
+The official XSS classifier training entry point is `training/train_peft.py`:
+MiniLM-L6 (`nreimers/MiniLM-L6-H384-uncased`) with a PEFT LoRA adapter and a
+three-class classification head. The promoted runtime remains the v0.4
+bert-tiny baseline; the current xss-v0.5 adapter is retained as a rejected
+candidate because it regressed on locked Hard Test v4. The Qwen trainer is an
+independent experiment and is not part of the v0.5 release path.
+
 The API and dataset converter are usable now:
 
 ```bash

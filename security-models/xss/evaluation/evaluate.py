@@ -1,12 +1,14 @@
-"""Evaluate XSS-SLM v0.1 without exposing test labels to training."""
+"""Evaluate an adapter from the registry against the locked Hard Test v4."""
 from __future__ import annotations
 
 import argparse
 import json
+import time
 from pathlib import Path
 
 from sklearn.metrics import classification_report, confusion_matrix
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
+
+from xss_specialist.adapter_registry import load_classifier
 
 
 LABELS = ["SAFE", "POSSIBLE_XSS", "XSS"]
@@ -27,26 +29,40 @@ def error_rates(matrix: list[list[int]]) -> dict:
     return result
 
 
+def measure_latency(classify, rows: list[dict]) -> dict:
+    sample = rows[: min(64, len(rows))]
+    start = time.perf_counter()
+    classify([row["code"] for row in sample], truncation=True)
+    elapsed = time.perf_counter() - start
+    return {"avg_ms_per_snippet": round((elapsed / len(sample)) * 1000, 3)}
+
+
 def main() -> None:
-    root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--model-dir", type=Path, default=root / "model")
-    parser.add_argument("--data", type=Path, default=root / "data" / "test.jsonl")
-    parser.add_argument("--output", type=Path, default=root / "evaluation" / "metrics.json")
+    parser.add_argument("--adapter", default="v0.4-baseline")
+    parser.add_argument("--data", type=Path, default=Path("security-models/xss/data/hard_test.jsonl"))
+    parser.add_argument("--output", type=Path, default=Path("security-models/xss/evaluation/v05_hard_metrics.json"))
     parser.add_argument("--promotion-threshold", type=float, default=0.90)
+    parser.add_argument("--latency", action="store_true", help="Measure inference latency on a 64-snippet sample.")
     args = parser.parse_args()
 
     rows = [json.loads(line) for line in args.data.read_text(encoding="utf-8").splitlines() if line]
-    tokenizer = AutoTokenizer.from_pretrained(args.model_dir)
-    model = AutoModelForSequenceClassification.from_pretrained(args.model_dir)
-    classifier = pipeline("text-classification", model=model, tokenizer=tokenizer, top_k=None, device=-1)
-    predictions = classifier([row["code"] for row in rows], batch_size=64, truncation=True)
+
+    classify, spec = load_classifier(args.adapter)
+    scores = classify([row["code"] for row in rows], batch_size=32, truncation=True)
     y_true = [row["label"] for row in rows]
-    y_pred = [max(scores, key=lambda item: item["score"])["label"] for scores in predictions]
+    y_pred = [max(items, key=lambda item: item["score"])["label"] for items in scores]
     matrix = confusion_matrix(y_true, y_pred, labels=LABELS).tolist()
     report = classification_report(y_true, y_pred, labels=LABELS, output_dict=True, zero_division=0)
     macro_f1 = report["macro avg"]["f1-score"]
-    result = {
+
+    latency = measure_latency(classify, rows) if args.latency else None
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps({
+        "adapter": spec.name,
+        "adapter_kind": spec.kind,
+        "base_model": spec.base_model,
+        "dataset": args.data.name,
         "count": len(rows),
         "classification_report": report,
         "false_rates": error_rates(matrix),
@@ -56,10 +72,14 @@ def main() -> None:
             "observed_macro_f1": macro_f1,
             "passed": macro_f1 >= args.promotion_threshold,
         },
-    }
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps(result, indent=2))
+        "latency": latency,
+    }, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps({
+        "adapter": spec.name,
+        "macro_f1": macro_f1,
+        "passed": macro_f1 >= args.promotion_threshold,
+        "latency_ms": latency["avg_ms_per_snippet"] if latency else None,
+    }, indent=2))
 
 
 if __name__ == "__main__":

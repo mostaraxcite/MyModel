@@ -1,0 +1,254 @@
+"""PEFT LoRA trainer for an encoder-based XSS classifier (v0.5+).
+
+The base model is frozen; only LoRA adapters on q/k/v/o plus the 3-class
+classification head are trained. This keeps the trainable parameter count small
+enough to run on CPU while still adapting the encoder to the XSS classification
+task. The resulting adapter is saved with `peft.save_pretrained` so it can be
+loaded back via `adapter_registry` together with the base model name.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import time
+from pathlib import Path
+
+import numpy as np
+import torch
+from datasets import Dataset
+from peft import LoraConfig, TaskType, get_peft_model
+from sklearn.metrics import f1_score, precision_recall_fscore_support
+from sklearn.utils.class_weight import compute_class_weight
+from transformers import (
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    DataCollatorWithPadding,
+    Trainer,
+    TrainingArguments,
+)
+
+
+LABELS = ["SAFE", "POSSIBLE_XSS", "XSS"]
+LABEL_TO_ID = {label: index for index, label in enumerate(LABELS)}
+ID_TO_LABEL = {index: label for label, index in LABEL_TO_ID.items()}
+DEFAULT_BASE_MODEL = "nreimers/MiniLM-L6-H384-uncased"
+
+
+# MiniLM-L6 uses BERT-style attention: query, key, value, and an output dense
+# projection after attention. Targeting all four gives the adapter enough
+# expressive capacity while keeping the LoRA footprint tiny.
+DEFAULT_LORA_TARGETS = ["query", "key", "value", "dense"]
+
+
+def _safe_load_jsonl(path: Path, limit: int | None = None) -> list[dict]:
+    rows = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line:
+            continue
+        rows.append(json.loads(line))
+        if limit and len(rows) >= limit:
+            break
+    return rows
+
+
+def _filter_partition(rows: list[dict], partitions: set[str] | None) -> list[dict]:
+    if not partitions:
+        return rows
+    return [row for row in rows if row.get("provenance", {}).get("partition") in partitions]
+
+
+def load_classification_split(
+    path: Path,
+    partitions: set[str] | None = None,
+    limit: int | None = None,
+) -> Dataset:
+    rows = _filter_partition(_safe_load_jsonl(path, limit=limit), partitions)
+    return Dataset.from_dict(
+        {
+            "text": [row["code"] for row in rows],
+            "label": [LABEL_TO_ID[row["label"]] for row in rows],
+        }
+    )
+
+
+class WeightedLossTrainer(Trainer):
+    """Trainer that reweights cross-entropy by inverse class frequency.
+
+    Without this, MiniLM-L6 collapses to predicting the majority class
+    (XSS, ~42% of train). POSSIBLE_XSS is the minority (~19%) and gets
+    swallowed. The class weight vector normalises to mean=1 so the loss
+    scale stays comparable.
+    """
+
+    def __init__(self, *args, class_weights: torch.Tensor | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._class_weights = class_weights
+
+    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+        labels = inputs.pop("labels")
+        outputs = model(**inputs)
+        logits = outputs.logits
+        weight = self._class_weights.to(logits.device) if self._class_weights is not None else None
+        loss = torch.nn.functional.cross_entropy(logits, labels, weight=weight)
+        return (loss, outputs) if return_outputs else loss
+
+
+def compute_class_weights(train_dataset: Dataset) -> torch.Tensor:
+    labels = np.array(train_dataset["label"])
+    weights = compute_class_weight("balanced", classes=np.arange(len(LABELS)), y=labels)
+    weights = weights / weights.mean()  # normalise so mean=1
+    return torch.tensor(weights, dtype=torch.float32)
+
+
+def compute_metrics(eval_pred) -> dict:
+    logits, labels = eval_pred
+    preds = np.argmax(logits, axis=-1)
+    macro_f1 = f1_score(labels, preds, average="macro", zero_division=0)
+    precision, recall, f1, _ = precision_recall_fscore_support(
+        labels, preds, labels=list(range(len(LABELS))), zero_division=0
+    )
+    per_class = {
+        LABELS[index]: {
+            "precision": float(precision[index]),
+            "recall": float(recall[index]),
+            "f1": float(f1[index]),
+        }
+        for index in range(len(LABELS))
+    }
+    return {"macro_f1": float(macro_f1), "per_class": per_class}
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--base-model", default=DEFAULT_BASE_MODEL)
+    parser.add_argument("--train-data", type=Path, default=Path("security-models/xss/data/train.jsonl"))
+    parser.add_argument("--validation-data", type=Path, default=Path("security-models/xss/data/validation.jsonl"))
+    parser.add_argument("--output-dir", type=Path, default=Path("security-models/xss/adapters/xss-v05"))
+    parser.add_argument("--epochs", type=float, default=2.0)
+    parser.add_argument("--batch-size", type=int, default=16)
+    parser.add_argument("--max-length", type=int, default=256)
+    parser.add_argument("--seed", type=int, default=2027)
+    parser.add_argument("--rank", type=int, default=8)
+    parser.add_argument("--alpha", type=int, default=16)
+    parser.add_argument("--dropout", type=float, default=0.05)
+    parser.add_argument("--lr", type=float, default=2e-4)
+    parser.add_argument("--train-limit", type=int, default=0, help="0 = use all rows")
+    parser.add_argument("--validation-limit", type=int, default=0)
+    parser.add_argument("--adapter-name", default="xss-v05")
+    args = parser.parse_args()
+
+    torch.manual_seed(args.seed)
+
+    tokenizer = AutoTokenizer.from_pretrained(args.base_model)
+    base = AutoModelForSequenceClassification.from_pretrained(
+        args.base_model,
+        num_labels=len(LABELS),
+        id2label=ID_TO_LABEL,
+        label2id=LABEL_TO_ID,
+    )
+
+    lora_config = LoraConfig(
+        task_type=TaskType.SEQ_CLS,
+        r=args.rank,
+        lora_alpha=args.alpha,
+        lora_dropout=args.dropout,
+        bias="none",
+        target_modules=DEFAULT_LORA_TARGETS,
+        modules_to_save=["classifier"],  # keep classifier head fully trainable
+    )
+
+    model = get_peft_model(base, lora_config)
+    model.print_trainable_parameters()
+
+    train_set = load_classification_split(
+        args.train_data,
+        limit=args.train_limit or None,
+    )
+    validation_set = load_classification_split(
+        args.validation_data,
+        limit=args.validation_limit or None,
+    )
+
+    def tokenize(batch: dict) -> dict:
+        return tokenizer(batch["text"], truncation=True, max_length=args.max_length)
+
+    train_set = train_set.map(tokenize, batched=True, remove_columns=["text"])
+    validation_set = validation_set.map(tokenize, batched=True, remove_columns=["text"])
+
+    class_weights = compute_class_weights(train_set)
+    print(f"class weights: {class_weights.tolist()} (POSSIBLE_XSS should be >1 if imbalanced)")
+
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    run = TrainingArguments(
+        output_dir=str(args.output_dir),
+        num_train_epochs=args.epochs,
+        per_device_train_batch_size=args.batch_size,
+        per_device_eval_batch_size=args.batch_size * 2,
+        learning_rate=args.lr,
+        weight_decay=0.01,
+        warmup_steps=int((len(train_set) * args.epochs / args.batch_size) * 0.1),
+        eval_strategy="epoch",
+        save_strategy="epoch",
+        load_best_model_at_end=True,
+        metric_for_best_model="macro_f1",
+        greater_is_better=True,
+        report_to="none",
+        seed=args.seed,
+        dataloader_pin_memory=False,
+        fp16=False,  # CPU only
+        logging_steps=50,
+    )
+
+    started = time.time()
+    trainer = WeightedLossTrainer(
+        model=model,
+        args=run,
+        train_dataset=train_set,
+        eval_dataset=validation_set,
+        data_collator=DataCollatorWithPadding(tokenizer=tokenizer),
+        compute_metrics=compute_metrics,
+        class_weights=class_weights,
+    )
+    trainer.train()
+
+    # Persist the LoRA adapter (NOT the base weights). The base is recovered by
+    # name from the registry so the base stays replaceable.
+    model.save_pretrained(args.output_dir)
+    tokenizer.save_pretrained(args.output_dir)
+
+    record = {
+        "adapter_name": args.adapter_name,
+        "base_model": args.base_model,
+        "task": "xss-3way-classification",
+        "labels": LABELS,
+        "lora": {
+            "rank": args.rank,
+            "alpha": args.alpha,
+            "dropout": args.dropout,
+            "target_modules": DEFAULT_LORA_TARGETS,
+            "modules_to_save": ["classifier"],
+        },
+        "train_rows": len(train_set),
+        "validation_rows": len(validation_set),
+        "training_sha256": _sha256(args.train_data),
+        "validation_sha256": _sha256(args.validation_data),
+        "external_test_v5_used_for_training": False,
+        "seed": args.seed,
+        "runtime_seconds": round(time.time() - started, 2),
+        "trainer_history": trainer.state.log_history,
+        "best_metric": trainer.state.best_metric,
+    }
+    (args.output_dir / "adapter_metadata.json").write_text(
+        json.dumps(record, indent=2, default=str) + "\n", encoding="utf-8"
+    )
+    print(json.dumps({"adapter_metadata": str(args.output_dir / "adapter_metadata.json")}))
+    print(json.dumps(record, indent=2, default=str))
+
+
+if __name__ == "__main__":
+    main()

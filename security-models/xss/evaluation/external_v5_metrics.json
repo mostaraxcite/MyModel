@@ -1,0 +1,70 @@
+{
+  "dataset": "external_test_v5_locked",
+  "count": 473,
+  "coverage": 0.9027484143763214,
+  "abstention_rate": 0.09725158562367865,
+  "decided_macro_f1": 0.47769942452775976,
+  "per_label": {
+    "SAFE": {
+      "precision": 0.11347517730496454,
+      "recall": 0.4,
+      "f1-score": 0.17679558011049723,
+      "support": 40.0
+    },
+    "XSS": {
+      "precision": 0.916083916083916,
+      "recall": 0.6770025839793282,
+      "f1-score": 0.7786032689450223,
+      "support": 387.0
+    }
+  },
+  "xss_false_positive_rate_all": 0.5454545454545454,
+  "xss_false_negative_rate_all": 0.2913752913752914,
+  "confusion_decided": {
+    "labels": [
+      "SAFE",
+      "XSS"
+    ],
+    "matrix": [
+      [
+        16,
+        24
+      ],
+      [
+        125,
+        262
+      ]
+    ]
+  },
+  "by_project": {
+    "github/codeql": {
+      "count": 450,
+      "correct": 267,
+      "abstained": 46,
+      "errors": {
+        "SAFE_AS_XSS": 16,
+        "XSS_AS_SAFE": 121,
+        "XSS_AS_POSSIBLE_XSS": 42,
+        "SAFE_AS_POSSIBLE_XSS": 4
+      }
+    },
+    "semgrep/semgrep-rules": {
+      "count": 23,
+      "correct": 11,
+      "abstained": 0,
+      "errors": {
+        "SAFE_AS_XSS": 8,
+        "XSS_AS_SAFE": 4
+      }
+    }
+  },
+  "promotion": {
+    "passed": false,
+    "requirements": {
+      "macro_f1": 0.9,
+      "coverage": 0.9,
+      "max_fpr": 0.08,
+      "max_fnr": 0.08
+    }
+  }
+}

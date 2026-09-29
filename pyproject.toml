@@ -43,3 +43,10 @@ slm = [
     "torch>=2.4",
     "transformers>=4.47",
 ]
+lora = [
+    "accelerate>=1.2",
+    "datasets>=3.2",
+    "peft>=0.21.0",
+    "torch>=2.4",
+    "transformers>=4.47",
+]

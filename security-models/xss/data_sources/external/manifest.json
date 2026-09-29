@@ -18,7 +18,7 @@
   },
   "sources": {
     "semgrep": {
-      "license": "Apache-2.0",
+      "license": "Semgrep Rules License v1.0",
       "files": [
         "incomplete-hostname-regexp.js",
         "incomplete-url-scheme-regexp.js",

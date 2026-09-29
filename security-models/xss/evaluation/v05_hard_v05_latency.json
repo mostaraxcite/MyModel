@@ -1,0 +1,86 @@
+{
+  "adapter": "xss-v0.5",
+  "adapter_kind": "peft",
+  "base_model": "nreimers/MiniLM-L6-H384-uncased",
+  "dataset": "hard_test.jsonl",
+  "count": 465,
+  "classification_report": {
+    "SAFE": {
+      "precision": 0.7664670658682635,
+      "recall": 0.8258064516129032,
+      "f1-score": 0.7950310559006211,
+      "support": 155.0
+    },
+    "POSSIBLE_XSS": {
+      "precision": 0.8395061728395061,
+      "recall": 0.85,
+      "f1-score": 0.84472049689441,
+      "support": 80.0
+    },
+    "XSS": {
+      "precision": 0.8940092165898618,
+      "recall": 0.8434782608695652,
+      "f1-score": 0.8680089485458613,
+      "support": 230.0
+    },
+    "accuracy": 0.8387096774193549,
+    "macro avg": {
+      "precision": 0.8333274850992104,
+      "recall": 0.8397615708274895,
+      "f1-score": 0.8359201671136308,
+      "support": 465.0
+    },
+    "weighted avg": {
+      "precision": 0.8421182986073323,
+      "recall": 0.8387096774193549,
+      "f1-score": 0.8396763689928971,
+      "support": 465.0
+    }
+  },
+  "false_rates": {
+    "SAFE": {
+      "false_positive_rate": 0.12580645161290321,
+      "false_negative_rate": 0.17419354838709677
+    },
+    "POSSIBLE_XSS": {
+      "false_positive_rate": 0.033766233766233764,
+      "false_negative_rate": 0.15
+    },
+    "XSS": {
+      "false_positive_rate": 0.09787234042553192,
+      "false_negative_rate": 0.1565217391304348
+    }
+  },
+  "confusion_matrix": {
+    "labels": [
+      "SAFE",
+      "POSSIBLE_XSS",
+      "XSS"
+    ],
+    "matrix": [
+      [
+        128,
+        4,
+        23
+      ],
+      [
+        12,
+        68,
+        0
+      ],
+      [
+        27,
+        9,
+        194
+      ]
+    ]
+  },
+  "promotion": {
+    "threshold_macro_f1": 0.9,
+    "observed_macro_f1": 0.8359201671136308,
+    "passed": false
+  },
+  "latency": {
+    "avg_ms_per_snippet": 49.6
+  }
+}

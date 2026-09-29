@@ -2616,6 +2616,13 @@ dependencies = [
 dev = [
     { name = "pytest" },
 ]
+lora = [
+    { name = "accelerate" },
+    { name = "datasets" },
+    { name = "peft" },
+    { name = "torch" },
+    { name = "transformers" },
+]
 slm = [
     { name = "accelerate" },
     { name = "datasets" },
@@ -2642,6 +2649,13 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8.0" }]
+lora = [
+    { name = "accelerate", specifier = ">=1.2" },
+    { name = "datasets", specifier = ">=3.2" },
+    { name = "peft", specifier = ">=0.21.0" },
+    { name = "torch", specifier = ">=2.4" },
+    { name = "transformers", specifier = ">=4.47" },
+]
 slm = [
     { name = "accelerate", specifier = ">=1.2" },
     { name = "datasets", specifier = ">=3.2" },

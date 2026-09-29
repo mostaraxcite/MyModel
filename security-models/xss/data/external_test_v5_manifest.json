@@ -1,0 +1,15 @@
+{
+  "version": "v0.5",
+  "partition": "external_test_v5_locked",
+  "count": 473,
+  "labels": {
+    "XSS": 429,
+    "SAFE": 44
+  },
+  "projects": {
+    "github/codeql": 450,
+    "semgrep/semgrep-rules": 23
+  },
+  "group_disjoint_unit": "repository + fixture path",
+  "training_allowed": false
+}

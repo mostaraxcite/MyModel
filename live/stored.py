@@ -21,12 +21,19 @@ def assess_stored(submit_url: str, view_url: str, enforcer: Enforcer, fid: str,
     payload = f"<img src=x onerror=\"window.__X['{marker}']=1\">"
     sig = "<img src=x onerror="
     submit = _embed(submit_url, submit_param, payload, delivery)
+    if not enforcer.scope.allows("stored"):
+        # stored probes persist data on the target: they need an explicit opt-in
+        enforcer.blocked_log.append({"url": submit_url, "reason": "test_class_not_authorized:stored",
+                                     "kind": "stored_submit"})
+        return {"finding_id": fid, "status": "INCONCLUSIVE", "reason": "test_class_not_authorized:stored",
+                "xss_class": "stored"}
     ok, reason = enforcer.check(submit, kind="stored_submit")
     if not ok:
         return {"finding_id": fid, "status": "INCONCLUSIVE", "reason": reason, "xss_class": "stored"}
     # submit (store) — the value is persisted server-side; we don't need execution here
     s_ev = run_probe_on_url(submit, marker, delivery=delivery, param=submit_param,
-                            timeout_ms=timeout_ms, raw_signature=sig)
+                            timeout_ms=timeout_ms, raw_signature=sig,
+                            in_scope=enforcer.scope.in_scope)
     enforcer.note_request(submit, final_url=s_ev.get("final_url") or submit, status=s_ev.get("status"),
                           kind="stored_submit")
     # view (retrieve) — check whether the stored payload executes when rendered to a viewer
@@ -35,7 +42,7 @@ def assess_stored(submit_url: str, view_url: str, enforcer: Enforcer, fid: str,
         return {"finding_id": fid, "status": "INCONCLUSIVE", "reason": reason, "xss_class": "stored"}
     v_ev = run_probe_on_url(view_url, marker, delivery="query", param=submit_param,
                             timeout_ms=timeout_ms, raw_signature=sig,
-                            interactions=["hover", "click"])
+                            interactions=["hover", "click"], in_scope=enforcer.scope.in_scope)
     enforcer.note_request(view_url, final_url=v_ev.get("final_url") or view_url,
                           status=v_ev.get("status"), kind="stored_view")
     executed = bool(v_ev.get("executed"))
@@ -57,7 +64,8 @@ if __name__ == "__main__":
     from live.testapp_v2 import serve
     from live.scope import Scope
     srv = serve(port=8096); time.sleep(0.3)
-    enf = Enforcer(Scope(base_url="http://127.0.0.1:8096/", allowed_prefixes=["/"], rate_limit_rps=100))
+    enf = Enforcer(Scope(base_url="http://127.0.0.1:8096/", allowed_prefixes=["/"], rate_limit_rps=100,
+                         allowed_test_classes=["reflected", "dom", "stored"]))
     r = assess_stored("http://127.0.0.1:8096/store/submit", "http://127.0.0.1:8096/store/view",
                       enf, "S-000")
     srv.shutdown()

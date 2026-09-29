@@ -78,10 +78,14 @@ def save_assessment(name, scope, enforcer, crawl_result, candidates, assess_resu
         "confirmed": n("CONFIRMED"), "likely": n("LIKELY"),
         "inconclusive": n("INCONCLUSIVE"), "not_vulnerable": n("NOT_VULNERABLE"),
         "requests_made": enforcer.requests_made,
-        "out_of_scope_blocked": len(enforcer.blocked_log),
-        "coverage_limitations": "Synthetic/authorized scope only; POST bodies and headers probed only "
-                                "when enabled; execution requiring user interaction (hover/click) may "
-                                "yield LIKELY not CONFIRMED.",
+        "out_of_scope_blocked": sum(not b.get("reason", "").startswith("test_class_not_authorized")
+                                    for b in enforcer.blocked_log),
+        "not_authorized_skipped": sum(b.get("reason", "").startswith("test_class_not_authorized")
+                                      for b in enforcer.blocked_log),
+        "test_classes": list(scope.allowed_test_classes),
+        "coverage_limitations": "Synthetic/authorized scope only; POST forms probed only when the "
+                                "'post' test class is authorized; headers are never probed; execution "
+                                "requiring user interaction (hover/click) may yield LIKELY not CONFIRMED.",
     }
     write_json(out / "summary.json", summary)
 

@@ -160,13 +160,14 @@ def load_classifier(
             label2id={"SAFE": 0, "POSSIBLE_XSS": 1, "XSS": 2},
         )
         try:
-            model = PeftModel.from_pretrained(base, str(resolved))
-        except (KeyError, RuntimeError, ValueError):
-            # The adapter only contains LoRA weights but the base model has a
-            # fresh classifier head. Fall back to a fresh base when the
-            # adapter does not include a classifier module.
-            base = AutoModelForSequenceClassification.from_pretrained(spec.base_model)
             model = PeftModel.from_pretrained(base, str(resolved), is_trainable=False)
+        except (KeyError, RuntimeError, ValueError) as exc:
+            # Never fall back to a base model with a freshly initialised head: that would serve
+            # random predictions under the adapter's name.
+            raise RuntimeError(
+                f"Adapter '{spec.name}' at {resolved} could not be applied to {spec.base_model} "
+                "with a 3-label head; it must include the trained classifier (modules_to_save)."
+            ) from exc
     else:
         raise ValueError(f"Unknown adapter kind: {spec.kind}")
 

@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Production-grade XSS specialist SLM with KEV-gated continual learning (research prototype)"
 requires-python = ">=3.12"
 dependencies = [
-    "mlx-lm>=0.28",
+    "mlx-lm>=0.28; sys_platform == 'darwin'",
     "numpy>=2.0",
     "pyyaml>=6.0",
     "scikit-learn>=1.5",
@@ -17,6 +17,8 @@ dependencies = [
     "pydantic>=2.13.5",
     "fastapi>=0.141.1",
     "uvicorn>=0.30",
+    "torch>=2.4",
+    "transformers>=4.47",
 ]
 
 [project.scripts]
@@ -36,7 +38,7 @@ module-root = ""
 testpaths = ["tests"]
 
 [dependency-groups]
-dev = ["pytest>=8.0"]
+dev = ["pytest>=8.0", "datasets>=3.2"]
 slm = [
     "accelerate>=1.2",
     "datasets>=3.2",

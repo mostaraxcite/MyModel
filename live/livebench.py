@@ -59,7 +59,8 @@ def run(port=8098, out_dir="reports/live_assessments/livebench_v2", max_requests
     srv = serve(port=port)
     time.sleep(0.4)
     enf = Enforcer(Scope(base_url=f"http://127.0.0.1:{port}/", allowed_prefixes=["/"],
-                         max_requests=max_requests, rate_limit_rps=100))
+                         max_requests=max_requests, rate_limit_rps=100,
+                         allowed_test_classes=["reflected", "dom", "stored"]))
     rows = []
     funnel = Counter()
     t0 = time.time()

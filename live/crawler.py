@@ -15,6 +15,7 @@ from collections import deque
 from urllib.parse import urljoin, urlparse, urlunparse, parse_qsl, urlencode
 
 from live.scope import Enforcer
+from verification.browser_oracle import install_scope_guard
 
 _JS_ROUTE = re.compile(r"""["'](/[A-Za-z0-9_\-/]{1,80}(?:\?[^"']*)?)["']""")
 
@@ -41,7 +42,10 @@ def crawl(enforcer: Enforcer, seed: str | None = None, timeout_ms: int = 4000) -
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True)
         try:
-            context = browser.new_context(extra_http_headers=scope.extra_headers or {})
+            context = browser.new_context(extra_http_headers=scope.extra_headers or {},
+                                          service_workers="block")
+            browser_blocked: list[dict] = []
+            install_scope_guard(context, scope.in_scope, browser_blocked)
             if scope.cookies:
                 try:
                     context.add_cookies(scope.cookies)
@@ -97,6 +101,7 @@ def crawl(enforcer: Enforcer, seed: str | None = None, timeout_ms: int = 4000) -
                         js_routes.add(_norm_route(cand))
         finally:
             browser.close()
+            enforcer.blocked_log.extend({**b, "kind": "crawl"} for b in browser_blocked)
     return {"routes": routes, "forms": forms, "graph": graph, "js_routes": sorted(js_routes)}
 
 

@@ -5,7 +5,7 @@ Delivery embeds the probe payload into the candidate's parameter — as a query 
 or (for POST forms) a urlencoded POST body to the form action. Each delivery maps to a test class
 (query -> reflected, hash -> dom, form -> post) that the Scope must allow. Scope is enforced before
 every navigation and again inside the browser on every request it issues; out-of-scope requests
-are blocked (server-side redirect hops are only detected afterwards; see browser_oracle).
+and redirect targets are blocked before the browser follows them.
 """
 from __future__ import annotations
 

@@ -1,9 +1,8 @@
 """Scope configuration + enforcement for authorized live-target assessment.
 
 Nothing active happens without an explicit Scope. Every URL is checked against the scope BEFORE a
-request, and the browser layer aborts out-of-scope subresource and navigation requests before they
-leave the browser; blocked URLs are logged. KNOWN GAP: a server-side redirect to an out-of-scope
-URL is still followed by the browser; it is only detected afterwards (final URL check) and logged. Paths are compared after
+request, and the browser layer aborts out-of-scope subresources, navigations, and server-side
+redirect targets before they leave the browser; blocked URLs are logged. Paths are compared after
 percent-decoding and dot-segment removal, so `/a/../admin` or `/%61dmin` cannot slip past an
 exclusion. Non-loopback hosts are out of scope unless the Scope is explicitly authorized for
 external testing. A bounded request budget and a rate limit cap activity. The scope never

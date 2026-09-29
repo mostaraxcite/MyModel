@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from urllib.parse import urljoin
 
 # sentinel payload: fires only if the string is parsed as HTML (img onerror) — the DOM XSS signal.
 PAYLOAD = "<img src=x onerror=\"window.__xss=1\">"
@@ -128,10 +129,6 @@ def install_scope_guard(context, in_scope, blocked: list, post: dict | None = No
     """Enforce scope INSIDE the browser: requests the browser issues (navigations, subresources,
     XHR) are checked before they leave the browser and aborted when out of scope.
 
-    KNOWN GAP (see tests/test_live_browser.py): server-side redirect hops are not re-intercepted, so
-    a redirect to an out-of-scope URL is still followed; callers detect it afterwards via the final
-    URL (`Enforcer.note_request`).
-
     `post` = {"url": ..., "data": {...}} turns the first navigation to that URL into a form POST.
     """
     pending = dict(post) if post else None
@@ -161,6 +158,25 @@ def install_scope_guard(context, in_scope, blocked: list, post: dict | None = No
             resp = route.fetch(**kwargs)
         except Exception:
             return route.abort("failed")
+        if 300 <= resp.status < 400:
+            location = resp.headers.get("location")
+            if location:
+                redirect_url = urljoin(url, location)
+                redirect_ok, redirect_reason = (
+                    in_scope(redirect_url) if in_scope else (True, "in_scope")
+                )
+                if not redirect_ok:
+                    blocked.append({
+                        "url": redirect_url,
+                        "reason": f"browser_redirect_out_of_scope:{redirect_reason}",
+                        "resource_type": req.resource_type,
+                        "from": url,
+                    })
+                    return route.fulfill(
+                        status=451,
+                        body="Blocked out-of-scope redirect",
+                        headers={"content-type": "text/plain; charset=utf-8"},
+                    )
         route.fulfill(response=resp)
 
     context.route("**/*", handle)

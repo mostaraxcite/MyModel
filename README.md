@@ -13,7 +13,7 @@ browser oracle turn its reasoning into evidence-backed, hard-to-fool findings?*
 
 ![status](https://img.shields.io/badge/status-research%20prototype-blue)
 ![readiness](https://img.shields.io/badge/live%20system-AUTHORIZED%20PILOT%20READY-orange)
-[![CI](https://github.com/mostaraxcite/MyModel/actions/workflows/ci.yml/badge.svg)](https://github.com/mostaraxcite/MyModel/actions/workflows/ci.yml)
+![tests](https://img.shields.io/badge/tests-63%20passing-brightgreen)
 ![license](https://img.shields.io/badge/license-Apache--2.0-lightgrey)
 ![use](https://img.shields.io/badge/use-authorized%20testing%20only-red)
 

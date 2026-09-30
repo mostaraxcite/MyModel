@@ -1,0 +1,461 @@
+name: Train XSS v0.10 Safe Balance
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/train-v10-safe-balance.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xss-v10-safe-balance
+  cancel-in-progress: false
+
+env:
+  TOKENIZERS_PARALLELISM: "false"
+  PYTHONUNBUFFERED: "1"
+  FIRING_RANGE_SHA: "4f991a6418b07a66cd63006f4a2bec27c84b72f4"
+  DOMPURIFY_SHA: "368ee78d528087ab192bcf06838013ec61c87ec8"
+  SANITIZE_HTML_SHA: "6ac6b8ea4898c2ba7f843d8cdd5f7d036d760a0e"
+
+jobs:
+  prepare-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+
+      - name: Install dependencies
+        run: uv sync --group lora --group dev
+
+      - name: Preflight regression tests
+        run: >
+          uv run pytest -q
+          tests/test_router.py
+          tests/test_xss_v05.py
+          tests/test_v05_fixes.py
+          tests/test_pipeline.py
+
+      - name: Build v0.10 diverse contrastive corpus
+        run: |
+          uv run python security-models/xss/scripts/build_v10_generalization_dataset.py             --seed 2030             --groups 1800             --legacy-per-label 1800             --validation-fraction 0.18             | tee security-models/xss/evaluation/v10_data_build.log
+
+      - name: Verify diversity and locked-set isolation
+        run: |
+          uv run python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+
+          data = Path("security-models/xss/data")
+          manifest = json.loads((data / "manifest_v10.json").read_text())
+          assert manifest["policy"]["exact_hash_overlap_with_locked_sets"] == 0
+          assert manifest["policy"]["external_test_v5_training_allowed"] is False
+          assert manifest["policy"]["hard_test_v4_training_allowed"] is False
+          assert manifest["policy"]["standard_test_training_allowed"] is False
+          assert manifest["policy"]["group_disjoint_generated_train_validation"] is True
+
+          def read(name):
+              return [json.loads(x) for x in (data / name).read_text().splitlines() if x]
+
+          train = read("train_v10.jsonl")
+          val = read("validation_v10.jsonl")
+          locked = read("test.jsonl") + read("hard_test.jsonl") + read("external_test_v5.jsonl")
+          h = lambda row: hashlib.sha256(row["code"].encode()).hexdigest()
+          train_h, val_h, locked_h = ({h(r) for r in rows} for rows in (train, val, locked))
+          assert not (train_h & val_h)
+          assert not (train_h & locked_h)
+          assert not (val_h & locked_h)
+
+          train_contrast = sum(r.get("provenance", {}).get("origin") == "contrast-v10" for r in train)
+          val_contrast = sum(r.get("provenance", {}).get("origin") == "contrast-v10" for r in val)
+          assert train_contrast >= 3000, train_contrast
+          assert val_contrast >= 500, val_contrast
+
+          print(json.dumps({
+              "train_rows": len(train),
+              "validation_rows": len(val),
+              "train_contrast": train_contrast,
+              "validation_contrast": val_contrast,
+              "train_locked_overlap": len(train_h & locked_h),
+              "validation_locked_overlap": len(val_h & locked_h),
+          }, indent=2))
+          PY
+
+      - name: Fetch pinned independent real-world sources
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p external
+
+          git init external/firing-range
+          git -C external/firing-range remote add origin https://github.com/google/firing-range.git
+          git -C external/firing-range fetch --depth 1 origin "$FIRING_RANGE_SHA"
+          git -C external/firing-range checkout --detach FETCH_HEAD
+
+          git init external/DOMPurify
+          git -C external/DOMPurify remote add origin https://github.com/cure53/DOMPurify.git
+          git -C external/DOMPurify fetch --depth 1 origin "$DOMPURIFY_SHA"
+          git -C external/DOMPurify checkout --detach FETCH_HEAD
+
+          git init external/sanitize-html
+          git -C external/sanitize-html remote add origin https://github.com/apostrophecms/sanitize-html.git
+          git -C external/sanitize-html fetch --depth 1 origin "$SANITIZE_HTML_SHA"
+          git -C external/sanitize-html checkout --detach FETCH_HEAD
+
+      - name: Build repository-disjoint real-world validation/training set
+        run: |
+          uv run python security-models/xss/scripts/build_v08_realworld.py             --firing-range-root external/firing-range             --dompurify-root external/DOMPurify             --sanitize-html-root external/sanitize-html             --external-test security-models/xss/data/external_test_v5.jsonl             --output-dir security-models/xss/data             --seed 2030             --validation-fraction 0.20             | tee security-models/xss/evaluation/v10_realworld_build.log
+
+      - name: Upload prepared v0.10 data
+        uses: actions/upload-artifact@v4
+        with:
+          name: xss-v10-prepared-data
+          retention-days: 14
+          path: |
+            security-models/xss/data/train_v10.jsonl
+            security-models/xss/data/validation_v10.jsonl
+            security-models/xss/data/manifest_v10.json
+            security-models/xss/data/realworld_train_v08.jsonl
+            security-models/xss/data/realworld_validation_v08.jsonl
+            security-models/xss/data/realworld_v08_manifest.json
+            security-models/xss/evaluation/v10_data_build.log
+            security-models/xss/evaluation/v10_realworld_build.log
+
+  ablation:
+    needs: prepare-data
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [none, sqrt, balanced]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+
+      - name: Install dependencies
+        run: uv sync --group lora --group dev
+
+      - name: Download prepared data
+        uses: actions/download-artifact@v4
+        with:
+          name: xss-v10-prepared-data
+          path: security-models/xss/data
+
+      - name: Train one-epoch loss ablation
+        run: |
+          OUT="security-models/xss/adapters/xss-v10-${{ matrix.mode }}"
+          rm -rf "$OUT"
+          uv run --group lora python training/train_peft.py             --base-model nreimers/MiniLM-L6-H384-uncased             --train-data security-models/xss/data/train_v10.jsonl             --validation-data security-models/xss/data/validation_v10.jsonl             --extra-train-data security-models/xss/data/realworld_train_v08.jsonl             --extra-train-weight 1.0             --extra-train-copies 1             --extra-validation-data security-models/xss/data/realworld_validation_v08.jsonl             --extra-validation-copies 1             --class-weight-mode "${{ matrix.mode }}"             --output-dir "$OUT"             --adapter-name "xss-v0.10-${{ matrix.mode }}"             --target-modules "query,key,value,attention.output.dense"             --epochs 1             --batch-size 16             --max-length 256             --rank 8             --alpha 16             --dropout 0.05             --lr 1e-4             --seed 2030
+
+      - name: Register candidate locally
+        run: |
+          uv run python - <<'PY'
+          import os
+          from xss_specialist.adapter_registry import default_registry, register_adapter
+          mode = "${{ matrix.mode }}"
+          register_adapter(
+              default_registry(),
+              name=f"xss-v0.10-{mode}",
+              kind="peft",
+              base_model="nreimers/MiniLM-L6-H384-uncased",
+              path=f"security-models/xss/adapters/xss-v10-{mode}",
+              description=f"v0.10 loss ablation ({mode}); not promoted.",
+              promoted=False,
+              activate=False,
+          )
+          PY
+
+      - name: Evaluate three-way validation
+        run: |
+          uv run --group lora python security-models/xss/evaluation/evaluate.py             --adapter "xss-v0.10-${{ matrix.mode }}"             --data security-models/xss/data/validation_v10.jsonl             --output "security-models/xss/evaluation/v10_${{ matrix.mode }}_validation.json"
+
+      - name: Evaluate held-out real-world validation
+        run: |
+          uv run --group lora python security-models/xss/evaluation/evaluate_external_v5.py             --adapter "xss-v0.10-${{ matrix.mode }}"             --data security-models/xss/data/realworld_validation_v08.jsonl             --output "security-models/xss/evaluation/v10_${{ matrix.mode }}_realworld.json"             --predictions "security-models/xss/evaluation/v10_${{ matrix.mode }}_realworld_predictions.jsonl"
+
+      - name: Score candidate without Hard/External test leakage
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          mode = "${{ matrix.mode }}"
+          root = Path("security-models/xss/evaluation")
+          val = json.loads((root / f"v10_{mode}_validation.json").read_text())
+          real = json.loads((root / f"v10_{mode}_realworld.json").read_text())
+          report = val["classification_report"]
+
+          macro = float(report["macro avg"]["f1-score"])
+          recalls = {
+              "SAFE": float(report["SAFE"]["recall"]),
+              "POSSIBLE_XSS": float(report["POSSIBLE_XSS"]["recall"]),
+              "XSS": float(report["XSS"]["recall"]),
+          }
+          min_recall = min(recalls.values())
+          real_macro = float(real["decided_macro_f1"])
+          real_coverage = float(real["coverage"])
+          viable = (
+              recalls["SAFE"] >= 0.70
+              and recalls["XSS"] >= 0.70
+              and recalls["POSSIBLE_XSS"] >= 0.55
+              and real_coverage >= 0.65
+          )
+          score = 0.55 * macro + 0.30 * min_recall + 0.15 * real_macro
+
+          result = {
+              "mode": mode,
+              "macro_f1": macro,
+              "recalls": recalls,
+              "min_class_recall": min_recall,
+              "realworld_macro_f1": real_macro,
+              "realworld_coverage": real_coverage,
+              "viable": viable,
+              "selection_score": score,
+          }
+          path = root / f"v10_{mode}_candidate_score.json"
+          path.write_text(json.dumps(result, indent=2) + "\n")
+          print(path.read_text())
+          PY
+
+      - name: Upload ablation candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: xss-v10-ablation-${{ matrix.mode }}
+          retention-days: 14
+          path: |
+            security-models/xss/adapters/xss-v10-${{ matrix.mode }}/
+            security-models/xss/evaluation/v10_${{ matrix.mode }}_validation.json
+            security-models/xss/evaluation/v10_${{ matrix.mode }}_realworld.json
+            security-models/xss/evaluation/v10_${{ matrix.mode }}_realworld_predictions.jsonl
+            security-models/xss/evaluation/v10_${{ matrix.mode }}_candidate_score.json
+
+  select:
+    needs: ablation
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.pick.outputs.mode }}
+      score: ${{ steps.pick.outputs.score }}
+    steps:
+      - name: Download none
+        uses: actions/download-artifact@v4
+        with:
+          name: xss-v10-ablation-none
+          path: candidates/none
+
+      - name: Download sqrt
+        uses: actions/download-artifact@v4
+        with:
+          name: xss-v10-ablation-sqrt
+          path: candidates/sqrt
+
+      - name: Download balanced
+        uses: actions/download-artifact@v4
+        with:
+          name: xss-v10-ablation-balanced
+          path: candidates/balanced
+
+      - name: Select balanced-recall winner
+        id: pick
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          rows = []
+          for mode in ("none", "sqrt", "balanced"):
+              matches = list((Path("candidates") / mode).rglob(f"v10_{mode}_candidate_score.json"))
+              if len(matches) != 1:
+                  raise RuntimeError(f"expected one score for {mode}, got {matches}")
+              rows.append(json.loads(matches[0].read_text()))
+
+          viable = [r for r in rows if r["viable"]]
+          pool = viable or rows
+          pool.sort(key=lambda r: (r["selection_score"], r["min_class_recall"], r["macro_f1"]), reverse=True)
+          winner = pool[0]
+
+          summary = {"candidates": rows, "winner": winner, "used_viability_gate": bool(viable)}
+          Path("v10_ablation_summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+          print(json.dumps(summary, indent=2))
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"mode={winner['mode']}\n")
+              f.write(f"score={winner['selection_score']}\n")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xss-v10-ablation-summary
+          retention-days: 30
+          path: v10_ablation_summary.json
+
+  full-train:
+    needs: [prepare-data, select]
+    runs-on: ubuntu-latest
+    timeout-minutes: 210
+    env:
+      WINNER_MODE: ${{ needs.select.outputs.mode }}
+      WINNER_SCORE: ${{ needs.select.outputs.score }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+
+      - name: Install dependencies
+        run: uv sync --group lora --group dev
+
+      - name: Download prepared data
+        uses: actions/download-artifact@v4
+        with:
+          name: xss-v10-prepared-data
+          path: security-models/xss/data
+
+      - name: Full train v0.10 winner
+        run: |
+          rm -rf security-models/xss/adapters/xss-v10
+          uv run --group lora python training/train_peft.py             --base-model nreimers/MiniLM-L6-H384-uncased             --train-data security-models/xss/data/train_v10.jsonl             --validation-data security-models/xss/data/validation_v10.jsonl             --extra-train-data security-models/xss/data/realworld_train_v08.jsonl             --extra-train-weight 1.0             --extra-train-copies 1             --extra-validation-data security-models/xss/data/realworld_validation_v08.jsonl             --extra-validation-copies 1             --class-weight-mode "$WINNER_MODE"             --output-dir security-models/xss/adapters/xss-v10             --adapter-name xss-v0.10             --target-modules "query,key,value,attention.output.dense"             --epochs 2             --batch-size 16             --max-length 256             --rank 8             --alpha 16             --dropout 0.05             --lr 1e-4             --seed 2030 2>&1 | tee security-models/xss/evaluation/v10_training.log
+
+      - name: Register v0.10 locally
+        run: |
+          uv run python - <<'PY'
+          import os
+          from xss_specialist.adapter_registry import default_registry, register_adapter
+          register_adapter(
+              default_registry(),
+              name="xss-v0.10",
+              kind="peft",
+              base_model="nreimers/MiniLM-L6-H384-uncased",
+              path="security-models/xss/adapters/xss-v10",
+              description=f"v0.10 safe-balance candidate; class_weight_mode={os.environ['WINNER_MODE']}; not promoted.",
+              promoted=False,
+              activate=False,
+          )
+          PY
+
+      - name: Validation v0.10
+        run: |
+          uv run --group lora python security-models/xss/evaluation/evaluate.py             --adapter xss-v0.10             --data security-models/xss/data/validation_v10.jsonl             --output security-models/xss/evaluation/v10_validation.json
+
+      - name: Held-out real-world validation
+        run: |
+          uv run --group lora python security-models/xss/evaluation/evaluate_external_v5.py             --adapter xss-v0.10             --data security-models/xss/data/realworld_validation_v08.jsonl             --output security-models/xss/evaluation/v10_realworld_validation.json             --predictions security-models/xss/evaluation/v10_realworld_validation_predictions.jsonl
+
+      - name: Hard Test v4
+        run: |
+          uv run --group lora python security-models/xss/evaluation/evaluate.py             --adapter xss-v0.10             --output security-models/xss/evaluation/v10_hard.json
+
+      - name: External Test v5
+        run: |
+          uv run --group lora python security-models/xss/evaluation/evaluate_external_v5.py             --adapter xss-v0.10             --output security-models/xss/evaluation/v10_external.json             --predictions security-models/xss/evaluation/v10_external_predictions.jsonl
+
+      - name: Build final v0.10 summary
+        if: always()
+        run: |
+          uv run python - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          root = Path("security-models/xss")
+          def load(path):
+              return json.loads(path.read_text()) if path.exists() else {}
+
+          manifest = load(root / "data/manifest_v10.json")
+          meta = load(root / "adapters/xss-v10/adapter_metadata.json")
+          val = load(root / "evaluation/v10_validation.json")
+          real = load(root / "evaluation/v10_realworld_validation.json")
+          hard = load(root / "evaluation/v10_hard.json")
+          ext = load(root / "evaluation/v10_external.json")
+
+          out = {
+              "candidate": "xss-v0.10",
+              "promoted": False,
+              "selection": {
+                  "class_weight_mode": os.environ.get("WINNER_MODE"),
+                  "ablation_score": float(os.environ.get("WINNER_SCORE", 0)),
+              },
+              "corpus": manifest,
+              "training": {
+                  "best_validation_metric": meta.get("best_metric"),
+                  "train_rows": meta.get("train_rows"),
+                  "validation_rows": meta.get("validation_rows"),
+                  "class_weight_mode": meta.get("class_weight_mode"),
+                  "class_weights": meta.get("class_weights"),
+                  "runtime_seconds": meta.get("runtime_seconds"),
+                  "lora": meta.get("lora"),
+                  "external_test_v5_used_for_training": meta.get("external_test_v5_used_for_training"),
+              },
+              "validation": {
+                  "macro_f1": val.get("classification_report", {}).get("macro avg", {}).get("f1-score"),
+                  "per_label": {
+                      k: val.get("classification_report", {}).get(k)
+                      for k in ("SAFE", "POSSIBLE_XSS", "XSS")
+                  },
+              },
+              "realworld_validation": {
+                  "coverage": real.get("coverage"),
+                  "decided_macro_f1": real.get("decided_macro_f1"),
+                  "xss_false_positive_rate_all": real.get("xss_false_positive_rate_all"),
+                  "xss_false_negative_rate_all": real.get("xss_false_negative_rate_all"),
+              },
+              "hard_test_v4": {
+                  "macro_f1": hard.get("classification_report", {}).get("macro avg", {}).get("f1-score"),
+                  "promotion": hard.get("promotion"),
+                  "false_rates": hard.get("false_rates"),
+              },
+              "external_test_v5": {
+                  "count": ext.get("count"),
+                  "coverage": ext.get("coverage"),
+                  "decided_macro_f1": ext.get("decided_macro_f1"),
+                  "xss_false_positive_rate_all": ext.get("xss_false_positive_rate_all"),
+                  "xss_false_negative_rate_all": ext.get("xss_false_negative_rate_all"),
+                  "promotion": ext.get("promotion"),
+              },
+          }
+          out["eligible_for_promotion"] = bool(
+              out["hard_test_v4"].get("promotion", {}).get("passed")
+              and out["external_test_v5"].get("promotion", {}).get("passed")
+          )
+          path = root / "evaluation/v10_summary.json"
+          path.write_text(json.dumps(out, indent=2) + "\n")
+          print(path.read_text())
+          PY
+
+      - name: Upload v0.10 candidate and reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xss-v10-candidate
+          retention-days: 30
+          if-no-files-found: warn
+          path: |
+            security-models/xss/adapters/xss-v10/
+            security-models/xss/data/manifest_v10.json
+            security-models/xss/evaluation/v10_training.log
+            security-models/xss/evaluation/v10_validation.json
+            security-models/xss/evaluation/v10_realworld_validation.json
+            security-models/xss/evaluation/v10_realworld_validation_predictions.jsonl
+            security-models/xss/evaluation/v10_hard.json
+            security-models/xss/evaluation/v10_external.json
+            security-models/xss/evaluation/v10_external_predictions.jsonl
+            security-models/xss/evaluation/v10_summary.json

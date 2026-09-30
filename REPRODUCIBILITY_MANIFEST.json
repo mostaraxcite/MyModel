@@ -102,12 +102,15 @@
     },
     "routing": {
       "static_heuristic_authoritative": false,
-      "browser_execution_required_for_confirmed_xss": true
+      "browser_execution_required_for_confirmed_xss": true,
+      "hybrid_cli_executes_browser_oracle": true,
+      "non_execution_result": "POSSIBLE_XSS"
     },
     "future_lora_targets": [
       "query",
       "key",
       "value"
-    ]
+    ],
+    "last_repair_date": "2026-09-30"
   }
 }

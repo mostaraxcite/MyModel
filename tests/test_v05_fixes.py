@@ -107,3 +107,16 @@ def test_browser_confirmation_does_not_run_for_direct_safe(monkeypatch):
     assert final.verdict == "SAFE"
     assert final.confirmed is False
     assert final.confirmation_status == "NOT_REQUIRED"
+
+
+def test_lora_target_parser_supports_ablation_variants():
+    from training.train_peft_encoder import parse_lora_targets
+
+    assert parse_lora_targets(None) == ["query", "key", "value"]
+    assert parse_lora_targets("query,value") == ["query", "value"]
+    assert parse_lora_targets(
+        "query,key,value,attention.output.dense"
+    ) == ["query", "key", "value", "attention.output.dense"]
+
+    with pytest.raises(ValueError):
+        parse_lora_targets(" , ")

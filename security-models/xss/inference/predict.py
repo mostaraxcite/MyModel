@@ -1,22 +1,31 @@
-"""Classify one HTML/JavaScript snippet with XSS-SLM v0.1."""
+"""Classify one HTML/JavaScript snippet using the versioned adapter registry."""
 from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 
-from transformers import pipeline
+from xss_specialist.adapter_registry import load_classifier
 
 
 def main() -> None:
-    root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("code")
-    parser.add_argument("--model-dir", type=Path, default=root / "model")
+    parser.add_argument(
+        "--adapter",
+        default=None,
+        help="Registry adapter name. Defaults to the promoted active adapter.",
+    )
     args = parser.parse_args()
-    scores = pipeline("text-classification", model=str(args.model_dir), tokenizer=str(args.model_dir), top_k=None, device=-1)(args.code)[0]
+
+    classify, spec = load_classifier(args.adapter)
+    scores = classify(args.code, truncation=True)[0]
     best = max(scores, key=lambda item: item["score"])
-    print(json.dumps({"verdict": best["label"], "confidence": best["score"]}, indent=2))
+    print(json.dumps({
+        "adapter": spec.name,
+        "adapter_kind": spec.kind,
+        "verdict": best["label"],
+        "confidence": float(best["score"]),
+    }, indent=2))
 
 
 if __name__ == "__main__":

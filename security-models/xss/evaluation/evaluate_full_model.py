@@ -37,6 +37,7 @@ def main() -> None:
     p.add_argument("--data", type=Path, required=True)
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--external-binary", action="store_true")
+    p.add_argument("--calibration", type=Path, default=None)
     args = p.parse_args()
 
     rows = read_rows(args.data)
@@ -44,7 +45,19 @@ def main() -> None:
     model = AutoModelForSequenceClassification.from_pretrained(args.model_dir)
     classify = pipeline("text-classification", model=model, tokenizer=tokenizer, top_k=None, device=-1)
     scores = classify([r["code"] for r in rows], batch_size=32, truncation=True)
-    preds = [max(items, key=lambda item: item["score"])["label"] for items in scores]
+    calibration = json.loads(args.calibration.read_text()) if args.calibration else None
+
+    def decide(items):
+        by_label = {item["label"]: float(item["score"]) for item in items}
+        raw = max(items, key=lambda item: item["score"])["label"]
+        if calibration and raw == "XSS":
+            px = by_label.get("XSS", 0.0)
+            competitor = max(by_label.get("SAFE", 0.0), by_label.get("POSSIBLE_XSS", 0.0))
+            if px < float(calibration["xss_threshold"]) or (px - competitor) < float(calibration["xss_margin"]):
+                return "POSSIBLE_XSS"
+        return raw
+
+    preds = [decide(items) for items in scores]
 
     if args.external_binary:
         decided = [(r["label"], pred) for r, pred in zip(rows, preds) if pred in BINARY_LABELS]

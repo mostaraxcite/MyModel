@@ -12,7 +12,7 @@
     },
     "v3": {
       "adapter_sha256": "649b62eada3b504e3c7d2759d699380354a65fecdbad8fa84f265f7c006137f5",
-      "runtime_s": 931.0,
+      "runtime_s": 931,
       "sft_sha256": "e73b250fc9f573996c7ee464e11dfe6d7038cdbf07dadc1e827dc7688fe5cc08"
     }
   },
@@ -54,7 +54,8 @@
       "transformers": "5.17.0"
     },
     "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
-    "python": "3.13.14"
+    "python": "3.13.14",
+    "historical": true
   },
   "master_seed": 20260927,
   "registry": {
@@ -65,6 +66,48 @@
       "v001",
       "v002",
       "v003"
+    ]
+  },
+  "manifest_version": 2,
+  "scope_note": "The original adapters/env/registry sections describe the earlier Qwen/MLX continual-learning study. classifier_track below records the current compact XSS classifier line.",
+  "classifier_track": {
+    "active": "v0.4-baseline",
+    "active_artifact_bundled": false,
+    "active_note": "Promoted bert-tiny full fine-tune; local model directory is intentionally git-ignored and must be reproduced before default inference on a fresh clone.",
+    "v0_4": {
+      "base_model": "google/bert_uncased_L-4_H-256_A-4",
+      "training": "full_finetune",
+      "hard_test_v4_macro_f1": 0.9091944844453206,
+      "hard_test_v4_count": 465,
+      "promoted": true
+    },
+    "v0_5": {
+      "base_model": "nreimers/MiniLM-L6-H384-uncased",
+      "training": "PEFT_LoRA",
+      "adapter_path": "security-models/xss/adapters/xss-v05",
+      "hard_test_v4_macro_f1": 0.8359201671136308,
+      "promoted": false,
+      "status": "rejected"
+    },
+    "external_test_v5": {
+      "count": 454,
+      "labels": {
+        "XSS": 411,
+        "SAFE": 43
+      },
+      "content_unique": true,
+      "contradictory_rows_quarantined": 2,
+      "training_allowed": false,
+      "current_metrics": "rerun_required_after_content_dedup"
+    },
+    "routing": {
+      "static_heuristic_authoritative": false,
+      "browser_execution_required_for_confirmed_xss": true
+    },
+    "future_lora_targets": [
+      "query",
+      "key",
+      "value"
     ]
   }
 }

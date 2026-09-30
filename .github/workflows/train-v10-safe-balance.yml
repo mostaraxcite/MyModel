@@ -286,11 +286,22 @@ jobs:
               rows.append(json.loads(matches[0].read_text()))
 
           viable = [r for r in rows if r["viable"]]
-          pool = viable or rows
-          pool.sort(key=lambda r: (r["selection_score"], r["min_class_recall"], r["macro_f1"]), reverse=True)
-          winner = pool[0]
+          if not viable:
+              summary = {
+                  "candidates": rows,
+                  "winner": None,
+                  "used_viability_gate": True,
+                  "stopped": True,
+                  "reason": "No ablation candidate passed the viability gate.",
+              }
+              Path("v10_ablation_summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+              print(json.dumps(summary, indent=2))
+              raise SystemExit("No viable v0.10 candidate; refusing full training.")
 
-          summary = {"candidates": rows, "winner": winner, "used_viability_gate": bool(viable)}
+          viable.sort(key=lambda r: (r["selection_score"], r["min_class_recall"], r["macro_f1"]), reverse=True)
+          winner = viable[0]
+
+          summary = {"candidates": rows, "winner": winner, "used_viability_gate": True, "stopped": False}
           Path("v10_ablation_summary.json").write_text(json.dumps(summary, indent=2) + "\n")
           print(json.dumps(summary, indent=2))
 

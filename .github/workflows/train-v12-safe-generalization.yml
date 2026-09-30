@@ -125,9 +125,11 @@ jobs:
           real = read("realworld_train_v08.jsonl")
           safe = read("safe_hard_train_v12.jsonl")
           validation = read("validation_v10.jsonl")
+          safe_holdout = read("safe_hard_validation_v12.jsonl")
           locked = read("test.jsonl") + read("hard_test.jsonl") + read("external_test_v5.jsonl")
           locked_h = {digest(r) for r in locked}
           validation_h = {digest(r) for r in validation}
+          safe_holdout_h = {digest(r) for r in safe_holdout}
 
           groups = defaultdict(list)
           for row in safe:
@@ -135,11 +137,22 @@ jobs:
           keys = sorted(groups)
           random.Random(2032).shuffle(keys)
 
-          manifest = {"seed": 2032, "base": len(base), "realworld": len(real), "safe_groups_total": len(keys), "variants": {}}
+          manifest = {
+              "seed": 2032,
+              "base": len(base),
+              "realworld": len(real),
+              "safe_groups_total": len(keys),
+              "excluded_hashes": {
+                  "locked": len(locked_h),
+                  "base_validation": len(validation_h),
+                  "safe_holdout": len(safe_holdout_h),
+              },
+              "variants": {},
+          }
           for pct in (25, 50, 100):
               take = max(1, round(len(keys) * pct / 100))
               selected = [row for key in keys[:take] for row in groups[key]]
-              merged = dedup(base + real + selected, locked_h | validation_h)
+              merged = dedup(base + real + selected, locked_h | validation_h | safe_holdout_h)
               path = data / f"train_v12_safe{pct}.jsonl"
               path.write_text("".join(json.dumps(r, sort_keys=True) + "\n" for r in merged))
               manifest["variants"][str(pct)] = {

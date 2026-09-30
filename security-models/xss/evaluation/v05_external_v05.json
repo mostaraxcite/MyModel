@@ -12,13 +12,13 @@
       "precision": 0.11612903225806452,
       "recall": 0.4090909090909091,
       "f1-score": 0.18090452261306533,
-      "support": 44.0
+      "support": 44
     },
     "XSS": {
       "precision": 0.9078014184397163,
       "recall": 0.6513994910941476,
       "f1-score": 0.7585185185185185,
-      "support": 393.0
+      "support": 393
     }
   },
   "xss_false_positive_rate_all": 0.5909090909090909,
@@ -68,5 +68,7 @@
       "max_fpr": 0.08,
       "max_fnr": 0.08
     }
-  }
+  },
+  "result_status": "historical_pre_dedup",
+  "result_note": "Generated on the former 473-row external set. Current locked set has 454 unique classifier inputs; rerun required."
 }

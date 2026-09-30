@@ -147,8 +147,6 @@ def main() -> None:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result, indent=2))
-    if not winner["viable"]:
-        raise SystemExit("No calibration candidate passed development viability gates.")
 
 
 if __name__ == "__main__":

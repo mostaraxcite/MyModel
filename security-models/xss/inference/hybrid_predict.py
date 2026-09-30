@@ -5,7 +5,7 @@ import argparse
 import json
 from pathlib import Path
 
-from xss_specialist.adapter_registry import default_registry
+from xss_specialist.adapter_registry import ROOT, default_registry
 from xss_specialist.router_factory import build_router
 
 
@@ -25,7 +25,20 @@ def main() -> None:
     if args.list:
         reg = default_registry()
         print(json.dumps(
-            {"active": reg.active, "adapters": [spec.to_dict() for spec in reg.list_adapters()]},
+            {
+                "active": reg.active,
+                "adapters": [
+                    {
+                        **spec.to_dict(),
+                        "artifact_available": (
+                            (ROOT / spec.path).resolve().exists()
+                            if not Path(spec.path).is_absolute()
+                            else Path(spec.path).exists()
+                        ),
+                    }
+                    for spec in reg.list_adapters()
+                ],
+            },
             indent=2,
         ))
         return

@@ -1,0 +1,570 @@
+name: Train XSS v0.13 Balanced Context
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/train-v13-balanced-context.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xss-v13-balanced-context
+  cancel-in-progress: false
+
+env:
+  TOKENIZERS_PARALLELISM: "false"
+  PYTHONUNBUFFERED: "1"
+  FIRING_RANGE_SHA: "4f991a6418b07a66cd63006f4a2bec27c84b72f4"
+  DOMPURIFY_SHA: "368ee78d528087ab192bcf06838013ec61c87ec8"
+  SANITIZE_HTML_SHA: "6ac6b8ea4898c2ba7f843d8cdd5f7d036d760a0e"
+
+jobs:
+  prepare-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+
+      - name: Install dependencies
+        run: uv sync --group slm --group dev
+
+      - name: Regression tests
+        run: >
+          uv run pytest -q
+          tests/test_router.py
+          tests/test_xss_v05.py
+          tests/test_v05_fixes.py
+          tests/test_pipeline.py
+
+      - name: Build base generalization corpus
+        run: |
+          uv run python security-models/xss/scripts/build_v10_generalization_dataset.py \
+            --seed 2033 \
+            --groups 1800 \
+            --legacy-per-label 1800 \
+            --validation-fraction 0.18
+
+      - name: Build SAFE hard-negative corpus
+        run: |
+          uv run python security-models/xss/scripts/build_v12_safe_hard_negatives.py \
+            --seed 2033 \
+            --groups 2400 \
+            --validation-fraction 0.20
+
+      - name: Build hard-positive XSS corpus
+        run: |
+          uv run python security-models/xss/scripts/build_v13_hard_positives.py \
+            --seed 2033 \
+            --train-per-family 180 \
+            --validation-per-family 100 \
+            | tee security-models/xss/evaluation/v13_positive_build.log
+
+      - name: Fetch pinned independent real-world sources
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p external
+
+          git init external/firing-range
+          git -C external/firing-range remote add origin https://github.com/google/firing-range.git
+          git -C external/firing-range fetch --depth 1 origin "$FIRING_RANGE_SHA"
+          git -C external/firing-range checkout --detach FETCH_HEAD
+
+          git init external/DOMPurify
+          git -C external/DOMPurify remote add origin https://github.com/cure53/DOMPurify.git
+          git -C external/DOMPurify fetch --depth 1 origin "$DOMPURIFY_SHA"
+          git -C external/DOMPurify checkout --detach FETCH_HEAD
+
+          git init external/sanitize-html
+          git -C external/sanitize-html remote add origin https://github.com/apostrophecms/sanitize-html.git
+          git -C external/sanitize-html fetch --depth 1 origin "$SANITIZE_HTML_SHA"
+          git -C external/sanitize-html checkout --detach FETCH_HEAD
+
+      - name: Build larger independent real-world development split
+        run: |
+          uv run python security-models/xss/scripts/build_v08_realworld.py \
+            --firing-range-root external/firing-range \
+            --dompurify-root external/DOMPurify \
+            --sanitize-html-root external/sanitize-html \
+            --external-test security-models/xss/data/external_test_v5.jsonl \
+            --output-dir security-models/xss/data \
+            --seed 2033 \
+            --validation-fraction 0.35 \
+            | tee security-models/xss/evaluation/v13_realworld_build.log
+
+      - name: Build fixed SAFE25 plus positive-boost variants
+        run: |
+          uv run python - <<'PY'
+          import hashlib, json, random
+          from collections import defaultdict
+          from pathlib import Path
+
+          data = Path("security-models/xss/data")
+          def read(name):
+              return [json.loads(x) for x in (data / name).read_text().splitlines() if x]
+          def h(row):
+              return hashlib.sha256(row["code"].encode()).hexdigest()
+          def dedup(rows, forbidden):
+              seen, out = set(), []
+              for row in rows:
+                  d = h(row)
+                  if d in forbidden or d in seen:
+                      continue
+                  seen.add(d)
+                  out.append(row)
+              return out
+
+          base = read("train_v10.jsonl")
+          real_train = read("realworld_train_v08.jsonl")
+          real_val = read("realworld_validation_v08.jsonl")
+          safe_train = read("safe_hard_train_v12.jsonl")
+          safe_val = read("safe_hard_validation_v12.jsonl")
+          pos_train = read("hard_positive_train_v13.jsonl")
+          pos_val = read("hard_positive_validation_v13.jsonl")
+          base_val = read("validation_v10.jsonl")
+          locked = read("test.jsonl") + read("hard_test.jsonl") + read("external_test_v5.jsonl")
+
+          forbidden = {h(r) for r in locked + base_val + safe_val + pos_val + real_val}
+
+          safe_groups = defaultdict(list)
+          for row in safe_train:
+              safe_groups[row["group_id"]].append(row)
+          safe_keys = sorted(safe_groups)
+          random.Random(2033).shuffle(safe_keys)
+          safe_take = max(1, round(len(safe_keys) * 0.25))
+          safe25 = [r for key in safe_keys[:safe_take] for r in safe_groups[key]]
+
+          pos_groups = defaultdict(list)
+          for row in pos_train:
+              pos_groups[row["group_id"]].append(row)
+          pos_keys = sorted(pos_groups)
+          random.Random(2034).shuffle(pos_keys)
+
+          manifest = {
+              "seed": 2033,
+              "max_length": 256,
+              "safe_percent_fixed": 25,
+              "safe_groups": safe_take,
+              "positive_groups_total": len(pos_keys),
+              "realworld_validation_fraction": 0.35,
+              "variants": {},
+          }
+
+          for pct in (0, 10, 25, 50):
+              take = 0 if pct == 0 else max(1, round(len(pos_keys) * pct / 100))
+              positives = [r for key in pos_keys[:take] for r in pos_groups[key]]
+              merged = dedup(base + real_train + safe25 + positives, forbidden)
+              path = data / f"train_v13_pos{pct}.jsonl"
+              path.write_text("".join(json.dumps(r, sort_keys=True) + "\n" for r in merged))
+              manifest["variants"][str(pct)] = {
+                  "rows": len(merged),
+                  "positive_groups": take,
+                  "labels": {
+                      label: sum(r["label"] == label for r in merged)
+                      for label in ("SAFE", "POSSIBLE_XSS", "XSS")
+                  },
+              }
+
+          binary_stress = [r for r in safe_val if r["label"] == "SAFE"] + pos_val
+          random.Random(2035).shuffle(binary_stress)
+          (data / "binary_stress_v13.jsonl").write_text(
+              "".join(json.dumps(r, sort_keys=True) + "\n" for r in binary_stress)
+          )
+
+          (data / "manifest_v13_training.json").write_text(json.dumps(manifest, indent=2) + "\n")
+          print(json.dumps(manifest, indent=2))
+          PY
+
+      - name: Verify all development isolation
+        run: |
+          uv run python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+
+          data = Path("security-models/xss/data")
+          def read(name):
+              return [json.loads(x) for x in (data / name).read_text().splitlines() if x]
+          h = lambda r: hashlib.sha256(r["code"].encode()).hexdigest()
+
+          locked_h = {h(r) for r in read("test.jsonl") + read("hard_test.jsonl") + read("external_test_v5.jsonl")}
+          dev = (
+              read("validation_v10.jsonl")
+              + read("safe_hard_validation_v12.jsonl")
+              + read("hard_positive_validation_v13.jsonl")
+              + read("realworld_validation_v08.jsonl")
+          )
+          dev_h = {h(r) for r in dev}
+
+          report = {}
+          for pct in (0, 10, 25, 50):
+              train = read(f"train_v13_pos{pct}.jsonl")
+              train_h = {h(r) for r in train}
+              assert not (train_h & locked_h)
+              assert not (train_h & dev_h)
+              report[str(pct)] = {"rows": len(train), "locked_overlap": 0, "dev_overlap": 0}
+
+          pos_val = read("hard_positive_validation_v13.jsonl")
+          assert len(pos_val) >= 300, len(pos_val)
+          assert all(r["label"] == "XSS" for r in pos_val)
+
+          real = read("realworld_validation_v08.jsonl")
+          xss_count = sum(r["label"] == "XSS" for r in real)
+          safe_count = sum(r["label"] == "SAFE" for r in real)
+          assert xss_count >= 12, xss_count
+          assert safe_count >= 12, safe_count
+
+          print(json.dumps({
+              "variants": report,
+              "hard_positive_validation": len(pos_val),
+              "realworld_validation": {"rows": len(real), "XSS": xss_count, "SAFE": safe_count},
+          }, indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xss-v13-prepared-data
+          retention-days: 14
+          path: |
+            security-models/xss/data/train_v13_pos0.jsonl
+            security-models/xss/data/train_v13_pos10.jsonl
+            security-models/xss/data/train_v13_pos25.jsonl
+            security-models/xss/data/train_v13_pos50.jsonl
+            security-models/xss/data/validation_v10.jsonl
+            security-models/xss/data/safe_hard_validation_v12.jsonl
+            security-models/xss/data/hard_positive_validation_v13.jsonl
+            security-models/xss/data/binary_stress_v13.jsonl
+            security-models/xss/data/realworld_validation_v08.jsonl
+            security-models/xss/data/manifest_v13_positive.json
+            security-models/xss/data/manifest_v13_training.json
+            security-models/xss/data/realworld_v08_manifest.json
+            security-models/xss/evaluation/v13_positive_build.log
+            security-models/xss/evaluation/v13_realworld_build.log
+
+  candidate:
+    needs: prepare-data
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        positive_pct: [0, 10, 25, 50]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+
+      - name: Install dependencies
+        run: uv sync --group slm --group dev
+
+      - name: Download prepared data
+        uses: actions/download-artifact@v4
+        with:
+          name: xss-v13-prepared-data
+          path: security-models/xss
+
+      - name: Full fine-tune MiniLM with 256-token context
+        run: |
+          OUT="security-models/xss/full-models/v13-pos${{ matrix.positive_pct }}"
+          rm -rf "$OUT"
+          uv run --group slm python training/train_full_encoder.py \
+            --model nreimers/MiniLM-L6-H384-uncased \
+            --train-data "security-models/xss/data/train_v13_pos${{ matrix.positive_pct }}.jsonl" \
+            --validation-data security-models/xss/data/validation_v10.jsonl \
+            --output-dir "$OUT" \
+            --run-name "xss-v0.13-pos${{ matrix.positive_pct }}" \
+            --epochs 5 \
+            --batch-size 24 \
+            --max-length 256 \
+            --lr 3e-5 \
+            --seed 2033
+
+      - name: Calibrate on family-disjoint SAFE and hard-positive holdout
+        run: |
+          uv run --group slm python security-models/xss/evaluation/calibrate_v12.py \
+            --model-dir "security-models/xss/full-models/v13-pos${{ matrix.positive_pct }}" \
+            --stress-data security-models/xss/data/binary_stress_v13.jsonl \
+            --three-way-data security-models/xss/data/safe_hard_validation_v12.jsonl \
+            --output "security-models/xss/evaluation/v13_pos${{ matrix.positive_pct }}_calibration.json"
+
+      - name: Evaluate base three-way validation
+        run: |
+          uv run --group slm python security-models/xss/evaluation/evaluate_full_model.py \
+            --model-dir "security-models/xss/full-models/v13-pos${{ matrix.positive_pct }}" \
+            --data security-models/xss/data/validation_v10.jsonl \
+            --calibration "security-models/xss/evaluation/v13_pos${{ matrix.positive_pct }}_calibration.json" \
+            --output "security-models/xss/evaluation/v13_pos${{ matrix.positive_pct }}_validation.json"
+
+      - name: Evaluate family-disjoint hard positives
+        run: |
+          uv run --group slm python security-models/xss/evaluation/evaluate_full_model.py \
+            --model-dir "security-models/xss/full-models/v13-pos${{ matrix.positive_pct }}" \
+            --data security-models/xss/data/hard_positive_validation_v13.jsonl \
+            --calibration "security-models/xss/evaluation/v13_pos${{ matrix.positive_pct }}_calibration.json" \
+            --output "security-models/xss/evaluation/v13_pos${{ matrix.positive_pct }}_positive.json" \
+            --external-binary
+
+      - name: Evaluate larger independent real-world validation
+        run: |
+          uv run --group slm python security-models/xss/evaluation/evaluate_full_model.py \
+            --model-dir "security-models/xss/full-models/v13-pos${{ matrix.positive_pct }}" \
+            --data security-models/xss/data/realworld_validation_v08.jsonl \
+            --calibration "security-models/xss/evaluation/v13_pos${{ matrix.positive_pct }}_calibration.json" \
+            --output "security-models/xss/evaluation/v13_pos${{ matrix.positive_pct }}_realworld.json" \
+            --external-binary
+
+      - name: Score candidate without locked tests
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          pct = "${{ matrix.positive_pct }}"
+          root = Path("security-models/xss/evaluation")
+          cal = json.loads((root / f"v13_pos{pct}_calibration.json").read_text())
+          val = json.loads((root / f"v13_pos{pct}_validation.json").read_text())
+          pos = json.loads((root / f"v13_pos{pct}_positive.json").read_text())
+          real = json.loads((root / f"v13_pos{pct}_realworld.json").read_text())
+
+          report = val["classification_report"]
+          macro = float(report["macro avg"]["f1-score"])
+          safe_recall = float(report["SAFE"]["recall"])
+          possible_recall = float(report["POSSIBLE_XSS"]["recall"])
+          xss_recall = float(report["XSS"]["recall"])
+
+          viable = bool(
+              cal["viable"]
+              and macro >= 0.90
+              and safe_recall >= 0.88
+              and possible_recall >= 0.85
+              and xss_recall >= 0.88
+              and pos["coverage"] >= 0.92
+              and pos["xss_false_negative_rate_all"] <= 0.05
+              and real["coverage"] >= 0.90
+              and real["decided_macro_f1"] >= 0.85
+              and real["xss_false_positive_rate_all"] <= 0.10
+              and real["xss_false_negative_rate_all"] <= 0.10
+          )
+
+          score = (
+              0.25 * macro
+              + 0.20 * float(real["decided_macro_f1"])
+              + 0.15 * float(real["coverage"])
+              + 0.15 * (1.0 - float(real["xss_false_positive_rate_all"]))
+              + 0.15 * (1.0 - float(real["xss_false_negative_rate_all"]))
+              + 0.10 * float(pos["coverage"])
+          )
+
+          out = {
+              "positive_pct": int(pct),
+              "viable": viable,
+              "score": score,
+              "calibration": cal,
+              "validation": {
+                  "macro_f1": macro,
+                  "SAFE_recall": safe_recall,
+                  "POSSIBLE_XSS_recall": possible_recall,
+                  "XSS_recall": xss_recall,
+              },
+              "hard_positive": {
+                  "coverage": pos["coverage"],
+                  "macro_f1": pos["decided_macro_f1"],
+                  "xss_fnr": pos["xss_false_negative_rate_all"],
+              },
+              "realworld": {
+                  "coverage": real["coverage"],
+                  "macro_f1": real["decided_macro_f1"],
+                  "xss_fpr": real["xss_false_positive_rate_all"],
+                  "xss_fnr": real["xss_false_negative_rate_all"],
+              },
+          }
+          path = root / f"v13_pos{pct}_score.json"
+          path.write_text(json.dumps(out, indent=2) + "\n")
+          print(path.read_text())
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xss-v13-candidate-pos${{ matrix.positive_pct }}
+          retention-days: 30
+          path: |
+            security-models/xss/full-models/v13-pos${{ matrix.positive_pct }}/
+            security-models/xss/evaluation/v13_pos${{ matrix.positive_pct }}_calibration.json
+            security-models/xss/evaluation/v13_pos${{ matrix.positive_pct }}_validation.json
+            security-models/xss/evaluation/v13_pos${{ matrix.positive_pct }}_positive.json
+            security-models/xss/evaluation/v13_pos${{ matrix.positive_pct }}_realworld.json
+            security-models/xss/evaluation/v13_pos${{ matrix.positive_pct }}_score.json
+
+  select:
+    needs: candidate
+    runs-on: ubuntu-latest
+    outputs:
+      positive_pct: ${{ steps.pick.outputs.positive_pct }}
+      score: ${{ steps.pick.outputs.score }}
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: xss-v13-candidate-pos*
+          path: candidates
+          merge-multiple: false
+
+      - name: Select only viable balanced candidate
+        id: pick
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          rows = []
+          for pct in (0, 10, 25, 50):
+              matches = list(Path("candidates").rglob(f"v13_pos{pct}_score.json"))
+              if len(matches) != 1:
+                  raise RuntimeError(f"missing score for {pct}: {matches}")
+              rows.append(json.loads(matches[0].read_text()))
+
+          viable = [r for r in rows if r["viable"]]
+          if not viable:
+              summary = {"candidates": rows, "winner": None, "stopped": True}
+              Path("v13_selection.json").write_text(json.dumps(summary, indent=2) + "\n")
+              print(json.dumps(summary, indent=2))
+              raise SystemExit("No v0.13 candidate passed development gates; locked tests remain untouched.")
+
+          viable.sort(
+              key=lambda r: (
+                  r["score"],
+                  -r["realworld"]["xss_fpr"],
+                  -r["realworld"]["xss_fnr"],
+                  r["validation"]["macro_f1"],
+              ),
+              reverse=True,
+          )
+          winner = viable[0]
+          summary = {"candidates": rows, "winner": winner, "stopped": False}
+          Path("v13_selection.json").write_text(json.dumps(summary, indent=2) + "\n")
+          print(json.dumps(summary, indent=2))
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"positive_pct={winner['positive_pct']}\n")
+              f.write(f"score={winner['score']}\n")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xss-v13-selection
+          retention-days: 30
+          path: v13_selection.json
+
+  final-eval:
+    needs: select
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      POSITIVE_PCT: ${{ needs.select.outputs.positive_pct }}
+      DEV_SCORE: ${{ needs.select.outputs.score }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+
+      - name: Install dependencies
+        run: uv sync --group slm --group dev
+
+      - name: Download selected candidate
+        uses: actions/download-artifact@v4
+        with:
+          name: xss-v13-candidate-pos${{ needs.select.outputs.positive_pct }}
+          path: selected
+
+      - name: Locate selected model and frozen calibration
+        id: locate
+        run: |
+          MODEL_DIR="$(find selected -type f -name config.json -printf '%h\n' | head -1)"
+          CAL="$(find selected -type f -name 'v13_pos*_calibration.json' | head -1)"
+          test -n "$MODEL_DIR"
+          test -n "$CAL"
+          echo "model=$MODEL_DIR" >> "$GITHUB_OUTPUT"
+          echo "calibration=$CAL" >> "$GITHUB_OUTPUT"
+
+      - name: Final Hard Test v4
+        run: |
+          uv run --group slm python security-models/xss/evaluation/evaluate_full_model.py \
+            --model-dir "${{ steps.locate.outputs.model }}" \
+            --data security-models/xss/data/hard_test.jsonl \
+            --calibration "${{ steps.locate.outputs.calibration }}" \
+            --output security-models/xss/evaluation/v13_hard.json
+
+      - name: Final External Test v5
+        run: |
+          uv run --group slm python security-models/xss/evaluation/evaluate_full_model.py \
+            --model-dir "${{ steps.locate.outputs.model }}" \
+            --data security-models/xss/data/external_test_v5.jsonl \
+            --calibration "${{ steps.locate.outputs.calibration }}" \
+            --output security-models/xss/evaluation/v13_external.json \
+            --external-binary
+
+      - name: Build final v0.13 summary
+        run: |
+          uv run python - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          root = Path("security-models/xss/evaluation")
+          hard = json.loads((root / "v13_hard.json").read_text())
+          ext = json.loads((root / "v13_external.json").read_text())
+
+          out = {
+              "candidate": "xss-v0.13",
+              "training": "MiniLM full_finetune, 256-token context, SAFE25, hard-positive boost",
+              "positive_training_percent": int(os.environ["POSITIVE_PCT"]),
+              "development_score": float(os.environ["DEV_SCORE"]),
+              "hard_test_v4": {
+                  "macro_f1": hard["classification_report"]["macro avg"]["f1-score"],
+                  "promotion": hard["promotion"],
+                  "false_rates": hard["false_rates"],
+              },
+              "external_test_v5": {
+                  "coverage": ext["coverage"],
+                  "decided_macro_f1": ext["decided_macro_f1"],
+                  "xss_false_positive_rate_all": ext["xss_false_positive_rate_all"],
+                  "xss_false_negative_rate_all": ext["xss_false_negative_rate_all"],
+                  "promotion": ext["promotion"],
+              },
+          }
+          out["eligible_for_promotion"] = bool(
+              out["hard_test_v4"]["promotion"]["passed"]
+              and out["external_test_v5"]["promotion"]["passed"]
+          )
+          (root / "v13_summary.json").write_text(json.dumps(out, indent=2) + "\n")
+          print(json.dumps(out, indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xss-v13-final
+          retention-days: 30
+          path: |
+            security-models/xss/evaluation/v13_hard.json
+            security-models/xss/evaluation/v13_external.json
+            security-models/xss/evaluation/v13_summary.json

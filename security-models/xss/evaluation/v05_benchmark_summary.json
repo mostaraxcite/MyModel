@@ -20,32 +20,32 @@
             "precision": 0.9652777777777778,
             "recall": 0.896774193548387,
             "f1-score": 0.9297658862876255,
-            "support": 155.0
+            "support": 155
           },
           "POSSIBLE_XSS": {
             "precision": 0.8314606741573034,
             "recall": 0.925,
             "f1-score": 0.8757396449704142,
-            "support": 80.0
+            "support": 80
           },
           "XSS": {
             "precision": 0.9181034482758621,
             "recall": 0.9260869565217391,
             "f1-score": 0.922077922077922,
-            "support": 230.0
+            "support": 230
           },
           "accuracy": 0.9161290322580645,
           "macro avg": {
             "precision": 0.9049473000703144,
             "recall": 0.9159537166900421,
             "f1-score": 0.9091944844453206,
-            "support": 465.0
+            "support": 465
           },
           "weighted avg": {
             "precision": 0.9189219410571788,
             "recall": 0.9161290322580645,
             "f1-score": 0.9166684001078218,
-            "support": 465.0
+            "support": 465
           }
         },
         "false_rates": {
@@ -105,7 +105,7 @@
         "returncode": 0,
         "elapsed_seconds": 55.61,
         "stdout_tail": "{\n  \"adapter\": \"v0.4-baseline\",\n  \"macro_f1\": 0.9091944844453206,\n  \"passed\": true,\n  \"latency_ms\": null\n}\n",
-        "stderr_tail": "\nLoading weights:   0%|          | 0/73 [00:00<?, ?it/s]\nLoading weights: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 73/73 [00:00<00:00, 1151.38it/s]\n"
+        "stderr_tail": "\nLoading weights:   0%|          | 0/73 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 73/73 [00:00<00:00, 1151.38it/s]\n"
       }
     },
     "xss-v0.5__evaluate": {
@@ -120,32 +120,32 @@
             "precision": 0.7664670658682635,
             "recall": 0.8258064516129032,
             "f1-score": 0.7950310559006211,
-            "support": 155.0
+            "support": 155
           },
           "POSSIBLE_XSS": {
             "precision": 0.8395061728395061,
             "recall": 0.85,
             "f1-score": 0.84472049689441,
-            "support": 80.0
+            "support": 80
           },
           "XSS": {
             "precision": 0.8940092165898618,
             "recall": 0.8434782608695652,
             "f1-score": 0.8680089485458613,
-            "support": 230.0
+            "support": 230
           },
           "accuracy": 0.8387096774193549,
           "macro avg": {
             "precision": 0.8333274850992104,
             "recall": 0.8397615708274895,
             "f1-score": 0.8359201671136308,
-            "support": 465.0
+            "support": 465
           },
           "weighted avg": {
             "precision": 0.8421182986073323,
             "recall": 0.8387096774193549,
             "f1-score": 0.8396763689928971,
-            "support": 465.0
+            "support": 465
           }
         },
         "false_rates": {
@@ -205,7 +205,7 @@
         "returncode": 0,
         "elapsed_seconds": 61.45,
         "stdout_tail": "{\n  \"adapter\": \"xss-v0.5\",\n  \"macro_f1\": 0.8359201671136308,\n  \"passed\": false,\n  \"latency_ms\": null\n}\n",
-        "stderr_tail": "Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n\nLoading weights:   0%|          | 0/103 [00:00<?, ?it/s]\nLoading weights: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 103/103 [00:00<00:00, 5159.17it/s]\n[transformers] \u001b[1mBertForSequenceClassification LOAD REPORT\u001b[0m from: nreimers/MiniLM-L6-H384-uncased\nKey               | Status  | \n------------------+---------+-\nclassifier.weight | MISSING | \nclassifier.bias   | MISSING | \n\nNotes:\n- MISSING:\tthose params were newly initialized because missing from the checkpoint. Consider training on your downstream task.\n"
+        "stderr_tail": "Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n\nLoading weights:   0%|          | 0/103 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 103/103 [00:00<00:00, 5159.17it/s]\n[transformers] \u001b[1mBertForSequenceClassification LOAD REPORT\u001b[0m from: nreimers/MiniLM-L6-H384-uncased\nKey               | Status  | \n------------------+---------+-\nclassifier.weight | MISSING | \nclassifier.bias   | MISSING | \n\nNotes:\n- MISSING:\tthose params were newly initialized because missing from the checkpoint. Consider training on your downstream task.\n"
       }
     },
     "v0.4-baseline__evaluate_external_v5": {
@@ -223,13 +223,13 @@
             "precision": 0.11347517730496454,
             "recall": 0.4,
             "f1-score": 0.17679558011049723,
-            "support": 40.0
+            "support": 40
           },
           "XSS": {
             "precision": 0.916083916083916,
             "recall": 0.6770025839793282,
             "f1-score": 0.7786032689450223,
-            "support": 387.0
+            "support": 387
           }
         },
         "xss_false_positive_rate_all": 0.5454545454545454,
@@ -294,7 +294,7 @@
         "returncode": 0,
         "elapsed_seconds": 60.12,
         "stdout_tail": "{\n  \"adapter\": \"v0.4-baseline\",\n  \"coverage\": 0.9027484143763214,\n  \"decided_macro_f1\": 0.47769942452775976,\n  \"passed\": false\n}\n",
-        "stderr_tail": "\nLoading weights:   0%|          | 0/73 [00:00<?, ?it/s]\nLoading weights: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 73/73 [00:00<00:00, 2033.69it/s]\n"
+        "stderr_tail": "\nLoading weights:   0%|          | 0/73 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 73/73 [00:00<00:00, 2033.69it/s]\n"
       }
     },
     "xss-v0.5__evaluate_external_v5": {
@@ -312,13 +312,13 @@
             "precision": 0.11612903225806452,
             "recall": 0.4090909090909091,
             "f1-score": 0.18090452261306533,
-            "support": 44.0
+            "support": 44
           },
           "XSS": {
             "precision": 0.9078014184397163,
             "recall": 0.6513994910941476,
             "f1-score": 0.7585185185185185,
-            "support": 393.0
+            "support": 393
           }
         },
         "xss_false_positive_rate_all": 0.5909090909090909,
@@ -382,7 +382,7 @@
         "returncode": 0,
         "elapsed_seconds": 100.52,
         "stdout_tail": "{\n  \"adapter\": \"xss-v0.5\",\n  \"coverage\": 0.9238900634249472,\n  \"decided_macro_f1\": 0.4697115205657919,\n  \"passed\": false\n}\n",
-        "stderr_tail": "Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n\nLoading weights:   0%|          | 0/103 [00:00<?, ?it/s]\nLoading weights: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 103/103 [00:00<00:00, 7499.84it/s]\n[transformers] \u001b[1mBertForSequenceClassification LOAD REPORT\u001b[0m from: nreimers/MiniLM-L6-H384-uncased\nKey               | Status  | \n------------------+---------+-\nclassifier.weight | MISSING | \nclassifier.bias   | MISSING | \n\nNotes:\n- MISSING:\tthose params were newly initialized because missing from the checkpoint. Consider training on your downstream task.\n"
+        "stderr_tail": "Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n\nLoading weights:   0%|          | 0/103 [00:00<?, ?it/s]\nLoading weights: 100%|██████████| 103/103 [00:00<00:00, 7499.84it/s]\n[transformers] \u001b[1mBertForSequenceClassification LOAD REPORT\u001b[0m from: nreimers/MiniLM-L6-H384-uncased\nKey               | Status  | \n------------------+---------+-\nclassifier.weight | MISSING | \nclassifier.bias   | MISSING | \n\nNotes:\n- MISSING:\tthose params were newly initialized because missing from the checkpoint. Consider training on your downstream task.\n"
       }
     }
   },
@@ -408,5 +408,7 @@
       }
     }
   },
-  "finished_at": "2026-09-29T21:38:35+0300"
+  "finished_at": "2026-09-29T21:38:35+0300",
+  "result_status": "historical_pre_dedup",
+  "result_note": "External portions were generated before content-level deduplication. Hard Test v4 metrics remain valid; External Test v5 metrics require rerun."
 }

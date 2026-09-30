@@ -168,10 +168,10 @@ def generate_contrast_groups(seed: int, groups: int = 1200) -> list[list[dict]]:
             rows.append(row(gid, 3, f"$('#result').html(projectSanitize({src}));", "POSSIBLE_XSS", "jquery.html", src, family))
 
         elif family == "react":
-            rows.append(row(gid, 0, f"return <div dangerouslySetInnerHTML={{{{__html: {src}}}}} />;", "XSS", "dangerouslySetInnerHTML", src, family))
-            rows.append(row(gid, 1, f"return <div>{{{src}}}</div>;", "SAFE", "react.text", src, family))
-            rows.append(row(gid, 2, f"return <div dangerouslySetInnerHTML={{{{__html: DOMPurify.sanitize({src})}}}}} />;", "SAFE", "dangerouslySetInnerHTML", src, family))
-            rows.append(row(gid, 3, f"return <div dangerouslySetInnerHTML={{{{__html: cleanHtml({src})}}}}} />;", "POSSIBLE_XSS", "dangerouslySetInnerHTML", src, family))
+            rows.append(row(gid, 0, "return <div dangerouslySetInnerHTML={{__html: " + src + "}} />;", "XSS", "dangerouslySetInnerHTML", src, family))
+            rows.append(row(gid, 1, "return <div>{" + src + "}</div>;", "SAFE", "react.text", src, family))
+            rows.append(row(gid, 2, "return <div dangerouslySetInnerHTML={{__html: DOMPurify.sanitize(" + src + ")}} />;", "SAFE", "dangerouslySetInnerHTML", src, family))
+            rows.append(row(gid, 3, "return <div dangerouslySetInnerHTML={{__html: cleanHtml(" + src + ")}} />;", "POSSIBLE_XSS", "dangerouslySetInnerHTML", src, family))
 
         elif family == "vue":
             rows.append(row(gid, 0, f"const view = {{ template: '<div v-html=\"payload\"></div>', data: () => ({{payload: {src}}}) }};", "XSS", "v-html", src, family))

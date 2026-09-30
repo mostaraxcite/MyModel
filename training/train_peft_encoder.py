@@ -95,9 +95,13 @@ class WeightedLossTrainer(Trainer):
 
 
 def compute_class_weights(train_dataset: Dataset) -> torch.Tensor:
-    labels = np.array(train_dataset["label"])
-    weights = compute_class_weight("balanced", classes=np.arange(len(LABELS)), y=labels)
-    weights = weights / weights.mean()  # normalise so mean=1
+    labels = np.array(train_dataset["label"], dtype=int)
+    counts = np.bincount(labels, minlength=len(LABELS)).astype(float)
+    present = counts > 0
+    weights = np.ones(len(LABELS), dtype=float)
+    if present.any():
+        weights[present] = len(labels) / (present.sum() * counts[present])
+        weights[present] /= weights[present].mean()
     return torch.tensor(weights, dtype=torch.float32)
 
 
@@ -128,7 +132,7 @@ def main() -> None:
     parser.add_argument("--base-model", default=DEFAULT_BASE_MODEL)
     parser.add_argument("--train-data", type=Path, default=Path("security-models/xss/data/train.jsonl"))
     parser.add_argument("--validation-data", type=Path, default=Path("security-models/xss/data/validation.jsonl"))
-    parser.add_argument("--output-dir", type=Path, default=Path("security-models/xss/adapters/xss-v05"))
+    parser.add_argument("--output-dir", type=Path, default=Path("security-models/xss/adapters/xss-v06"))
     parser.add_argument("--epochs", type=float, default=2.0)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--max-length", type=int, default=256)
@@ -139,7 +143,7 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=2e-4)
     parser.add_argument("--train-limit", type=int, default=0, help="0 = use all rows")
     parser.add_argument("--validation-limit", type=int, default=0)
-    parser.add_argument("--adapter-name", default="xss-v05")
+    parser.add_argument("--adapter-name", default="xss-v06")
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)

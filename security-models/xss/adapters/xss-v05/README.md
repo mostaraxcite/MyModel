@@ -24,18 +24,21 @@ regressed against the promoted v0.4 bert-tiny baseline, so the registry keeps
 | Evaluation | xss-v0.5 | v0.4 baseline |
 | --- | ---: | ---: |
 | Hard Test v4 macro F1 | 0.8359 | 0.9092 |
-| External Test v5 decided macro F1 | 0.4697 | 0.4777 |
-| External Test v5 coverage | 0.9239 | 0.9027 |
-| External Test v5 XSS false-positive rate | 0.5909 | 0.5455 |
+| External Test v5 decided macro F1 (historical pre-dedup) | 0.4697 | 0.4777 |
+| External Test v5 coverage (historical pre-dedup) | 0.9239 | 0.9027 |
+| External Test v5 XSS FPR (historical pre-dedup) | 0.5909 | 0.5455 |
 
-External Test v5 was held out from training. Its official-fixture provenance is
-recorded in `security-models/xss/data/external_test_v5_manifest.json`.
+External Test v5 was held out from training. The evaluation set has since been
+cleaned from 473 rows to 454 unique classifier inputs, with contradictory
+identical snippets quarantined. These external metrics are therefore historical
+and must be rerun before a current score is claimed.
 
 ## Architecture
 
 - Base: MiniLM-L6 encoder, referenced by model ID and not bundled here.
 - Adapter: PEFT LoRA, rank 8, alpha 16, dropout 0.05.
-- Targets: `query`, `key`, `value`, and `dense`.
+- Historical xss-v0.5 targets: `query`, `key`, `value`, and broad `dense`.
+- Current trainer default for new candidates: `query`, `key`, `value` only.
 - Trainable task head: three-class sequence classifier.
 - Training entry point: `training/train_peft.py`.
 

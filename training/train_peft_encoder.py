@@ -16,7 +16,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from datasets import Dataset
+from datasets import Dataset, concatenate_datasets
 from peft import LoraConfig, TaskType, get_peft_model
 from sklearn.metrics import f1_score, precision_recall_fscore_support
 from sklearn.utils.class_weight import compute_class_weight
@@ -72,12 +72,14 @@ def load_classification_split(
     path: Path,
     partitions: set[str] | None = None,
     limit: int | None = None,
+    sample_weight: float = 1.0,
 ) -> Dataset:
     rows = _filter_partition(_safe_load_jsonl(path, limit=limit), partitions)
     return Dataset.from_dict(
         {
             "text": [row["code"] for row in rows],
             "label": [LABEL_TO_ID[row["label"]] for row in rows],
+            "sample_weight": [float(sample_weight)] * len(rows),
         }
     )
 
@@ -97,10 +99,18 @@ class WeightedLossTrainer(Trainer):
 
     def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
         labels = inputs.pop("labels")
+        sample_weight = inputs.pop("sample_weight", None)
         outputs = model(**inputs)
         logits = outputs.logits
-        weight = self._class_weights.to(logits.device) if self._class_weights is not None else None
-        loss = torch.nn.functional.cross_entropy(logits, labels, weight=weight)
+        class_weight = self._class_weights.to(logits.device) if self._class_weights is not None else None
+        per_item = torch.nn.functional.cross_entropy(
+            logits, labels, weight=class_weight, reduction="none"
+        )
+        if sample_weight is not None:
+            sw = sample_weight.to(logits.device, dtype=per_item.dtype)
+            loss = (per_item * sw).sum() / sw.sum().clamp_min(1e-8)
+        else:
+            loss = per_item.mean()
         return (loss, outputs) if return_outputs else loss
 
 
@@ -153,6 +163,11 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=2e-4)
     parser.add_argument("--train-limit", type=int, default=0, help="0 = use all rows")
     parser.add_argument("--validation-limit", type=int, default=0)
+    parser.add_argument("--extra-train-data", type=Path, default=None)
+    parser.add_argument("--extra-train-weight", type=float, default=1.0)
+    parser.add_argument("--extra-train-copies", type=int, default=1)
+    parser.add_argument("--extra-validation-data", type=Path, default=None)
+    parser.add_argument("--extra-validation-copies", type=int, default=1)
     parser.add_argument("--adapter-name", default="xss-v06")
     parser.add_argument(
         "--target-modules",
@@ -193,6 +208,27 @@ def main() -> None:
         args.validation_data,
         limit=args.validation_limit or None,
     )
+
+    extra_train_rows = 0
+    extra_validation_rows = 0
+    if args.extra_train_data:
+        extra = load_classification_split(
+            args.extra_train_data,
+            sample_weight=args.extra_train_weight,
+        )
+        extra_train_rows = len(extra)
+        if args.extra_train_copies < 1:
+            raise ValueError("--extra-train-copies must be >= 1")
+        train_set = concatenate_datasets([train_set] + [extra] * args.extra_train_copies)
+
+    if args.extra_validation_data:
+        extra_val = load_classification_split(args.extra_validation_data)
+        extra_validation_rows = len(extra_val)
+        if args.extra_validation_copies < 1:
+            raise ValueError("--extra-validation-copies must be >= 1")
+        validation_set = concatenate_datasets(
+            [validation_set] + [extra_val] * args.extra_validation_copies
+        )
 
     def tokenize(batch: dict) -> dict:
         return tokenizer(batch["text"], truncation=True, max_length=args.max_length)
@@ -255,6 +291,15 @@ def main() -> None:
         },
         "train_rows": len(train_set),
         "validation_rows": len(validation_set),
+        "base_train_path": str(args.train_data),
+        "base_validation_path": str(args.validation_data),
+        "extra_train_data": str(args.extra_train_data) if args.extra_train_data else None,
+        "extra_train_rows_unique": extra_train_rows,
+        "extra_train_weight": args.extra_train_weight,
+        "extra_train_copies": args.extra_train_copies,
+        "extra_validation_data": str(args.extra_validation_data) if args.extra_validation_data else None,
+        "extra_validation_rows_unique": extra_validation_rows,
+        "extra_validation_copies": args.extra_validation_copies,
         "training_sha256": _sha256(args.train_data),
         "validation_sha256": _sha256(args.validation_data),
         "external_test_v5_used_for_training": False,

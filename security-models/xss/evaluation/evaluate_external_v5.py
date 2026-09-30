@@ -14,6 +14,24 @@ from xss_specialist.adapter_registry import load_classifier
 LABELS = ["SAFE", "XSS"]
 
 
+def validate_rows(rows: list[dict]) -> list[dict]:
+    seen: set[str] = set()
+    for row in rows:
+        code_hash = hashlib.sha256(row["code"].encode()).hexdigest()
+        recorded = row.get("provenance", {}).get("content_sha256")
+        if recorded != code_hash:
+            raise ValueError(f"content hash mismatch for external row {row.get('id')}")
+        if code_hash in seen:
+            raise ValueError(
+                "external_test_v5 contains duplicate classifier inputs; regenerate with "
+                "import_official_fixtures.py before evaluation"
+            )
+        seen.add(code_hash)
+        if row["label"] not in LABELS:
+            raise ValueError(f"unsupported external label: {row['label']}")
+    return rows
+
+
 def prediction_rows(rows: list[dict], scores: list[list[dict]]) -> list[dict]:
     output = []
     for row, items in zip(rows, scores):
@@ -58,7 +76,11 @@ def main() -> None:
     parser.add_argument("--predictions", type=Path, default=Path("security-models/xss/evaluation/v05_external_v5_predictions.jsonl"))
     args = parser.parse_args()
 
-    rows = [json.loads(line) for line in args.data.read_text(encoding="utf-8").splitlines() if line]
+    rows = validate_rows([
+        json.loads(line)
+        for line in args.data.read_text(encoding="utf-8").splitlines()
+        if line
+    ])
     classify, spec = load_classifier(args.adapter)
     scores = classify([row["code"] for row in rows], batch_size=32, truncation=True)
     predictions = prediction_rows(rows, scores)

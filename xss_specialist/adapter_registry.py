@@ -149,9 +149,21 @@ def load_classifier(
     resolved = _resolve(spec.path)
 
     if spec.kind == "full":
+        if not resolved.exists():
+            raise FileNotFoundError(
+                f"Promoted adapter '{spec.name}' expects local model files at {resolved}, "
+                "but they are not bundled in Git. Reproduce the v0.4 model using "
+                "security-models/xss/README.md before default inference, or explicitly "
+                "select a bundled research adapter with --adapter for evaluation."
+            )
         tokenizer = AutoTokenizer.from_pretrained(str(resolved))
         model = AutoModelForSequenceClassification.from_pretrained(str(resolved))
     elif spec.kind == "peft":
+        if not resolved.exists():
+            raise FileNotFoundError(
+                f"PEFT adapter '{spec.name}' is missing at {resolved}. "
+                "The registry will never fall back to an untrained base classifier."
+            )
         tokenizer = AutoTokenizer.from_pretrained(str(resolved))
         base = AutoModelForSequenceClassification.from_pretrained(
             spec.base_model,

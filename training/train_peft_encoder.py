@@ -114,13 +114,25 @@ class WeightedLossTrainer(Trainer):
         return (loss, outputs) if return_outputs else loss
 
 
-def compute_class_weights(train_dataset: Dataset) -> torch.Tensor:
+def compute_class_weights(train_dataset: Dataset, mode: str = "balanced") -> torch.Tensor | None:
+    """Return class weights with controllable strength.
+
+    balanced = inverse-frequency weights (legacy behavior)
+    sqrt     = square-root of inverse-frequency weights (gentler)
+    none     = ordinary cross-entropy
+    """
+    if mode == "none":
+        return None
     labels = np.array(train_dataset["label"], dtype=int)
     counts = np.bincount(labels, minlength=len(LABELS)).astype(float)
     present = counts > 0
     weights = np.ones(len(LABELS), dtype=float)
     if present.any():
         weights[present] = len(labels) / (present.sum() * counts[present])
+        if mode == "sqrt":
+            weights[present] = np.sqrt(weights[present])
+        elif mode != "balanced":
+            raise ValueError(f"unsupported class weight mode: {mode}")
         weights[present] /= weights[present].mean()
     return torch.tensor(weights, dtype=torch.float32)
 
@@ -140,7 +152,14 @@ def compute_metrics(eval_pred) -> dict:
         }
         for index in range(len(LABELS))
     }
-    return {"macro_f1": float(macro_f1), "per_class": per_class}
+    return {
+        "macro_f1": float(macro_f1),
+        "safe_recall": float(recall[LABEL_TO_ID["SAFE"]]),
+        "possible_xss_recall": float(recall[LABEL_TO_ID["POSSIBLE_XSS"]]),
+        "xss_recall": float(recall[LABEL_TO_ID["XSS"]]),
+        "min_class_recall": float(min(recall)),
+        "per_class": per_class,
+    }
 
 
 def _sha256(path: Path) -> str:
@@ -168,6 +187,12 @@ def main() -> None:
     parser.add_argument("--extra-train-copies", type=int, default=1)
     parser.add_argument("--extra-validation-data", type=Path, default=None)
     parser.add_argument("--extra-validation-copies", type=int, default=1)
+    parser.add_argument(
+        "--class-weight-mode",
+        choices=("none", "sqrt", "balanced"),
+        default="balanced",
+        help="Strength of inverse-frequency class weighting.",
+    )
     parser.add_argument("--adapter-name", default="xss-v06")
     parser.add_argument(
         "--target-modules",
@@ -236,8 +261,13 @@ def main() -> None:
     train_set = train_set.map(tokenize, batched=True, remove_columns=["text"])
     validation_set = validation_set.map(tokenize, batched=True, remove_columns=["text"])
 
-    class_weights = compute_class_weights(train_set)
-    print(f"class weights: {class_weights.tolist()} (POSSIBLE_XSS should be >1 if imbalanced)")
+    class_weights = compute_class_weights(train_set, args.class_weight_mode)
+    print(
+        "class weight mode:",
+        args.class_weight_mode,
+        "weights:",
+        class_weights.tolist() if class_weights is not None else None,
+    )
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     run = TrainingArguments(
@@ -300,6 +330,8 @@ def main() -> None:
         "extra_validation_data": str(args.extra_validation_data) if args.extra_validation_data else None,
         "extra_validation_rows_unique": extra_validation_rows,
         "extra_validation_copies": args.extra_validation_copies,
+        "class_weight_mode": args.class_weight_mode,
+        "class_weights": class_weights.tolist() if class_weights is not None else None,
         "training_sha256": _sha256(args.train_data),
         "validation_sha256": _sha256(args.validation_data),
         "external_test_v5_used_for_training": False,

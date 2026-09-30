@@ -54,3 +54,56 @@ def test_missing_promoted_full_model_fails_loudly(tmp_path: Path):
     )
     with pytest.raises(FileNotFoundError, match="not bundled in Git"):
         load_classifier(registry=reg)
+
+
+def test_browser_confirmation_only_confirms_observed_execution(monkeypatch):
+    from xss_specialist import browser_confirmation as bc
+    from xss_specialist.router import RoutedDecision
+
+    routed = RoutedDecision(
+        verdict="XSS",
+        confidence=0.99,
+        route="browser_required",
+        requires_oracle=True,
+        escalation_reason="xss_needs_browser_confirmation",
+    )
+
+    monkeypatch.setattr(
+        bc,
+        "verify_dom_case",
+        lambda case: {"status": "VERIFIED", "executed": True, "scope": "in_scope"},
+    )
+    confirmed = bc.finalize_with_browser("sink.innerHTML = source", routed)
+    assert confirmed.verdict == "XSS"
+    assert confirmed.confirmed is True
+    assert confirmed.confirmation_status == "CONFIRMED_EXECUTION"
+
+    monkeypatch.setattr(
+        bc,
+        "verify_dom_case",
+        lambda case: {"status": "UNVERIFIED", "executed": None, "scope": "unsupported"},
+    )
+    abstained = bc.finalize_with_browser("sink.innerHTML = source", routed)
+    assert abstained.verdict == "POSSIBLE_XSS"
+    assert abstained.confirmed is False
+    assert abstained.confirmation_status == "UNCONFIRMED"
+
+
+def test_browser_confirmation_does_not_run_for_direct_safe(monkeypatch):
+    from xss_specialist import browser_confirmation as bc
+    from xss_specialist.router import RoutedDecision
+
+    def boom(case):
+        raise AssertionError("browser oracle should not run for direct SAFE")
+
+    monkeypatch.setattr(bc, "verify_dom_case", boom)
+    routed = RoutedDecision(
+        verdict="SAFE",
+        confidence=0.99,
+        route="encoder",
+        requires_oracle=False,
+    )
+    final = bc.finalize_with_browser("node.textContent = input", routed)
+    assert final.verdict == "SAFE"
+    assert final.confirmed is False
+    assert final.confirmation_status == "NOT_REQUIRED"

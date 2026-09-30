@@ -122,11 +122,15 @@ annotations instead of assigning labels from local templates:
   Semgrep Rules License v1.0.
 
 Each row records repository, commit, path, line, source URL, license, annotation,
-and content hash. The resulting `external_test_v5.jsonl` contains 473 locked,
-test-only records from 2 upstream projects and 70 fixture files. It must never
-be added to training.
+and content hash. Evaluation inputs are now content-disjoint: exact duplicate
+snippets are collapsed and contradictory labels for identical snippet text are
+quarantined. The cleaned `external_test_v5.jsonl` contains **454 unique inputs**
+(411 XSS / 43 SAFE). Two contradictory rows are preserved separately in
+`external_test_v5_conflicts.jsonl` and are never scored or trained on.
 
-| Metric | External Test v5 |
+The older 473-row run is retained only as a historical pre-dedup result:
+
+| Historical metric (pre-dedup) | Value |
 | --- | ---: |
 | Cases | 473 |
 | Decided macro F1 | 0.478 |
@@ -134,6 +138,9 @@ be added to training.
 | XSS false-positive rate | 0.545 |
 | XSS false-negative rate | 0.291 |
 | Promotion | **FAIL** |
+
+The cleaned 454-row set must be rerun before publishing a new External Test v5
+score. The evaluator now refuses duplicate classifier inputs.
 
 This result supersedes the v4 promotion decision for production-readiness. It
 shows that the synthetic and curated-shape benchmarks substantially overestimate
@@ -153,12 +160,16 @@ sequence-classification adapter for `SAFE`, `POSSIBLE_XSS`, and `XSS`:
 ```text
 snippet -> v0.4 bert-tiny fallback (active)
         -> xss-v0.5 MiniLM-L6 + LoRA candidate
-        -> uncertain/high-risk result -> browser oracle
+        -> uncertain/high-risk result -> browser_required
+        -> authorized live pipeline -> browser oracle -> CONFIRMED only on execution
 ```
 
 Training uses `training/train_peft.py`. The fixed base is
 `nreimers/MiniLM-L6-H384-uncased`; the base weights remain frozen and only LoRA
-parameters plus the classifier head are trained. External Test v5 is forbidden
+parameters plus the classifier head are trained. The rejected historical
+xss-v0.5 adapter targeted query/key/value plus a broad `dense` suffix. New
+candidates use the safer default of **query/key/value only** so feed-forward
+dense layers are not accidentally adapted. External Test v5 is forbidden
 from training. The earlier Qwen causal-LM experiment is preserved separately in
 `training/train_peft_generative_experimental.py` and is not a release path.
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Callable
 
 from xss_specialist.adapter_registry import AdapterSpec, default_registry, load_classifier
-from xss_specialist.oracle import analyze as oracle_analyze
+from xss_specialist.oracle import analyze as static_analyze
 from xss_specialist.router import FastDecision, SecurityRouter
 
 
@@ -32,10 +32,10 @@ def build_router(
     specialist: Callable[[str], str] | None = None,
 ) -> tuple[SecurityRouter, AdapterSpec]:
     fast_predict, spec = _make_fast_predict(adapter_name)
-    specialist = specialist or _oracle_predict
+    specialist = specialist or _static_triage_predict
     router = SecurityRouter(
         fast_predict=fast_predict,
-        specialist_predict=specialist,
+        triage_predict=specialist,
         direct_threshold=direct_threshold,
         xss_threshold=xss_threshold,
     )

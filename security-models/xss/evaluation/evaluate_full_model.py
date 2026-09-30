@@ -31,6 +31,64 @@ def error_rates(matrix: list[list[int]], labels: list[str]) -> dict:
     return out
 
 
+
+def family_breakdown(rows: list[dict], preds: list[str]) -> dict:
+    families: dict[str, dict] = {}
+    for row, pred in zip(rows, preds):
+        provenance = row.get("provenance", {})
+        family = provenance.get("family") or provenance.get("origin") or row.get("project") or "unknown"
+        item = families.setdefault(
+            family,
+            {
+                "count": 0,
+                "correct": 0,
+                "labels": {label: 0 for label in THREE_LABELS},
+                "predictions": {label: 0 for label in THREE_LABELS},
+            },
+        )
+        item["count"] += 1
+        item["correct"] += int(pred == row["label"])
+        if row["label"] in item["labels"]:
+            item["labels"][row["label"]] += 1
+        if pred in item["predictions"]:
+            item["predictions"][pred] += 1
+
+    for item in families.values():
+        count = item["count"]
+        item["accuracy"] = item["correct"] / count if count else 0.0
+        xss_total = item["labels"].get("XSS", 0)
+        safe_total = item["labels"].get("SAFE", 0)
+        item["xss_false_negative_rate"] = (
+            sum(
+                1
+                for row, pred in zip(rows, preds)
+                if (row.get("provenance", {}).get("family") or row.get("provenance", {}).get("origin") or row.get("project") or "unknown") in families
+            )
+            * 0.0
+        )
+        if xss_total:
+            family_name = next((name for name, value in families.items() if value is item), None)
+            xss_fn = sum(
+                row["label"] == "XSS"
+                and pred == "SAFE"
+                and (row.get("provenance", {}).get("family") or row.get("provenance", {}).get("origin") or row.get("project") or "unknown") == family_name
+                for row, pred in zip(rows, preds)
+            )
+            item["xss_false_negative_rate"] = xss_fn / xss_total
+        if safe_total:
+            family_name = next((name for name, value in families.items() if value is item), None)
+            safe_fp = sum(
+                row["label"] == "SAFE"
+                and pred == "XSS"
+                and (row.get("provenance", {}).get("family") or row.get("provenance", {}).get("origin") or row.get("project") or "unknown") == family_name
+                for row, pred in zip(rows, preds)
+            )
+            item["xss_false_positive_rate"] = safe_fp / safe_total
+        else:
+            item["xss_false_positive_rate"] = 0.0
+    return dict(sorted(families.items()))
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--model-dir", type=Path, required=True)
@@ -80,6 +138,7 @@ def main() -> None:
             "xss_false_positive_rate_all": fp / safe_total if safe_total else 0.0,
             "xss_false_negative_rate_all": fn / xss_total if xss_total else 0.0,
             "confusion_decided": {"labels": BINARY_LABELS, "matrix": matrix},
+            "family_breakdown": family_breakdown(rows, preds),
             "promotion": {
                 "passed": (
                     report["macro avg"]["f1-score"] >= 0.90
@@ -102,6 +161,7 @@ def main() -> None:
             "classification_report": report,
             "false_rates": error_rates(matrix, THREE_LABELS),
             "confusion_matrix": {"labels": THREE_LABELS, "matrix": matrix},
+            "family_breakdown": family_breakdown(rows, preds),
             "promotion": {
                 "threshold_macro_f1": 0.90,
                 "observed_macro_f1": report["macro avg"]["f1-score"],

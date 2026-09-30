@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from xss_specialist.adapter_registry import ROOT, default_registry
+from xss_specialist.browser_confirmation import finalize_with_browser
 from xss_specialist.router_factory import build_router
 
 
@@ -41,17 +42,19 @@ def main() -> None:
         xss_threshold=args.xss_threshold,
     )
     result = router.predict(args.code)
+    final = finalize_with_browser(args.code, result)
     payload = {
         "adapter": spec.name,
         "adapter_kind": spec.kind,
         "base_model": spec.base_model,
-        "verdict": result.verdict,
+        "triage_verdict": result.verdict,
+        "verdict": final.verdict,
+        "confirmed": final.confirmed,
         "confidence": result.confidence,
         "route": result.route,
         "requires_oracle": result.requires_oracle,
-        "confirmation_status": (
-            "BROWSER_REQUIRED" if result.requires_oracle else "TRIAGE_ONLY"
-        ),
+        "confirmation_status": final.confirmation_status,
+        "browser_evidence": final.browser_evidence,
         "escalation_reason": result.escalation_reason,
         "specialist_output": result.specialist_output,
     }

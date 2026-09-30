@@ -19,11 +19,21 @@ def verify_external_provenance() -> dict:
     """Confirm external_test_v5 content is fully disjoint from training data."""
     if not (EXTERNAL / "external_test_v5.jsonl").exists():
         return {"checked": False, "reason": "external_test_v5.jsonl missing"}
-    external_codes = {
-        json.loads(line)["provenance"]["content_sha256"]
+    external_rows = [
+        json.loads(line)
         for line in (EXTERNAL / "external_test_v5.jsonl").read_text(encoding="utf-8").splitlines()
         if line
-    }
+    ]
+    external_hashes = [row["provenance"]["content_sha256"] for row in external_rows]
+    external_codes = set(external_hashes)
+    if len(external_hashes) != len(external_codes):
+        return {
+            "checked": True,
+            "passed": False,
+            "reason": "duplicate_content_hashes_in_external_test",
+            "rows": len(external_hashes),
+            "unique": len(external_codes),
+        }
     for name in ("train.jsonl", "validation.jsonl", "test.jsonl", "hard_test.jsonl"):
         path = EXTERNAL / name
         if not path.exists():
@@ -38,7 +48,7 @@ def verify_external_provenance() -> dict:
     return {
         "checked": True,
         "passed": True,
-        "external_count": len(external_codes),
+        "external_count": len(external_rows),
         "external_partition": "external_test_v5_locked",
         "training_allowed": False,
     }

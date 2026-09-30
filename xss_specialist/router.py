@@ -1,4 +1,4 @@
-"""Two-stage router: compact encoder first, oracle only when uncertain."""
+"""Two-stage triage router: compact encoder first, static heuristic when uncertain.\n\nBrowser execution is a separate authoritative verification stage.\n"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -34,7 +34,7 @@ class SecurityRouter:
     ----------
     fast_predict:
         Callable returning a FastDecision for a code snippet.
-    specialist_predict:
+    triage_predict:
         Callable returning a string verdict for a code snippet. In v0.5 the
         default is the deterministic oracle.
     direct_threshold:
@@ -49,12 +49,12 @@ class SecurityRouter:
     def __init__(
         self,
         fast_predict: Callable[[str], FastDecision],
-        specialist_predict: Callable[[str], str],
+        triage_predict: Callable[[str], str],
         direct_threshold: float = 0.90,
         xss_threshold: float = 0.85,
     ):
         self.fast_predict = fast_predict
-        self.specialist_predict = specialist_predict
+        self.triage_predict = specialist_predict
         self.direct_threshold = direct_threshold
         self.xss_threshold = xss_threshold
 
@@ -79,12 +79,12 @@ class SecurityRouter:
                 escalation_reason="xss_needs_oracle_confirmation",
             )
 
-        analysis = self.specialist_predict(code)
+        analysis = self.triage_predict(code)
         parsed = self._parse_verdict(analysis)
         return RoutedDecision(
             verdict=parsed,
             confidence=confidence,
-            route="oracle" if parsed != "POSSIBLE_XSS" else "abstain",
+            route="browser_required" if parsed == "XSS" else ("heuristic" if parsed == "SAFE" else "abstain"),
             requires_oracle=parsed != "SAFE",
             specialist_output=analysis,
             escalation_reason="low_confidence",

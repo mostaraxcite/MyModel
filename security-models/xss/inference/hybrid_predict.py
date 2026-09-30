@@ -43,7 +43,7 @@ def main() -> None:
         "verdict": result.verdict,
         "confidence": result.confidence,
         "route": result.route,
-        "requires_oracle": result.requires_oracle,
+        "requires_oracle": result.requires_oracle,\n        "confirmation_status": "BROWSER_REQUIRED" if result.requires_oracle else "TRIAGE_ONLY",
         "escalation_reason": result.escalation_reason,
         "specialist_output": result.specialist_output,
     }, indent=2))

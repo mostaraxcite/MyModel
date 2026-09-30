@@ -184,10 +184,14 @@ uv run --group lora python training/train_peft.py \
   --epochs 2 --max-length 256 \
   --output-dir security-models/xss/adapters/xss-v06
 
-# Hybrid inference
+# Browser runtime required for execution confirmation
+uv run playwright install chromium
+
+# Hybrid inference: ML/static triage -> browser execution confirmation.
+# Final XSS is emitted only when the browser oracle observes execution.
 uv run --group lora python security-models/xss/inference/hybrid_predict.py \
   --adapter xss-v0.5 \
-  "element.innerHTML = userInput"
+  "element.innerHTML = location.hash"
 ```
 
 The existing xss-v0.5 adapter scored `0.8359` macro F1 on locked Hard Test v4,

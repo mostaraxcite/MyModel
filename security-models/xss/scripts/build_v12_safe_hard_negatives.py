@@ -242,11 +242,14 @@ def main() -> None:
     # Separate stress views make calibration constraints explicit.
     safe_stress = [r for r in val if r["label"] == "SAFE"]
     attack_stress = [r for r in val if r["label"] == "XSS"]
+    binary_stress = safe_stress + attack_stress
+    rng.shuffle(binary_stress)
 
     write_jsonl(DATA / "safe_hard_train_v12.jsonl", train)
     write_jsonl(DATA / "safe_hard_validation_v12.jsonl", val)
     write_jsonl(DATA / "safe_stress_v12.jsonl", safe_stress)
     write_jsonl(DATA / "attack_stress_v12.jsonl", attack_stress)
+    write_jsonl(DATA / "binary_stress_v12.jsonl", binary_stress)
 
     manifest = {
         "version": "v0.12-safe-hard-negatives",
@@ -257,6 +260,7 @@ def main() -> None:
         "validation": stats(val),
         "safe_stress": stats(safe_stress),
         "attack_stress": stats(attack_stress),
+        "binary_stress": stats(binary_stress),
         "policy": {
             "locked_test_overlap": 0,
             "external_test_v5_training_allowed": False,

@@ -1,0 +1,301 @@
+name: Train XSS v0.7 Ablation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/train-v07-ablation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xss-v07-ablation
+  cancel-in-progress: false
+
+jobs:
+  ablation:
+    name: ablation-${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: a
+            targets: query,value
+          - variant: b
+            targets: query,key,value
+          - variant: c
+            targets: query,key,value,attention.output.dense
+    env:
+      TOKENIZERS_PARALLELISM: "false"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+
+      - name: Install dependencies
+        run: uv sync --group lora --group dev
+
+      - name: Preflight tests
+        run: uv run pytest -q tests/test_v05_fixes.py tests/test_xss_v05.py
+
+      - name: Train one-epoch ablation
+        run: |
+          OUT="security-models/xss/adapters/xss-v07-${{ matrix.variant }}"
+          rm -rf "$OUT"
+          uv run --group lora python training/train_peft.py \
+            --base-model nreimers/MiniLM-L6-H384-uncased \
+            --train-data security-models/xss/data/train.jsonl \
+            --validation-data security-models/xss/data/validation.jsonl \
+            --output-dir "$OUT" \
+            --adapter-name "xss-v0.7-${{ matrix.variant }}" \
+            --target-modules "${{ matrix.targets }}" \
+            --epochs 1 \
+            --batch-size 16 \
+            --max-length 256 \
+            --rank 8 \
+            --alpha 16 \
+            --dropout 0.05 \
+            --lr 2e-4 \
+            --seed 2027
+
+      - name: Upload ablation candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: xss-v07-ablation-${{ matrix.variant }}
+          retention-days: 14
+          path: security-models/xss/adapters/xss-v07-${{ matrix.variant }}/
+
+  select:
+    name: select-best-validation-candidate
+    needs: ablation
+    runs-on: ubuntu-latest
+    outputs:
+      variant: ${{ steps.pick.outputs.variant }}
+      targets: ${{ steps.pick.outputs.targets }}
+      validation_f1: ${{ steps.pick.outputs.validation_f1 }}
+    steps:
+      - name: Download A
+        uses: actions/download-artifact@v4
+        with:
+          name: xss-v07-ablation-a
+          path: ablation/a
+      - name: Download B
+        uses: actions/download-artifact@v4
+        with:
+          name: xss-v07-ablation-b
+          path: ablation/b
+      - name: Download C
+        uses: actions/download-artifact@v4
+        with:
+          name: xss-v07-ablation-c
+          path: ablation/c
+
+      - name: Pick best by validation macro F1
+        id: pick
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          rows = []
+          for variant in ("a", "b", "c"):
+              p = Path("ablation") / variant / "adapter_metadata.json"
+              m = json.loads(p.read_text())
+              rows.append({
+                  "variant": variant,
+                  "targets": ",".join(m["lora"]["target_modules"]),
+                  "validation_f1": float(m["best_metric"]),
+                  "runtime_seconds": m.get("runtime_seconds"),
+              })
+
+          rows.sort(key=lambda x: (-x["validation_f1"], x["runtime_seconds"] or 10**9))
+          best = rows[0]
+          Path("v07_ablation_summary.json").write_text(
+              json.dumps({"candidates": rows, "winner": best}, indent=2) + "\n"
+          )
+          print(json.dumps({"candidates": rows, "winner": best}, indent=2))
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"variant={best['variant']}\n")
+              f.write(f"targets={best['targets']}\n")
+              f.write(f"validation_f1={best['validation_f1']}\n")
+          PY
+
+      - name: Upload ablation summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: xss-v07-ablation-summary
+          retention-days: 30
+          path: v07_ablation_summary.json
+
+  full-train:
+    name: full-train-v07-winner
+    needs: select
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      TOKENIZERS_PARALLELISM: "false"
+      PYTHONUNBUFFERED: "1"
+      WINNER_TARGETS: ${{ needs.select.outputs.targets }}
+      WINNER_VARIANT: ${{ needs.select.outputs.variant }}
+      ABLATION_VALIDATION_F1: ${{ needs.select.outputs.validation_f1 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+
+      - name: Install dependencies
+        run: uv sync --group lora --group dev
+
+      - name: Preflight regression tests
+        run: >
+          uv run pytest -q
+          tests/test_router.py
+          tests/test_xss_v05.py
+          tests/test_v05_fixes.py
+          tests/test_pipeline.py
+
+      - name: Full train selected v0.7 target set
+        run: |
+          rm -rf security-models/xss/adapters/xss-v07
+          uv run --group lora python training/train_peft.py \
+            --base-model nreimers/MiniLM-L6-H384-uncased \
+            --train-data security-models/xss/data/train.jsonl \
+            --validation-data security-models/xss/data/validation.jsonl \
+            --output-dir security-models/xss/adapters/xss-v07 \
+            --adapter-name xss-v0.7 \
+            --target-modules "$WINNER_TARGETS" \
+            --epochs 2 \
+            --batch-size 16 \
+            --max-length 256 \
+            --rank 8 \
+            --alpha 16 \
+            --dropout 0.05 \
+            --lr 2e-4 \
+            --seed 2027 2>&1 | tee security-models/xss/evaluation/v07_training.log
+
+      - name: Register v0.7 locally for evaluation
+        run: |
+          uv run python - <<'PY'
+          import os
+          from xss_specialist.adapter_registry import default_registry, register_adapter
+
+          reg = default_registry()
+          register_adapter(
+              reg,
+              name="xss-v0.7",
+              kind="peft",
+              base_model="nreimers/MiniLM-L6-H384-uncased",
+              path="security-models/xss/adapters/xss-v07",
+              description=(
+                  "v0.7 validation-selected MiniLM-L6 LoRA candidate; "
+                  f"targets={os.environ['WINNER_TARGETS']}; not promoted."
+              ),
+              promoted=False,
+              activate=False,
+          )
+          PY
+
+      - name: Hard Test v4 - winner only
+        run: |
+          uv run --group lora python security-models/xss/evaluation/evaluate.py \
+            --adapter xss-v0.7 \
+            --output security-models/xss/evaluation/v07_hard.json
+
+      - name: External Test v5 - winner only
+        run: |
+          uv run --group lora python security-models/xss/evaluation/evaluate_external_v5.py \
+            --adapter xss-v0.7 \
+            --output security-models/xss/evaluation/v07_external.json \
+            --predictions security-models/xss/evaluation/v07_external_predictions.jsonl
+
+      - name: Build final v0.7 summary
+        if: always()
+        run: |
+          uv run python - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          root = Path("security-models/xss")
+          out = {
+              "candidate": "xss-v0.7",
+              "promoted": False,
+              "ablation_winner": {
+                  "variant": os.environ.get("WINNER_VARIANT"),
+                  "targets": os.environ.get("WINNER_TARGETS", "").split(","),
+                  "one_epoch_validation_f1": float(os.environ.get("ABLATION_VALIDATION_F1", 0)),
+              },
+          }
+
+          meta = root / "adapters/xss-v07/adapter_metadata.json"
+          hard = root / "evaluation/v07_hard.json"
+          ext = root / "evaluation/v07_external.json"
+
+          if meta.exists():
+              m = json.loads(meta.read_text())
+              out["training"] = {
+                  "best_validation_metric": m.get("best_metric"),
+                  "train_rows": m.get("train_rows"),
+                  "validation_rows": m.get("validation_rows"),
+                  "lora": m.get("lora"),
+                  "runtime_seconds": m.get("runtime_seconds"),
+                  "external_test_v5_used_for_training": m.get("external_test_v5_used_for_training"),
+              }
+
+          if hard.exists():
+              h = json.loads(hard.read_text())
+              out["hard_test_v4"] = {
+                  "macro_f1": h.get("classification_report", {}).get("macro avg", {}).get("f1-score"),
+                  "promotion": h.get("promotion"),
+                  "false_rates": h.get("false_rates"),
+              }
+
+          if ext.exists():
+              e = json.loads(ext.read_text())
+              out["external_test_v5"] = {
+                  "count": e.get("count"),
+                  "coverage": e.get("coverage"),
+                  "decided_macro_f1": e.get("decided_macro_f1"),
+                  "xss_false_positive_rate_all": e.get("xss_false_positive_rate_all"),
+                  "xss_false_negative_rate_all": e.get("xss_false_negative_rate_all"),
+                  "promotion": e.get("promotion"),
+              }
+
+          out["eligible_for_promotion"] = bool(
+              out.get("hard_test_v4", {}).get("promotion", {}).get("passed")
+              and out.get("external_test_v5", {}).get("promotion", {}).get("passed")
+          )
+
+          target = root / "evaluation/v07_summary.json"
+          target.write_text(json.dumps(out, indent=2) + "\n")
+          print(target.read_text())
+          PY
+
+      - name: Upload v0.7 winner and reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xss-v07-candidate
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            security-models/xss/adapters/xss-v07/
+            security-models/xss/evaluation/v07_training.log
+            security-models/xss/evaluation/v07_hard.json
+            security-models/xss/evaluation/v07_external.json
+            security-models/xss/evaluation/v07_external_predictions.jsonl
+            security-models/xss/evaluation/v07_summary.json

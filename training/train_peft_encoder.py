@@ -41,6 +41,16 @@ DEFAULT_BASE_MODEL = "nreimers/MiniLM-L6-H384-uncased"
 DEFAULT_LORA_TARGETS = ["query", "key", "value"]
 
 
+def parse_lora_targets(raw: str | None) -> list[str]:
+    """Parse a comma-separated PEFT target list without mutating the default."""
+    if raw is None:
+        return list(DEFAULT_LORA_TARGETS)
+    targets = [item.strip() for item in raw.split(",") if item.strip()]
+    if not targets:
+        raise ValueError("--target-modules must contain at least one module name")
+    return targets
+
+
 def _safe_load_jsonl(path: Path, limit: int | None = None) -> list[dict]:
     rows = []
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -144,7 +154,13 @@ def main() -> None:
     parser.add_argument("--train-limit", type=int, default=0, help="0 = use all rows")
     parser.add_argument("--validation-limit", type=int, default=0)
     parser.add_argument("--adapter-name", default="xss-v06")
+    parser.add_argument(
+        "--target-modules",
+        default=None,
+        help="Comma-separated PEFT target module suffixes. Defaults to query,key,value.",
+    )
     args = parser.parse_args()
+    target_modules = parse_lora_targets(args.target_modules)
 
     torch.manual_seed(args.seed)
 
@@ -162,7 +178,7 @@ def main() -> None:
         lora_alpha=args.alpha,
         lora_dropout=args.dropout,
         bias="none",
-        target_modules=DEFAULT_LORA_TARGETS,
+        target_modules=target_modules,
         modules_to_save=["classifier"],  # keep classifier head fully trainable
     )
 
@@ -234,7 +250,7 @@ def main() -> None:
             "rank": args.rank,
             "alpha": args.alpha,
             "dropout": args.dropout,
-            "target_modules": DEFAULT_LORA_TARGETS,
+            "target_modules": target_modules,
             "modules_to_save": ["classifier"],
         },
         "train_rows": len(train_set),

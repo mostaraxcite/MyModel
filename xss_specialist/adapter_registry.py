@@ -6,7 +6,7 @@ The registry is the single source of truth for which XSS classifier is
   - **full**: a complete Hugging Face model directory (e.g. v0.4 bert-tiny,
     saved as `BertForSequenceClassification`).
   - **peft**: a frozen base model identified by name plus a PEFT LoRA adapter
-    directory (e.g. xss-v0.5 = MiniLM-L6 + LoRA on q/k/v/o).
+    directory (e.g. xss-v0.5 = MiniLM-L6 + a PEFT LoRA adapter).
 
 Inference code asks the registry for a classifier pipeline and never has to
 care which kind it gets. Rollback to a previous adapter is a registry swap, not
@@ -209,7 +209,7 @@ def initial_registry_with_v04() -> Registry:
                     kind="peft",
                     base_model="nreimers/MiniLM-L6-H384-uncased",
                     path="security-models/xss/adapters/xss-v05",
-                    description="MiniLM-L6 + LoRA on q/k/v/o, classifier head re-trained.",
+                    description="MiniLM-L6 PEFT candidate; see adapter metadata for historical targets.",
                     promoted=False,
                 ),
             },

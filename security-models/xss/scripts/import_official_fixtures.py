@@ -113,14 +113,28 @@ def semgrep_records(root: Path) -> list[dict]:
     return rows
 
 
-def deduplicate(rows: list[dict]) -> list[dict]:
-    seen, output = set(), []
+def deduplicate_by_content(rows: list[dict]) -> tuple[list[dict], list[dict], int]:
+    """Return unique snippet inputs and quarantine contradictory labels.
+
+    The classifier sees only the snippet text, so two records with identical code
+    are not independent examples. If identical code has different labels, the
+    benchmark is ill-posed for this input contract and both records are quarantined.
+    """
+    groups: dict[str, list[dict]] = {}
     for row in rows:
-        key = (row["project"], row["provenance"]["path"], row["provenance"]["line"], row["label"])
-        if key not in seen:
-            seen.add(key)
-            output.append(row)
-    return output
+        groups.setdefault(row["provenance"]["content_sha256"], []).append(row)
+
+    clean: list[dict] = []
+    conflicts: list[dict] = []
+    duplicate_rows_removed = 0
+    for items in groups.values():
+        labels = {row["label"] for row in items}
+        if len(labels) > 1:
+            conflicts.extend(items)
+            continue
+        clean.append(items[0])
+        duplicate_rows_removed += len(items) - 1
+    return clean, conflicts, duplicate_rows_removed
 
 
 def write_jsonl(path: Path, rows: list[dict]) -> None:
@@ -137,15 +151,22 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=here.parents[1] / "data" / "external_test_v5.jsonl")
     args = parser.parse_args()
 
-    rows = deduplicate(codeql_records(args.codeql_root) + semgrep_records(args.semgrep_root))
+    raw_rows = codeql_records(args.codeql_root) + semgrep_records(args.semgrep_root)
+    rows, conflicts, duplicate_rows_removed = deduplicate_by_content(raw_rows)
     write_jsonl(args.output, rows)
+    conflict_path = args.output.with_name("external_test_v5_conflicts.jsonl")
+    write_jsonl(conflict_path, conflicts)
     manifest = {
         "version": "v0.5",
         "partition": "external_test_v5_locked",
         "count": len(rows),
         "labels": dict(Counter(row["label"] for row in rows)),
         "projects": dict(Counter(row["project"] for row in rows)),
-        "group_disjoint_unit": "repository + fixture path",
+        "source_group_disjoint_unit": "repository + fixture path",
+        "evaluation_dedup_unit": "provenance.content_sha256",
+        "duplicate_rows_removed": duplicate_rows_removed,
+        "contradictory_rows_quarantined": len(conflicts),
+        "conflict_file": conflict_path.name,
         "training_allowed": False,
     }
     manifest_path = args.output.with_name("external_test_v5_manifest.json")

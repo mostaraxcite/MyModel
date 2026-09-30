@@ -44,50 +44,32 @@ def family_breakdown(rows: list[dict], preds: list[str]) -> dict:
                 "correct": 0,
                 "labels": {label: 0 for label in THREE_LABELS},
                 "predictions": {label: 0 for label in THREE_LABELS},
+                "xss_false_negatives": 0,
+                "xss_false_positives": 0,
             },
         )
+        truth = row["label"]
         item["count"] += 1
-        item["correct"] += int(pred == row["label"])
-        if row["label"] in item["labels"]:
-            item["labels"][row["label"]] += 1
+        item["correct"] += int(pred == truth)
+        if truth in item["labels"]:
+            item["labels"][truth] += 1
         if pred in item["predictions"]:
             item["predictions"][pred] += 1
+        item["xss_false_negatives"] += int(truth == "XSS" and pred == "SAFE")
+        item["xss_false_positives"] += int(truth == "SAFE" and pred == "XSS")
 
     for item in families.values():
         count = item["count"]
+        xss_total = item["labels"]["XSS"]
+        safe_total = item["labels"]["SAFE"]
         item["accuracy"] = item["correct"] / count if count else 0.0
-        xss_total = item["labels"].get("XSS", 0)
-        safe_total = item["labels"].get("SAFE", 0)
         item["xss_false_negative_rate"] = (
-            sum(
-                1
-                for row, pred in zip(rows, preds)
-                if (row.get("provenance", {}).get("family") or row.get("provenance", {}).get("origin") or row.get("project") or "unknown") in families
-            )
-            * 0.0
+            item["xss_false_negatives"] / xss_total if xss_total else 0.0
         )
-        if xss_total:
-            family_name = next((name for name, value in families.items() if value is item), None)
-            xss_fn = sum(
-                row["label"] == "XSS"
-                and pred == "SAFE"
-                and (row.get("provenance", {}).get("family") or row.get("provenance", {}).get("origin") or row.get("project") or "unknown") == family_name
-                for row, pred in zip(rows, preds)
-            )
-            item["xss_false_negative_rate"] = xss_fn / xss_total
-        if safe_total:
-            family_name = next((name for name, value in families.items() if value is item), None)
-            safe_fp = sum(
-                row["label"] == "SAFE"
-                and pred == "XSS"
-                and (row.get("provenance", {}).get("family") or row.get("provenance", {}).get("origin") or row.get("project") or "unknown") == family_name
-                for row, pred in zip(rows, preds)
-            )
-            item["xss_false_positive_rate"] = safe_fp / safe_total
-        else:
-            item["xss_false_positive_rate"] = 0.0
+        item["xss_false_positive_rate"] = (
+            item["xss_false_positives"] / safe_total if safe_total else 0.0
+        )
     return dict(sorted(families.items()))
-
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)

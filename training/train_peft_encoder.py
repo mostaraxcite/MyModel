@@ -1,6 +1,6 @@
 """PEFT LoRA trainer for an encoder-based XSS classifier (v0.5+).
 
-The base model is frozen; only LoRA adapters on q/k/v/o plus the 3-class
+The base model is frozen; only LoRA adapters on q/k/v plus the 3-class
 classification head are trained. This keeps the trainable parameter count small
 enough to run on CPU while still adapting the encoder to the XSS classification
 task. The resulting adapter is saved with `peft.save_pretrained` so it can be
@@ -35,10 +35,10 @@ ID_TO_LABEL = {index: label for label, index in LABEL_TO_ID.items()}
 DEFAULT_BASE_MODEL = "nreimers/MiniLM-L6-H384-uncased"
 
 
-# MiniLM-L6 uses BERT-style attention: query, key, value, and an output dense
-# projection after attention. Targeting all four gives the adapter enough
-# expressive capacity while keeping the LoRA footprint tiny.
-DEFAULT_LORA_TARGETS = ["query", "key", "value", "dense"]
+# MiniLM-L6 uses BERT-style attention. Keep targets deliberately precise:
+# the suffix "dense" also matches feed-forward/output layers in BERT-family
+# encoders, so using it would adapt more modules than intended.
+DEFAULT_LORA_TARGETS = ["query", "key", "value"]
 
 
 def _safe_load_jsonl(path: Path, limit: int | None = None) -> list[dict]:

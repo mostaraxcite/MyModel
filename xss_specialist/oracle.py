@@ -1,64 +1,59 @@
-"""Deterministic XSS oracle.
+"""Conservative static XSS triage heuristic.
 
-Pure-Python, regex-based detector used as a fallback when the ML classifier is
-uncertain. The oracle never mutates state and produces the same verdict for the
-same input. It is intentionally conservative: it only fires XSS or SAFE when
-the pattern is unambiguous, and returns None (abstain) otherwise so the caller
-can defer to the ML model.
+This module is intentionally *not* an execution oracle. It recognizes a small
+set of obvious source-to-sink shapes so low-confidence ML predictions can be
+triaged cheaply. A positive result is still UNCONFIRMED and must go through the
+real browser oracle in :mod:`verification.browser_oracle` before a finding can
+be called confirmed.
 """
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Iterable
 
 
-# (sink regex, source regex) -> XSS when both match. The sink regex looks for
-# dangerous DOM/JavaScript sinks; the source regex looks for tainted data that
-# could be controlled by an attacker.
-SINK_SOURCE_RULES: tuple[tuple[re.Pattern[str], re.Pattern[str]], ...] = (
-    (
-        re.compile(r"\b(innerHTML|outerHTML|insertAdjacentHTML|document\.write|document\.writeln)\b"),
-        re.compile(r"(location\.|document\.|window\.|parent\.|top\.|self\.|frames\[|formData|querySelector|\.search|\.hash|\.params|req\.|req\.body|req\.query|req\.params|URLSearchParams|location\.search|location\.hash)",
-                  re.IGNORECASE),
-    ),
-    (
-        re.compile(r"\b(eval|Function)\s*\("),
-        re.compile(r"(\+|`\$\{|location\.|document\.|window\.|req\.|req\.body|req\.query|req\.params|location\.search|location\.hash|\.value\b)",
-                  re.IGNORECASE),
-    ),
-    (
-        re.compile(r"\.(src|href|action)\s*="),
-        re.compile(r"(location\.|document\.|window\.|req\.|req\.body|req\.query|req\.params|location\.search|location\.hash|URLSearchParams)",
-                  re.IGNORECASE),
-    ),
-    (
-        re.compile(r"setAttribute\s*\(\s*['\"](on[a-z]+|src|href|action|data)['\"]"),
-        re.compile(r".{0,200}", re.IGNORECASE | re.DOTALL),  # any source counts for setAttribute on event handlers
-    ),
-    (
-        re.compile(r"\breplaceWith\b|\binsertAdjacentElement\b"),
-        re.compile(r"(location\.|document\.|window\.|req\.|formData|querySelector|location\.search|location\.hash)",
-                  re.IGNORECASE),
-    ),
+TAINTED_SOURCE = re.compile(
+    r"(location\.(?:search|hash|href)|document\.(?:URL|documentURI|cookie|referrer)|"
+    r"window\.name|req\.(?:body|query|params)|URLSearchParams|formData|\.value\b)",
+    re.IGNORECASE,
 )
 
+HTML_SINK = re.compile(
+    r"\b(innerHTML|outerHTML|insertAdjacentHTML|document\.write|document\.writeln)\b"
+)
+JS_SINK = re.compile(r"\b(eval|Function)\s*\(")
+EVENT_SETTER = re.compile(
+    r"setAttribute\s*\(\s*['\"]on[a-z]+['\"]\s*,",
+    re.IGNORECASE,
+)
+DANGEROUS_URL_LITERAL = re.compile(
+    r"setAttribute\s*\(\s*['\"](?:src|href|action|data)['\"]\s*,\s*"
+    r"['\"]\s*(?:javascript:|data:text/html)",
+    re.IGNORECASE,
+)
 
-# Hard SAFE patterns: when these alone describe the code, we treat it as SAFE
-# without consulting the ML model. Conservative — only fires when the entire
-# code is a benign shape we have seen many times.
 SAFE_ONLY_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"^\s*node\.textContent\s*=\s*[^;\n]+;?\s*$", re.IGNORECASE),
     re.compile(r"^\s*\w+\.textContent\s*=\s*[^;\n]+;?\s*$", re.IGNORECASE),
-    re.compile(r"^\s*element\.setAttribute\s*\(\s*['\"](class|id|aria-[a-z]+)['\"]", re.IGNORECASE),
+    re.compile(
+        r"^\s*\w+\.setAttribute\s*\(\s*['\"](?:class|id|aria-[a-z-]+)['\"]\s*,"
+        r"\s*['\"][^'\"]*['\"]\s*\)\s*;?\s*$",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^\s*\w+\.setAttribute\s*\(\s*['\"](?:src|href|action|data)['\"]\s*,"
+        r"\s*['\"](?!\s*(?:javascript:|data:text/html))[^'\"]*['\"]\s*\)\s*;?\s*$",
+        re.IGNORECASE,
+    ),
 )
 
 
 @dataclass(frozen=True)
 class OracleVerdict:
-    label: str  # "SAFE", "XSS", or "POSSIBLE_XSS" (abstain)
-    rule: str | None  # which rule fired
-    confidence: float  # 0.0 for abstain, 1.0 for hard rules
+    """Historical name kept for API compatibility; this is a triage verdict."""
+
+    label: str
+    rule: str | None
+    confidence: float
 
 
 def analyze(code: str) -> OracleVerdict:
@@ -67,21 +62,23 @@ def analyze(code: str) -> OracleVerdict:
 
     for pattern in SAFE_ONLY_PATTERNS:
         if pattern.search(code):
-            return OracleVerdict("SAFE", "safe_pattern", 0.9)
+            return OracleVerdict("SAFE", "safe_static_shape", 0.9)
 
-    for sink, source in SINK_SOURCE_RULES:
-        if sink.search(code) and source.search(code):
-            return OracleVerdict("XSS", "sink_and_source", 0.95)
+    tainted = bool(TAINTED_SOURCE.search(code))
+    if tainted and HTML_SINK.search(code):
+        return OracleVerdict("XSS", "tainted_html_sink", 0.95)
+    if tainted and JS_SINK.search(code):
+        return OracleVerdict("XSS", "tainted_js_sink", 0.95)
+    if tainted and EVENT_SETTER.search(code):
+        return OracleVerdict("XSS", "tainted_event_handler", 0.95)
+    if DANGEROUS_URL_LITERAL.search(code):
+        return OracleVerdict("XSS", "dangerous_url_literal", 0.95)
 
     return OracleVerdict("POSSIBLE_XSS", None, 0.0)
 
 
 def explain(code: str) -> list[str]:
-    """Return human-readable reasons for the verdict."""
-    reasons: list[str] = []
-    for sink, source in SINK_SOURCE_RULES:
-        if sink.search(code) and source.search(code):
-            reasons.append(f"matched rule: sink={sink.pattern!r} + tainted source")
-    if not reasons:
-        reasons.append("no rule fired; deferred to ML")
-    return reasons
+    verdict = analyze(code)
+    if verdict.rule:
+        return [f"static triage rule: {verdict.rule}"]
+    return ["no hard static rule fired; browser verification or human review required"]

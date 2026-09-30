@@ -13,7 +13,7 @@ browser oracle turn its reasoning into evidence-backed, hard-to-fool findings?*
 
 ![status](https://img.shields.io/badge/status-research%20prototype-blue)
 ![readiness](https://img.shields.io/badge/live%20system-AUTHORIZED%20PILOT%20READY-orange)
-![tests](https://img.shields.io/badge/tests-63%20passing-brightgreen)
+![CI](https://github.com/mostaraxcite/MyModel/actions/workflows/ci.yml/badge.svg)
 ![license](https://img.shields.io/badge/license-Apache--2.0-lightgrey)
 ![use](https://img.shields.io/badge/use-authorized%20testing%20only-red)
 
@@ -296,13 +296,14 @@ execution.**
 
 ## Quick Install
 
-Prerequisites: **macOS on Apple silicon**, Python 3.12 or newer, Git, and
-[`uv`](https://docs.astral.sh/uv/getting-started/installation/). MLX model training and inference are
-currently Apple-silicon only.
+Prerequisites for the core classifier/live stack: Python 3.12 or newer, Git,
+[`uv`](https://docs.astral.sh/uv/getting-started/installation/), and Chromium via Playwright.
+The historical 8B MLX research path is Apple-silicon-only; the MiniLM/bert-tiny
+classifier and live browser components are not tied to MLX.
 
 ```bash
-git clone https://github.com/SecFathy/xss-specialist.git
-cd xss-specialist
+git clone https://github.com/mostaraxcite/MyModel.git
+cd MyModel
 uv sync
 uv run python -m playwright install chromium
 uv run pytest -q
@@ -315,7 +316,10 @@ uv run mlx_lm.convert --hf-path ~/.cache/huggingface/hub/models--Qwen--Qwen3-8B/
     -q --q-bits 4 --q-group-size 64 --mlx-path models/qwen3-8b-4bit
 ```
 
-> The model/adapters/run outputs are git-ignored. The code, benchmarks, and reports are the artifacts.
+> The promoted v0.4 full model directory is intentionally not bundled in Git. A fresh clone
+> therefore fails loudly rather than serving an untrained/random classifier head. Reproduce v0.4
+> from `security-models/xss/README.md`, or explicitly select a bundled research adapter for
+> evaluation. The rejected xss-v0.5 LoRA adapter is bundled for reproducibility.
 
 ---
 

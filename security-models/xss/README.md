@@ -198,3 +198,23 @@ The existing xss-v0.5 adapter scored `0.8359` macro F1 on locked Hard Test v4,
 below the v0.4 baseline of `0.9092`. It is therefore rejected for promotion and
 v0.4 remains active. A newly trained adapter must pass the same locked benchmark
 and generalization gate before activation.
+
+
+## Why post-v0.4 candidates regressed
+
+The apparent break after v0.4 was caused by changing several variables at once:
+
+- v0.4 used a full fine-tune of `google/bert_uncased_L-4_H-256_A-4`.
+- v0.5+ switched the base encoder to MiniLM-L6 and froze almost the entire encoder under PEFT/LoRA.
+- later rounds also changed class weighting, sequence length, learning rate, dataset composition, and real-world oversampling.
+- the v0.4 Hard Test is useful but not a sufficient generalization benchmark; the newer locked External Test v5 is substantially harder and showed that v0.4 itself does not generalize well enough for production.
+
+For a small 11M-23M parameter classifier, full fine-tuning is cheap enough that LoRA is not required. The v0.11 experiment therefore restores full-encoder training and isolates variables with controls:
+
+1. reproduce the exact v0.4 BERT-tiny recipe;
+2. train MiniLM with the same full-finetune recipe to isolate the base-model effect;
+3. train BERT-tiny and MiniLM full-finetune candidates on the clean generalization corpus;
+4. select only from development/real-world validation;
+5. run locked Hard Test v4 and External Test v5 only after a viable development winner exists.
+
+The workflow must stop if no candidate passes the development viability gate. It must never continue by choosing the "least bad" failed candidate.

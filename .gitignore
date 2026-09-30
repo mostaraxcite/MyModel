@@ -16,3 +16,11 @@ node_modules/
 *.log
 reports/live_assessments/google-xss-game-level1/
 reports/live_assessments/google-xss-game-level1-clean/
+
+# Local credentials and caches
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.cache/

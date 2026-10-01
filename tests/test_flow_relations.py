@@ -93,3 +93,34 @@ def test_authoritative_model_artifact_refused(tmp_path):
     path.write_text(json.dumps({'schema':'xss-flow-relation-v1','final_judge':True}))
     with pytest.raises(ValueError, match='authoritative'):
         FlowRelationAdvisor(path)
+
+
+def test_frozen_native_corpus_integrity():
+    from xss_specialist.flow_relations import load_rows
+    root=Path(__file__).resolve().parents[1]/'data/flow-relations-v1'
+    result=audit_relation_splits({'train':load_rows(root/'train.jsonl'), 'dev':load_rows(root/'dev.jsonl')})
+    assert result['class_counts']['train']==dict.fromkeys(LABELS,20)
+    assert result['class_counts']['dev']==dict.fromkeys(LABELS,10)
+
+
+@pytest.mark.parametrize('field,value', [('flow_excerpt','altered code'),('source_expression','invented_source')])
+def test_native_annotation_tampering_rejected(field,value):
+    from xss_specialist.flow_relations import load_rows
+    row=load_rows(Path(__file__).resolve().parents[1]/'data/flow-relations-v1/train.jsonl')[0]
+    row[field]=value
+    with pytest.raises(ValueError, match='pinned source bytes'):
+        audit_relation_splits({'train':[row]})
+
+
+def test_na_cannot_hide_synthetic_generator_overlap():
+    row=record(); row['provenance']['generator']='not-applicable'
+    with pytest.raises(ValueError, match='verified native code'):
+        audit_relation_splits({'train':[row]})
+
+
+def test_native_reference_cannot_change_commit():
+    from xss_specialist.flow_relations import load_rows
+    row=load_rows(Path(__file__).resolve().parents[1]/'data/flow-relations-v1/train.jsonl')[0]
+    row['provenance']['commit']='0'*40
+    with pytest.raises(ValueError, match='pinned repository'):
+        audit_relation_splits({'train':[row]})

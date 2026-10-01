@@ -4,11 +4,53 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+import re
 
 LABELS = ("CONNECTED", "DISCONNECTED", "UNKNOWN")
 GROUPS = ("repository", "framework", "template", "generator")
 FIELDS = ("source_expression", "sink_expression", "flow_excerpt")
 MAX_EXCERPT = 4096
+
+
+def verify_repository_excerpt(row: dict) -> bool:
+    """Verify native-code provenance before accepting generator/template N/A.
+
+    Repository snapshots are inert data; no source code is imported or executed.
+    Labels still need a separate review and are not inferred by this check.
+    """
+    provenance = row.get("provenance", {})
+    if provenance.get("code_origin") != "repository":
+        return False
+    commit = provenance.get("commit", "")
+    if not re.fullmatch(r"[a-f0-9]{40}", commit):
+        raise ValueError("native source requires a pinned upstream commit")
+    reference = row.get("verification", {}).get("reference", "")
+    expected = f"https://github.com/{provenance.get('repository')}/blob/{commit}/{provenance.get('source_file')}#L"
+    if not reference.startswith(expected):
+        raise ValueError("native source reference must identify the pinned repository/file")
+    root = Path(__file__).resolve().parents[1]
+    snapshot = (root / provenance.get("source_snapshot", "")).resolve()
+    approved_root = (root / "data/flow-relations-v1/sources").resolve()
+    if not snapshot.is_relative_to(approved_root) or not snapshot.is_file():
+        raise ValueError("native source snapshot must be under data/flow-relations-v1/sources")
+    content = snapshot.read_bytes()
+    if hashlib.sha256(content).hexdigest() != provenance.get("source_sha256"):
+        raise ValueError("native source snapshot hash mismatch")
+    span = provenance.get("excerpt_span", {})
+    start, end = span.get("start_byte"), span.get("end_byte")
+    if not isinstance(start, int) or not isinstance(end, int) or not 0 <= start < end <= len(content):
+        raise ValueError("invalid native source byte span")
+    if content[start:end].decode() != row.get("flow_excerpt"):
+        raise ValueError("relation excerpt differs from pinned source bytes")
+    location = row.get("query_location", {})
+    for key in ("source", "sink"):
+        query_span = location.get(key + "_span", {})
+        query_start, query_end = query_span.get("start_byte"), query_span.get("end_byte")
+        if not isinstance(query_start, int) or not isinstance(query_end, int) or not 0 <= query_start < query_end <= len(content):
+            raise ValueError(f"invalid {key} expression byte span")
+        if content[query_start:query_end].decode() != row.get(key + "_expression"):
+            raise ValueError(f"{key} expression differs from pinned source bytes")
+    return True
 
 
 def relation_text(row: dict) -> str:
@@ -45,10 +87,17 @@ def audit_relation_splits(splits: dict[str, list[dict]]) -> dict:
             ):
                 raise ValueError("independent reviewed relation labels and evidence reference are required")
             provenance = row.get("provenance", {})
+            native = verify_repository_excerpt(row)
             for key in GROUPS:
                 value = provenance.get(key)
                 if not isinstance(value, str) or not value.strip():
                     raise ValueError(f"missing provenance.{key}")
+                # Templates/generators describe generated CODE, not the extraction
+                # tool or annotation author. Never invent split-specific identities.
+                if value == "not-applicable":
+                    if key not in ("template", "generator") or not native:
+                        raise ValueError("not-applicable requires verified native code provenance")
+                    continue
                 identities[name][key].add(value.strip())
             digest = hashlib.sha256(content.encode()).hexdigest()
             if digest in identities[name]["content"] or row["id"] in identities[name]["id"]:
@@ -63,6 +112,7 @@ def audit_relation_splits(splits: dict[str, list[dict]]) -> dict:
                 if identities[left][key] & identities[right][key]:
                     raise ValueError(f"relation split overlap: {left}/{right} in {key}")
     return {"passed": True, "class_counts": counts, "groups": list(GROUPS),
+            "generator_template_policy": "Disjoint for generated code; N/A only for byte-verified native repository excerpts",
             "note": "Metadata and review declarations are validated; authenticity requires corpus-owner review."}
 
 

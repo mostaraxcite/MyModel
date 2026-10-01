@@ -21,7 +21,7 @@ def fit_model(train: list[dict], dev: list[dict]) -> tuple[dict, dict]:
     """Numerical fitting only. Public train() adds review/disjointness/sample gates."""
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.linear_model import LogisticRegression
-    from sklearn.metrics import confusion_matrix, f1_score, recall_score
+    from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, recall_score
     from sklearn.pipeline import Pipeline
 
     pipeline = Pipeline([
@@ -34,6 +34,7 @@ def fit_model(train: list[dict], dev: list[dict]) -> tuple[dict, dict]:
     truth = [r["label"] for r in dev]
     features, model = pipeline["features"], pipeline["relation"]
     metrics = {
+        "dev_accuracy": float(accuracy_score(truth, predictions)),
         "dev_macro_f1": float(f1_score(truth, predictions, labels=list(LABELS), average="macro", zero_division=0)),
         "dev_class_recall": dict(zip(LABELS, recall_score(truth, predictions, labels=list(LABELS), average=None, zero_division=0).tolist())),
         "dev_confusion_matrix": confusion_matrix(truth, predictions, labels=list(LABELS)).tolist(),
@@ -67,6 +68,11 @@ def train(train_path: Path, dev_path: Path, output: Path) -> dict:
     report = {"status": "TRAINED_RESEARCH_CANDIDATE", "audit": audit, "metrics": metrics,
               "training_records": len(train_rows), "development_records": len(dev_rows),
               "model_role": "advisory flow-relation review only", "promotion_allowed": False}
+    report["label_review"] = {
+        "reviewers": sorted({r["verification"]["reviewer"] for r in train_rows + dev_rows}),
+        "independent_expert_review": all(r["verification"].get("independent_expert_review") is True
+                                         for r in train_rows + dev_rows),
+    }
     output.mkdir(parents=True)
     (output / "model.json").write_text(json.dumps(artifact, indent=2))
     (output / "report.json").write_text(json.dumps(report, indent=2))

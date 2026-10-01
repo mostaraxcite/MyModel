@@ -148,3 +148,33 @@ independently reviewed relation records. See
 [`training_readiness.json`](../reports/taint-v1/training_readiness.json). No research
 checkpoint was created. The numerical serialization test uses artificial unit-test
 fixtures in a temporary directory and is not a training release or evaluation result.
+
+## Native-data training attempt completed
+
+The initial missing-data blocker has now been addressed with
+[`data/flow-relations-v1`](../data/flow-relations-v1/README.md): 60 selected original
+Express assignment relations for training and 30 Fastify relations for development.
+Inputs are pinned and byte-verified; complete MIT notices accompany copied source.
+They were reviewed by the same implementer, not an independent expert. Annotation
+rules define explicit local value dependency with opaque call returns. These are
+relation labels, not vulnerability labels.
+
+For these verified native-code records, code-template/code-generator fields are
+explicitly not applicable. Repository/framework independence is checked; structural
+template independence is not claimed. The audit continues to require actual
+independent template/generator identities when code is generated. This applicability
+rule avoids fabricated split identifiers and is tested against spoofed provenance.
+
+The training command completed locally, producing inert JSON weights of 96,710
+bytes, without a cloud training job or downloading an LLM. This statistical baseline
+is not an SLM. On independent-repository development queries: 50% accuracy, macro
+F1 0.4374, per-class recall CONNECTED 40%, DISCONNECTED 100%, UNKNOWN 10%.
+The poor recall makes it unsuitable even as a trusted flow resolver; it is recorded
+as a rejected research candidate and is never loaded automatically. All static
+verdicts and browser requirements remain independent of model advice.
+
+The artifact, per-query predictions, training report and rejection metadata are in
+`security-models/xss/adapters/flow-relation-v1-native-001/` and
+`registry/releases/flow-relation-v1-native-001.json`. The earlier preflight failure
+is preserved in `reports/taint-v1/training_readiness.json` alongside the completed
+attempt. No external XSS FPR/FNR is claimed, and the external test was not opened.

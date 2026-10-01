@@ -60,7 +60,7 @@ jobs:
             --data-dir security-models/xss/data \
             --output-dir security-models/xss/v04-multitask-backbone \
             --model google/bert_uncased_L-4_H-256_A-4 \
-            --epochs 5 \
+            --epochs 6 \
             --batch-size 32 \
             --seed 1337
 
@@ -93,22 +93,38 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - slug: f0-lr1e5
+          - slug: v11-f0-lr2e5-fw8
             freeze: 0
-            lr: 0.00001
-            flow_weight: 20
-          - slug: f1-lr1e5
-            freeze: 1
-            lr: 0.00001
-            flow_weight: 20
-          - slug: f2-lr1e5
-            freeze: 2
-            lr: 0.00001
-            flow_weight: 20
-          - slug: f1-lr2e5
+            lr: 0.00002
+            flow_weight: 8
+            sink_loss: 2.0
+            defense_loss: 2.5
+            flow_loss: 1.5
+            class_power: 0.35
+          - slug: v11-f1-lr2e5-fw8
             freeze: 1
             lr: 0.00002
-            flow_weight: 25
+            flow_weight: 8
+            sink_loss: 2.0
+            defense_loss: 2.5
+            flow_loss: 1.5
+            class_power: 0.35
+          - slug: v11-f1-lr2e5-fw6-d3
+            freeze: 1
+            lr: 0.00002
+            flow_weight: 6
+            sink_loss: 2.0
+            defense_loss: 3.0
+            flow_loss: 1.5
+            class_power: 0.35
+          - slug: v11-f0-lr15e5-fw10
+            freeze: 0
+            lr: 0.000015
+            flow_weight: 10
+            sink_loss: 2.25
+            defense_loss: 2.75
+            flow_loss: 1.75
+            class_power: 0.30
 
     steps:
       - uses: actions/checkout@v4
@@ -160,6 +176,11 @@ jobs:
             --lr ${{ matrix.lr }} \
             --freeze-layers ${{ matrix.freeze }} \
             --flow-sample-weight ${{ matrix.flow_weight }} \
+            --source-loss-weight 0.5 \
+            --sink-loss-weight ${{ matrix.sink_loss }} \
+            --defense-loss-weight ${{ matrix.defense_loss }} \
+            --flow-loss-weight ${{ matrix.flow_loss }} \
+            --class-balance-power ${{ matrix.class_power }} \
             --seed 4041
 
       - name: Gate component model

@@ -244,11 +244,23 @@ def select_all(roots: dict[str, Path]) -> list[Case]:
         "turbo": select_html_sinks("turbo", roots["turbo"]),
     }
     counts = {k: len(v) for k, v in groups.items()}
-    if counts != {k: 2 for k in COMMITS}:
-        print(json.dumps({"selection_counts": counts, "selection_integrity": False}, indent=2))
+    shortfalls = {k: max(0, 2 - counts[k]) for k in COMMITS}
+    # The frozen protocol explicitly permits a repository to have fewer than
+    # two qualifying occurrences. Record that shortfall and never substitute
+    # cases from another repository. Zero would indicate an unusable family.
+    integrity = (
+        all(1 <= counts[k] <= 2 for k in COMMITS)
+        and sum(counts.values()) >= 9
+    )
+    if not integrity:
+        print(json.dumps({
+            "selection_counts": counts,
+            "selection_shortfalls": shortfalls,
+            "selection_integrity": False,
+        }, indent=2))
         raise SystemExit("external v6 selection integrity failed")
     cases = [case for repo in COMMITS for case in groups[repo]]
-    if len({(c.repo, c.path, c.line, c.excerpt_sha256) for c in cases}) != 10:
+    if len({(c.repo, c.path, c.line, c.excerpt_sha256) for c in cases}) != len(cases):
         raise SystemExit("external v6 duplicate selection")
     return cases
 
@@ -273,6 +285,10 @@ def main() -> None:
     cases = select_all(roots)
     selection_summary = {
         "selection_counts": {repo: sum(c.repo == repo for c in cases) for repo in COMMITS},
+        "selection_shortfalls": {
+            repo: max(0, 2 - sum(c.repo == repo for c in cases))
+            for repo in COMMITS
+        },
         "selection_integrity": True,
         "case_count": len(cases),
         "protocol": "benchmarks/external_v6/PROTOCOL.md",
@@ -347,6 +363,7 @@ def main() -> None:
         "schema": report["schema"],
         "case_count": report["case_count"],
         "selection_counts": report["selection_counts"],
+        "selection_shortfalls": report["selection_shortfalls"],
         "selection_integrity": report["selection_integrity"],
         "system_primary_accuracy": report["system_primary_accuracy"],
         "model_advice_primary_accuracy": report["model_advice_primary_accuracy"],

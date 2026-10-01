@@ -55,16 +55,24 @@ jobs:
           tests/test_taint_v1.py
           tests/test_xss_v04.py
 
-      - name: Reproduce successful v0.4 checkpoint exactly
+      - name: Reuse exact successful v0.4 checkpoint
+        uses: actions/download-artifact@v4
+        with:
+          name: xss-dual-branch-v2-prepared
+          path: reused-v04
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 36844398034
+
+      - name: Materialize v0.4 checkpoint
+        shell: bash
         run: |
+          BACKBONE="$(find reused-v04 -type f -path '*/v04-dual-branch-backbone/config.json' -printf '%h\n' | head -1)"
+          test -n "$BACKBONE"
           rm -rf security-models/xss/v04-flow-v2-backbone
-          uv run --group slm python security-models/xss/scripts/train.py \
-            --data-dir security-models/xss/data \
-            --output-dir security-models/xss/v04-flow-v2-backbone \
-            --model google/bert_uncased_L-4_H-256_A-4 \
-            --epochs 5 \
-            --batch-size 32 \
-            --seed 1337
+          mkdir -p security-models/xss
+          cp -R "$BACKBONE" security-models/xss/v04-flow-v2-backbone
+          test -f security-models/xss/v04-flow-v2-backbone/config.json
 
       - name: Build native flow-relations v2 corpus
         run: |

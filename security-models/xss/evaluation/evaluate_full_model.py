@@ -78,13 +78,20 @@ def main() -> None:
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--external-binary", action="store_true")
     p.add_argument("--calibration", type=Path, default=None)
+    p.add_argument("--max-length", type=int, default=128,
+                   help="Use the same truncation length as training.")
     args = p.parse_args()
 
     rows = read_rows(args.data)
     tokenizer = AutoTokenizer.from_pretrained(args.model_dir)
     model = AutoModelForSequenceClassification.from_pretrained(args.model_dir)
     classify = pipeline("text-classification", model=model, tokenizer=tokenizer, top_k=None, device=-1)
-    scores = classify([r["code"] for r in rows], batch_size=32, truncation=True)
+    scores = classify(
+        [r["code"] for r in rows],
+        batch_size=32,
+        truncation=True,
+        max_length=args.max_length,
+    )
     calibration = json.loads(args.calibration.read_text()) if args.calibration else None
 
     def decide(items):

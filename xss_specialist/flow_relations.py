@@ -70,6 +70,39 @@ def relation_text(row: dict) -> str:
     return "\n".join(parts)
 
 
+
+def canonical_relation_text(row: dict) -> str:
+    """Canonical role-aware flow text that removes identifier memorization.
+
+    The original reviewed spans stay untouched for provenance/audit. This view is
+    only for the advisory flow model: exact source/sink expressions are replaced
+    by role tokens inside the excerpt so the model learns connectivity shape.
+    """
+    if row.get("task") != "FLOW_RELATION":
+        raise ValueError("expected task=FLOW_RELATION")
+    source = row.get("source_expression")
+    sink = row.get("sink_expression")
+    excerpt = row.get("flow_excerpt")
+    for name, value in (("source_expression", source), ("sink_expression", sink), ("flow_excerpt", excerpt)):
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"{name} must be a nonempty string")
+
+    normalized = excerpt
+    replacements = sorted(
+        ((source, "__SOURCE__"), (sink, "__SINK__")),
+        key=lambda item: len(item[0]),
+        reverse=True,
+    )
+    for value, token in replacements:
+        normalized = normalized.replace(value, token)
+
+    return (
+        "[SOURCE]\n__SOURCE__\n"
+        "[SINK]\n__SINK__\n"
+        f"[FLOW]\n{normalized}"
+    )
+
+
 def audit_relation_splits(splits: dict[str, list[dict]]) -> dict:
     identities = {}
     counts = {}

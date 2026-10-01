@@ -130,7 +130,10 @@ jobs:
         id: locate
         shell: bash
         run: |
-          BACKBONE="$(find prepared -type f -name config.json -path '*v04-multitask-backbone*' -printf '%h\n' | head -1)"
+          BACKBONE="$(find prepared -type f -path '*/v04-multitask-backbone/config.json' -printf '%h\n' | head -1)"
+          if [ -z "$BACKBONE" ]; then
+            BACKBONE="$(find prepared -type f -name config.json -path '*v04-multitask-backbone*' ! -path '*/checkpoint-*/*' -printf '%h\n' | head -1)"
+          fi
           TRAIN="$(find prepared -type f -path '*multitask-v1/train.jsonl' | head -1)"
           DEV="$(find prepared -type f -path '*multitask-v1/dev.jsonl' | head -1)"
           test -n "$BACKBONE"

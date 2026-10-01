@@ -158,7 +158,12 @@ def main():
     p.add_argument("--lr", type=float, default=1e-5)
     p.add_argument("--weight-decay", type=float, default=0.01)
     p.add_argument("--freeze-layers", type=int, default=1)
-    p.add_argument("--flow-sample-weight", type=float, default=20.0)
+    p.add_argument("--flow-sample-weight", type=float, default=8.0)
+    p.add_argument("--source-loss-weight", type=float, default=0.5)
+    p.add_argument("--sink-loss-weight", type=float, default=2.0)
+    p.add_argument("--defense-loss-weight", type=float, default=2.5)
+    p.add_argument("--flow-loss-weight", type=float, default=1.5)
+    p.add_argument("--class-balance-power", type=float, default=0.35)
     p.add_argument("--seed", type=int, default=4041)
     args = p.parse_args()
 
@@ -172,6 +177,44 @@ def main():
 
     train = JsonlDataset(args.train_data)
     dev = JsonlDataset(args.dev_data)
+
+    task_loss_weights = {
+        "source": args.source_loss_weight,
+        "sink": args.sink_loss_weight,
+        "defense": args.defense_loss_weight,
+        "flow": args.flow_loss_weight,
+    }
+
+    class_weights = {}
+    class_weight_report = {}
+    for task, labels in LABEL_SPACES.items():
+        counts = np.zeros(len(labels), dtype=np.float64)
+        key = f"{task}_label"
+        for row in train.rows:
+            value = int(row[key])
+            if value != IGNORE_INDEX:
+                counts[value] += 1.0
+
+        weights_for_task = np.zeros(len(labels), dtype=np.float32)
+        present = counts > 0
+        if present.any():
+            weights_for_task[present] = 1.0 / np.power(
+                counts[present], args.class_balance_power
+            )
+            weights_for_task[present] /= weights_for_task[present].mean()
+        class_weights[task] = torch.tensor(weights_for_task, dtype=torch.float32)
+        class_weight_report[task] = {
+            labels[i]: {
+                "count": int(counts[i]),
+                "weight": float(weights_for_task[i]),
+            }
+            for i in range(len(labels))
+        }
+
+    model.configure_losses(
+        task_loss_weights=task_loss_weights,
+        class_weights=class_weights,
+    )
 
     weights = []
     for row in train.rows:
@@ -263,6 +306,9 @@ def main():
         "learning_rate": args.lr,
         "freeze_layers": args.freeze_layers,
         "flow_sample_weight": args.flow_sample_weight,
+        "task_loss_weights": task_loss_weights,
+        "class_balance_power": args.class_balance_power,
+        "class_weights": class_weight_report,
         "seed": args.seed,
         "train_rows": len(train),
         "dev_rows": len(dev),

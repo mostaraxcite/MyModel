@@ -317,6 +317,29 @@ def extract_file(entry: dict, source_file: str, data: bytes, source_path: Path):
     return deduped, {"file": source_file, "status": "ok", "candidates": len(deduped)}
 
 
+def relation_identity(row: dict) -> tuple[str, str]:
+    content = (
+        f"[source_expression]\\n{row['source_expression']}\\n"
+        f"[sink_expression]\\n{row['sink_expression']}\\n"
+        f"[flow_excerpt]\\n{row['flow_excerpt']}"
+    )
+    return row["id"], hashlib.sha256(content.encode()).hexdigest()
+
+
+def dedupe_rows(rows: list[dict]) -> list[dict]:
+    seen_ids = set()
+    seen_content = set()
+    out = []
+    for row in rows:
+        ident, digest = relation_identity(row)
+        if ident in seen_ids or digest in seen_content:
+            continue
+        seen_ids.add(ident)
+        seen_content.add(digest)
+        out.append(row)
+    return out
+
+
 def balanced_select(rows: list[dict], per_class: int) -> list[dict]:
     selected = []
     for label in ("CONNECTED", "DISCONNECTED", "UNKNOWN"):
@@ -361,6 +384,10 @@ def build_split(entries: list[dict], per_class: int):
 
         # Cap each repository so one codebase cannot dominate a split.
         all_rows.extend(balanced_select(repo_rows, per_class))
+
+    # Remove exact duplicate reviewed relation inputs across repositories/files
+    # before balancing. The split audit treats content duplicates as leakage.
+    all_rows = dedupe_rows(all_rows)
 
     # Then balance the aggregate split by its smallest class.
     counts = count_labels(all_rows)

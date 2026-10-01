@@ -14,6 +14,7 @@ from transformers import AutoTokenizer
 
 from verification.browser_oracle import verify_dom_case
 from xss_specialist.dual_branch import XSSDualBranchModel, XSSFlowBranchModel, LABEL_SPACES
+from xss_specialist.flow_relations import deterministic_relation
 from xss_specialist.taint import analyze as taint_analyze
 
 
@@ -135,6 +136,30 @@ class IntegratedAdvisor:
         }
 
     @torch.no_grad()
+    def semantic_fields(
+        self,
+        *,
+        source_expression: str,
+        sink_expression: str,
+        defense_expression: str,
+    ) -> dict:
+        """Run v4 field heads using the exact task-tagged formulation used in training."""
+        fields = {
+            "source": source_expression,
+            "sink": sink_expression,
+            "defense": defense_expression,
+        }
+        result = {}
+        for task, expression in fields.items():
+            text = f"[{task.upper()}]\n{expression}"
+            tokens = self._encode(self.semantic_tokenizer, text, self.device)
+            out = self.semantic_model.forward_semantic(**tokens)
+            result[task] = _top(
+                _distribution(out.logits[task], LABEL_SPACES[task])
+            )
+        return result
+
+    @torch.no_grad()
     def flow(self, relation: dict) -> dict:
         required = ("source_expression", "sink_expression", "flow_excerpt")
         if any(not relation.get(k) for k in required):
@@ -144,6 +169,29 @@ class IntegratedAdvisor:
                 "probabilities": {},
                 "status": "MISSING_REVIEWED_RELATION_INPUT",
             }
+
+        # Hybrid policy: obvious bounded local relations are deterministic.
+        # The neural flow branch is advisory fallback only when the bounded
+        # relation engine cannot resolve the local value relation.
+        deterministic = deterministic_relation({"task": "FLOW_RELATION", **relation})
+        if deterministic.get("authoritative") or deterministic.get("reason") == "opaque_call_return":
+            label = deterministic["relation"]
+            probabilities = {
+                name: 1.0 if name == label else 0.0
+                for name in LABEL_SPACES["flow"]
+            }
+            return {
+                "label": label,
+                "confidence": 1.0,
+                "probabilities": probabilities,
+                "status": (
+                    "DETERMINISTIC_AUTHORITATIVE"
+                    if deterministic.get("authoritative")
+                    else "DETERMINISTIC_BOUNDED_ABSTAIN"
+                ),
+                "deterministic": deterministic,
+            }
+
         relation_text = (
             f"[SOURCE]\n{relation['source_expression']}\n"
             f"[SINK]\n{relation['sink_expression']}\n"
@@ -152,8 +200,32 @@ class IntegratedAdvisor:
         tokens = self._encode(self.flow_tokenizer, relation_text, self.device)
         out = self.flow_model(**tokens)
         result = _top(_distribution(out.logits["flow"], LABEL_SPACES["flow"]))
-        result["status"] = "ADVISORY_ONLY"
+        result["status"] = "NEURAL_ADVISORY_FALLBACK"
+        result["deterministic"] = deterministic
         return result
+
+    def review_fields(
+        self,
+        *,
+        source_expression: str,
+        sink_expression: str,
+        defense_expression: str,
+        relation: dict,
+    ) -> dict:
+        semantic = self.semantic_fields(
+            source_expression=source_expression,
+            sink_expression=sink_expression,
+            defense_expression=defense_expression,
+        )
+        return {
+            "engine": "xss-integrated-v4d",
+            "source": semantic["source"],
+            "sink": semantic["sink"],
+            "defense": semantic["defense"],
+            "flow": self.flow(relation),
+            "final_judge": False,
+            "confirmed": False,
+        }
 
 
 def _advisory_risk(semantic: dict, flow: dict | None) -> float:

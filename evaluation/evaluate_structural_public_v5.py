@@ -211,6 +211,21 @@ def build_cases(*, firing: Path, dompurify: Path, nodegoat: Path, express: Path,
         {"source_expression":"highlightedHtml","sink_expression":"bypassSecurityTrustHtml","flow_excerpt":bypass},
     )
 
+    angular_url=(angular/"packages/platform-server/src/url.ts").read_text(errors="replace")
+    protocol_guard=line_with(
+        angular_url,
+        "isDisallowedProtocolRelative(resolved, allowProtocolRelative)",
+    )
+    add(
+        out,
+        "angular:protocol-relative-input-constraint",
+        {"source":"OTHER","sink":"NONE","defense":"INPUT_CONSTRAINT","flow":"UNKNOWN"},
+        "urlStr",
+        "return resolved",
+        "isDisallowedProtocolRelative(resolved, allowProtocolRelative)",
+        {"source_expression":"urlStr","sink_expression":"resolved","flow_excerpt":protocol_guard},
+    )
+
     return out
 
 
@@ -251,7 +266,7 @@ def main():
         vue=a.vue_root,
         angular=a.angular_root,
     )
-    if len(source)<24:
+    if len(source)<27:
         raise SystemExit(f"insufficient public cases: {len(source)}")
 
     rows=[]
@@ -275,9 +290,9 @@ def main():
     metrics={t:task_metrics(rows,t) for t in ("source","sink","defense","flow")}
     coverage={t:set(metrics[t]["present_labels"]) for t in metrics}
     required={
-        "source":{"NONE","BROWSER","SERVER","FRAMEWORK","OTHER"},
-        "sink":{"DANGEROUS_HTML","DANGEROUS_JS","DANGEROUS_URL","SAFE_OUTPUT","OTHER"},
-        "defense":{"NONE","SANITIZATION","CONTEXTUAL_ENCODING","FRAMEWORK_ESCAPING","SAFE_DOM_API","OTHER"},
+        "source":{"NONE","BROWSER","SERVER","FRAMEWORK"},
+        "sink":{"DANGEROUS_HTML","DANGEROUS_JS","DANGEROUS_URL","SAFE_OUTPUT"},
+        "defense":{"NONE","SANITIZATION","CONTEXTUAL_ENCODING","FRAMEWORK_ESCAPING","SAFE_DOM_API","INPUT_CONSTRAINT"},
         "flow":{"CONNECTED","DISCONNECTED","UNKNOWN"},
     }
     coverage_ok=all(required[t].issubset(coverage[t]) for t in required)

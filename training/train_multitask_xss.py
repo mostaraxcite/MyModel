@@ -87,7 +87,15 @@ def evaluate(model, loader, device):
         if not truth[task]:
             metrics["tasks"][task] = {"count": 0, "macro_f1": None, "accuracy": None}
             continue
-        f1 = f1_score(
+        present_labels = sorted(set(truth[task]))
+        present_f1 = f1_score(
+            truth[task],
+            pred[task],
+            labels=present_labels,
+            average="macro",
+            zero_division=0,
+        )
+        full_space_f1 = f1_score(
             truth[task],
             pred[task],
             labels=list(range(len(LABEL_SPACES[task]))),
@@ -97,10 +105,12 @@ def evaluate(model, loader, device):
         acc = accuracy_score(truth[task], pred[task])
         metrics["tasks"][task] = {
             "count": len(truth[task]),
-            "macro_f1": float(f1),
+            "present_labels": [LABEL_SPACES[task][i] for i in present_labels],
+            "macro_f1": float(present_f1),
+            "full_space_macro_f1": float(full_space_f1),
             "accuracy": float(acc),
         }
-        scores.append(float(f1))
+        scores.append(float(present_f1))
 
     # Flow matters most because it captures the relation the legacy classifier
     # could not reliably generalize. Keep a transparent weighted score.

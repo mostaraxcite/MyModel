@@ -67,12 +67,16 @@ class XSSMultiTaskModel(nn.Module):
         self,
         input_ids: torch.Tensor,
         attention_mask: torch.Tensor,
+        token_type_ids: torch.Tensor | None = None,
         source_labels: torch.Tensor | None = None,
         sink_labels: torch.Tensor | None = None,
         defense_labels: torch.Tensor | None = None,
         flow_labels: torch.Tensor | None = None,
     ) -> MultiTaskOutput:
-        encoded = self.backbone(input_ids=input_ids, attention_mask=attention_mask)
+        backbone_kwargs = {"input_ids": input_ids, "attention_mask": attention_mask}
+        if token_type_ids is not None:
+            backbone_kwargs["token_type_ids"] = token_type_ids
+        encoded = self.backbone(**backbone_kwargs)
         pooled = getattr(encoded, "pooler_output", None)
         if pooled is None:
             pooled = encoded.last_hidden_state[:, 0]

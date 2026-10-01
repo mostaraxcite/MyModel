@@ -396,6 +396,18 @@ def build_split(entries: list[dict], per_class: int):
     return balanced, file_report, counts
 
 
+def remove_cross_split_content(train: list[dict], dev: list[dict]) -> tuple[list[dict], int]:
+    train_content = {relation_identity(row)[1] for row in train}
+    filtered = [
+        row for row in dev
+        if relation_identity(row)[1] not in train_content
+    ]
+    removed = len(dev) - len(filtered)
+    counts = count_labels(filtered)
+    usable = min(counts.values()) if counts else 0
+    return balanced_select(filtered, usable), removed
+
+
 def write_jsonl(path: Path, rows: list[dict]):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -428,12 +440,20 @@ def main():
         manifest["dev"], args.dev_per_class_per_repo
     )
 
+    # Enforce exact content disjointness across train/dev before any metric gate.
+    # Repository/framework disjointness alone is insufficient because common code
+    # idioms can still create identical relation inputs.
+    dev, cross_split_removed = remove_cross_split_content(train, dev)
+
     train_counts = count_labels(train)
     dev_counts = count_labels(dev)
     if min(train_counts.values()) < args.min_train_per_class:
         raise SystemExit(f"insufficient train flow corpus: {train_counts}")
     if min(dev_counts.values()) < args.min_dev_per_class:
-        raise SystemExit(f"insufficient dev flow corpus: {dev_counts}")
+        raise SystemExit(
+            f"insufficient dev flow corpus after cross-split dedupe: {dev_counts}; "
+            f"removed={cross_split_removed}"
+        )
 
     write_jsonl(args.output_dir / "train.jsonl", train)
     write_jsonl(args.output_dir / "dev.jsonl", dev)
@@ -448,6 +468,7 @@ def main():
         "dev_counts": dev_counts,
         "prebalance_train_counts": train_raw,
         "prebalance_dev_counts": dev_raw,
+        "cross_split_content_removed_from_dev": cross_split_removed,
         "train_repositories": [e["repository"] for e in manifest["train"]],
         "dev_repositories": [e["repository"] for e in manifest["dev"]],
         "locked_external_used": False,

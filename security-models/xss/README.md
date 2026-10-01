@@ -1,3 +1,8 @@
+> **Current status:** whole-snippet v0.x training is retired. Use the offline AST
+> path in [XSS_TAINT_V1.md](../../docs/XSS_TAINT_V1.md). The hybrid CLI now reviews
+> taint deterministically; `predict.py` and the instructions below are historical
+> research classifiers and cannot establish final safety or confirmed XSS.
+
 # XSS-SLM v0.4
 
 Three-way classifier for HTML/JavaScript snippets: `SAFE`, `POSSIBLE_XSS`, `XSS`.

@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   ablation:
+    if: ${{ false }} # Retired: whole-snippet classifier training; see docs/XSS_TAINT_V1.md
     name: ablation-${{ matrix.variant }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -75,6 +76,7 @@ jobs:
           path: security-models/xss/adapters/xss-v07-${{ matrix.variant }}/
 
   select:
+    if: ${{ false }} # Retired: whole-snippet classifier training; see docs/XSS_TAINT_V1.md
     name: select-best-validation-candidate
     needs: ablation
     runs-on: ubuntu-latest
@@ -139,6 +141,7 @@ jobs:
           path: v07_ablation_summary.json
 
   full-train:
+    if: ${{ false }} # Retired: whole-snippet classifier training; see docs/XSS_TAINT_V1.md
     name: full-train-v07-winner
     needs: select
     runs-on: ubuntu-latest

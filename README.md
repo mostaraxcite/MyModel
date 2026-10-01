@@ -118,6 +118,17 @@ RAG holds *volatile* knowledge, training holds *stable reusable* knowledge, eval
 
 ---
 
+## Current direction: offline XSS Taint Specialist v1
+
+The v0.x whole-snippet classifier training series is retired. The new default
+hybrid CLI uses a deterministic JavaScript AST source/flow/sink review; model
+scores are optional routing advice. Historical results below describe earlier
+experiments and are not performance claims for v1.
+
+See [XSS_TAINT_V1.md](docs/XSS_TAINT_V1.md) for usage, sanitizer trust assumptions,
+coverage boundaries, disjoint evaluation and remaining milestones. No v1 external
+accuracy has been measured and no new model has been promoted.
+
 ## Kev-style XSS decision model
 
 For the smaller CPU-first classifier path (`SAFE / POSSIBLE_XSS / XSS`), see
@@ -139,7 +150,8 @@ and it can never declare a finding `CONFIRMED`; browser execution remains author
 | Qwen3.5-0.8B LoRA + pointer-head checkpoint | Experimental; pipeline validated, gate rejected |
 | Calibrated released weights | Not yet available |
 
-The official XSS classifier training entry point is `training/train_peft.py`:
+The historical XSS classifier training entry point was `training/train_peft.py`
+(now retired and blocked):
 MiniLM-L6 (`nreimers/MiniLM-L6-H384-uncased`) with a PEFT LoRA adapter and a
 three-class classification head. The promoted runtime remains the v0.4
 bert-tiny baseline; the current xss-v0.5 adapter is retained as a rejected

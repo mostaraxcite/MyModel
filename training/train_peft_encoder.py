@@ -167,6 +167,8 @@ def _sha256(path: Path) -> str:
 
 
 def main() -> None:
+    from training.legacy_policy import require_supported_training
+    require_supported_training()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-model", default=DEFAULT_BASE_MODEL)
     parser.add_argument("--train-data", type=Path, default=Path("security-models/xss/data/train.jsonl"))

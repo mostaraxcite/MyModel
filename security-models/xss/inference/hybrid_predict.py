@@ -1,65 +1,36 @@
-"""Run classifier triage and mark cases that require browser confirmation."""
+"""Offline AST taint review; an optional legacy adapter supplies routing scores only."""
 from __future__ import annotations
 
 import argparse
 import json
 from pathlib import Path
 
-from xss_specialist.adapter_registry import ROOT, default_registry
-from xss_specialist.browser_confirmation import finalize_with_browser
-from xss_specialist.router_factory import build_router
+from xss_specialist.taint import analyze
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("code", nargs="?", default="")
-    parser.add_argument(
-        "--adapter",
-        default=None,
-        help="Adapter name from the registry. Defaults to the active adapter.",
-    )
-    parser.add_argument("--direct-threshold", type=float, default=0.90)
-    parser.add_argument("--xss-threshold", type=float, default=0.85)
-    parser.add_argument("--list", action="store_true", help="List adapters and exit.")
+    parser.add_argument('code', nargs='?', default='')
+    parser.add_argument('--file', type=Path)
+    parser.add_argument('--adapter', help='Optional advisory classifier; never the final judge')
+    parser.add_argument('--trusted-module', action='append', default=[])
+    parser.add_argument('--list', action='store_true')
     args = parser.parse_args()
-
     if args.list:
-        reg = default_registry()
-        adapters = []
-        for spec in reg.list_adapters():
-            raw = Path(spec.path)
-            resolved = raw if raw.is_absolute() else (ROOT / raw).resolve()
-            adapters.append({**spec.to_dict(), "artifact_available": resolved.exists()})
-        print(json.dumps({"active": reg.active, "adapters": adapters}, indent=2))
+        from xss_specialist.adapter_registry import default_registry
+        registry = default_registry()
+        print(json.dumps({'engine':'xss-taint-v1', 'risk_adapters':[s.to_dict() for s in registry.list_adapters()]}, indent=2))
         return
-
-    if not args.code:
-        parser.error("code is required unless --list is used")
-
-    router, spec = build_router(
-        args.adapter,
-        direct_threshold=args.direct_threshold,
-        xss_threshold=args.xss_threshold,
-    )
-    result = router.predict(args.code)
-    final = finalize_with_browser(args.code, result)
-    payload = {
-        "adapter": spec.name,
-        "adapter_kind": spec.kind,
-        "base_model": spec.base_model,
-        "triage_verdict": result.verdict,
-        "verdict": final.verdict,
-        "confirmed": final.confirmed,
-        "confidence": result.confidence,
-        "route": result.route,
-        "requires_oracle": result.requires_oracle,
-        "confirmation_status": final.confirmation_status,
-        "browser_evidence": final.browser_evidence,
-        "escalation_reason": result.escalation_reason,
-        "specialist_output": result.specialist_output,
-    }
-    print(json.dumps(payload, indent=2))
+    if bool(args.code) == bool(args.file):
+        parser.error('provide exactly one of code or --file')
+    code = args.file.read_text() if args.file else args.code
+    scores = None
+    if args.adapter:
+        from xss_specialist.adapter_registry import load_classifier
+        classifier, _ = load_classifier(args.adapter)
+        scores = {r['label']:float(r['score']) for r in classifier(code, truncation=True)[0]}
+    print(json.dumps(analyze(code, trusted_modules=tuple(args.trusted_module), risk_scores=scores), indent=2))
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   train-v08:
+    if: ${{ false }} # Retired: whole-snippet classifier training; see docs/XSS_TAINT_V1.md
     runs-on: ubuntu-latest
     timeout-minutes: 210
     env:

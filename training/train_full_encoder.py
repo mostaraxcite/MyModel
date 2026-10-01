@@ -62,6 +62,8 @@ def metrics(eval_pred) -> dict:
 
 
 def main() -> None:
+    from training.legacy_policy import require_supported_training
+    require_supported_training()
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--model", default="google/bert_uncased_L-4_H-256_A-4")
     p.add_argument("--train-data", type=Path, required=True)

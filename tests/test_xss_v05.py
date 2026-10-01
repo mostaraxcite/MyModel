@@ -17,12 +17,10 @@ from xss_specialist.adapter_registry import (
 from xss_specialist.oracle import analyze
 
 
-def test_official_peft_entrypoint_is_minilm_lora():
-    from training.train_peft import main as official_main
-    from training.train_peft_encoder import DEFAULT_BASE_MODEL, main as encoder_main
-
-    assert official_main is encoder_main
-    assert DEFAULT_BASE_MODEL == "nreimers/MiniLM-L6-H384-uncased"
+def test_official_peft_entrypoint_is_retired():
+    from training.train_peft import main
+    with pytest.raises(SystemExit, match="retired"):
+        main()
 
 
 # -------- Adapter registry --------

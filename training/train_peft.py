@@ -1,12 +1,11 @@
-"""Official PEFT training entry point for XSS Specialist v0.5+.
-
-The supported architecture is MiniLM-L6 with a LoRA sequence-classification
-adapter. The implementation remains in ``train_peft_encoder`` so existing
-automation that imports that module continues to work.
-"""
+"""Retired whole-snippet classifier entry point; fail before loading ML dependencies."""
 from __future__ import annotations
 
-from training.train_peft_encoder import main
+from training.legacy_policy import require_supported_training
+
+
+def main():
+    require_supported_training()
 
 
 if __name__ == "__main__":

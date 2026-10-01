@@ -23,6 +23,7 @@ env:
 
 jobs:
   prepare-data:
+    if: ${{ false }} # Retired: whole-snippet classifier training; see docs/XSS_TAINT_V1.md
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -251,6 +252,7 @@ jobs:
             security-models/xss/evaluation/v13_realworld_build.log
 
   candidate:
+    if: ${{ false }} # Retired: whole-snippet classifier training; see docs/XSS_TAINT_V1.md
     needs: prepare-data
     runs-on: ubuntu-latest
     timeout-minutes: 240
@@ -411,6 +413,7 @@ jobs:
             security-models/xss/evaluation/v13_pos${{ matrix.positive_pct }}_score.json
 
   select:
+    if: ${{ false }} # Retired: whole-snippet classifier training; see docs/XSS_TAINT_V1.md
     needs: candidate
     runs-on: ubuntu-latest
     outputs:
@@ -471,6 +474,7 @@ jobs:
           path: v13_selection.json
 
   final-eval:
+    if: ${{ false }} # Retired: whole-snippet classifier training; see docs/XSS_TAINT_V1.md
     needs: select
     runs-on: ubuntu-latest
     timeout-minutes: 120

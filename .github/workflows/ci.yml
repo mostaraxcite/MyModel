@@ -26,3 +26,4 @@ jobs:
           tests/test_xss_v05.py
           tests/test_v05_fixes.py
           tests/test_pipeline.py
+          tests/test_taint_v1.py

@@ -5,7 +5,7 @@ on:
   push:
     branches: [main]
     paths:
-      - ".github/workflows/evaluate-xss-structural-public-v5.yml"
+      - ".github/workflows/evaluate-xss-v4d-public-v5.yml"
       - "evaluation/evaluate_structural_public_v5.py"
       - "xss_specialist/semantic_oracle.py"
       - "xss_specialist/flow_relations.py"

@@ -1,0 +1,158 @@
+name: Evaluate XSS v4d Public Structural Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/evaluate-xss-structural-public-v5.yml"
+      - "evaluation/evaluate_structural_public_v5.py"
+      - "xss_specialist/semantic_oracle.py"
+      - "xss_specialist/flow_relations.py"
+      - "xss_specialist/field_advisor.py"
+      - "tests/test_semantic_oracle.py"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: xss-v4d-public-structural
+  cancel-in-progress: true
+
+env:
+  SEMANTIC_RUN_ID: "36900022333"
+  SEMANTIC_ARTIFACT: "xss-sink-v4d-lr3e4-e12"
+  FLOW_RUN_ID: "36867388302"
+  FLOW_ARTIFACT: "xss-flow-v2-candidate-f0-lr3e5-e8"
+  FIRING_RANGE_SHA: "4f991a6418b07a66cd63006f4a2bec27c84b72f4"
+  DOMPURIFY_SHA: "368ee78d528087ab192bcf06838013ec61c87ec8"
+  NODEGOAT_SHA: "c5cb68a7084e4ae7dcc60e6a98768720a81841e8"
+  EXPRESS_SHA: "7ef98448f8b38099ab1ded55e458538ad47a51e7"
+  JQUERY_SHA: "dc2b78f92c0e8939c80feb3311abdd535af0b55f"
+  VUE_SHA: "4ab865a848a1da3d10fb674f857e5fff13094644"
+  ANGULAR_SHA: "3f9191166936166085320652eef1a562504aa3e4"
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+
+      - name: Install dependencies
+        run: uv sync --group slm --group dev
+
+      - name: Regression tests
+        run: |
+          uv run pytest -q tests/test_semantic_oracle.py tests/test_flow_relations.py tests/test_taint_v1.py
+
+      - name: Download selected semantic model
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.SEMANTIC_ARTIFACT }}
+          path: semantic
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.SEMANTIC_RUN_ID }}
+
+      - name: Download canonical flow winner
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.FLOW_ARTIFACT }}
+          path: flow
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.FLOW_RUN_ID }}
+
+      - name: Locate models
+        id: locate
+        shell: bash
+        run: |
+          SEM="$(find semantic -type f -name dual_branch_config.json -printf '%h\n' | head -1)"
+          FLOW="$(find flow -type f -name flow_branch_config.json -printf '%h\n' | head -1)"
+          test -n "$SEM"; test -n "$FLOW"
+          echo "semantic=$SEM" >> "$GITHUB_OUTPUT"
+          echo "flow=$FLOW" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch seven pinned public repositories
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p external
+
+          fetch_repo() {
+            local dir="$1"
+            local url="$2"
+            local sha="$3"
+            git init "external/$dir"
+            git -C "external/$dir" remote add origin "$url"
+            git -C "external/$dir" fetch --depth 1 origin "$sha"
+            git -C "external/$dir" checkout --detach FETCH_HEAD
+          }
+
+          fetch_repo firing-range https://github.com/google/firing-range.git "$FIRING_RANGE_SHA"
+          fetch_repo DOMPurify https://github.com/cure53/DOMPurify.git "$DOMPURIFY_SHA"
+          fetch_repo NodeGoat https://github.com/OWASP/NodeGoat.git "$NODEGOAT_SHA"
+          fetch_repo express https://github.com/expressjs/express.git "$EXPRESS_SHA"
+          fetch_repo jquery https://github.com/jquery/jquery.git "$JQUERY_SHA"
+          fetch_repo vue https://github.com/vuejs/core.git "$VUE_SHA"
+          fetch_repo angular https://github.com/angular/angular.git "$ANGULAR_SHA"
+
+      - name: Run broader public structural gate
+        run: |
+          uv run --group slm python evaluation/evaluate_structural_public_v5.py \
+            --semantic-dir "${{ steps.locate.outputs.semantic }}" \
+            --flow-dir "${{ steps.locate.outputs.flow }}" \
+            --firing-range-root external/firing-range \
+            --dompurify-root external/DOMPurify \
+            --nodegoat-root external/NodeGoat \
+            --express-root external/express \
+            --jquery-root external/jquery \
+            --vue-root external/vue \
+            --angular-root external/angular \
+            --output reports/xss-v4d-public-structural.json
+
+      - name: Build public-gated research bundle
+        if: success()
+        shell: bash
+        run: |
+          mkdir -p artifacts/xss-v4d-public-structural/semantic artifacts/xss-v4d-public-structural/flow
+          cp -R "${{ steps.locate.outputs.semantic }}"/. artifacts/xss-v4d-public-structural/semantic/
+          cp -R "${{ steps.locate.outputs.flow }}"/. artifacts/xss-v4d-public-structural/flow/
+          cp reports/xss-v4d-public-structural.json artifacts/xss-v4d-public-structural/
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          cfg={
+              "schema":"xss-v4d-public-structural",
+              "semantic_candidate":"lr3e4-e12",
+              "flow_candidate":"f0-lr3e5-e8",
+              "public_repository_gate":"7 pinned upstream repositories",
+              "model_can_confirm_xss":False,
+              "browser_execution_required_for_confirmation":True,
+              "locked_hard_or_external_used":False,
+              "promotion_allowed":False
+          }
+          Path("artifacts/xss-v4d-public-structural/config.json").write_text(
+              json.dumps(cfg,indent=2)+"\n"
+          )
+          print(json.dumps(cfg,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xss-v4d-public-structural
+          retention-days: 30
+          path: |
+            reports/xss-v4d-public-structural.json
+            artifacts/xss-v4d-public-structural/

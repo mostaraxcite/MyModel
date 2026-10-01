@@ -234,3 +234,73 @@ class XSSDualBranchModel(nn.Module):
         model.semantic_heads.load_state_dict(sem)
         model.flow_head.load_state_dict(flow)
         return model
+
+
+class XSSFlowBranchModel(nn.Module):
+    """Standalone flow branch initialized from the v0.4-compatible encoder."""
+
+    def __init__(self, backbone_name_or_path: str):
+        super().__init__()
+        self.backbone_name_or_path = backbone_name_or_path
+        self.backbone = AutoModel.from_pretrained(backbone_name_or_path)
+        hidden = int(self.backbone.config.hidden_size)
+        self.dropout = nn.Dropout(0.1)
+        self.head = _mlp(hidden, len(FLOW_LABELS))
+        self.class_weights: torch.Tensor | None = None
+
+    def configure_class_weights(self, weights: torch.Tensor | None) -> None:
+        self.class_weights = weights
+
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        attention_mask: torch.Tensor,
+        token_type_ids: torch.Tensor | None = None,
+        flow_labels: torch.Tensor | None = None,
+    ) -> BranchOutput:
+        kwargs = {"input_ids": input_ids, "attention_mask": attention_mask}
+        if token_type_ids is not None:
+            kwargs["token_type_ids"] = token_type_ids
+        encoded = self.backbone(**kwargs)
+        pooled = self.dropout(_pooled(encoded))
+        logits = {"flow": self.head(pooled)}
+
+        loss = None
+        if flow_labels is not None and flow_labels.ne(IGNORE_INDEX).any():
+            weight = self.class_weights
+            if weight is not None:
+                weight = weight.to(logits["flow"].device)
+            loss = nn.functional.cross_entropy(
+                logits["flow"],
+                flow_labels,
+                weight=weight,
+                ignore_index=IGNORE_INDEX,
+            )
+        return BranchOutput(loss=loss, logits=logits)
+
+    def save(self, output_dir: str | Path) -> None:
+        output = Path(output_dir)
+        output.mkdir(parents=True, exist_ok=True)
+        self.backbone.save_pretrained(output / "flow_backbone")
+        torch.save(self.head.state_dict(), output / "flow_head.pt")
+        (output / "flow_branch_config.json").write_text(
+            json.dumps({
+                "schema": "xss-flow-branch-v2",
+                "flow_backbone": "flow_backbone",
+                "labels": FLOW_LABELS,
+                "final_judge": False,
+                "confirmation_authority": "deterministic_or_browser_execution_only",
+            }, indent=2) + "\n"
+        )
+
+    @classmethod
+    def load(cls, output_dir: str | Path, map_location: str = "cpu"):
+        output = Path(output_dir)
+        model = cls(str(output / "flow_backbone"))
+        state = torch.load(
+            output / "flow_head.pt",
+            map_location=map_location,
+            weights_only=True,
+        )
+        model.head.load_state_dict(state)
+        return model

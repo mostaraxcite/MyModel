@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: xss-dual-branch-v2
+  group: xss-dual-branch-v2-final
   cancel-in-progress: true
 
 env:

@@ -46,7 +46,7 @@ def download(repository: str, commit: str, path: str) -> bytes:
 
 
 def save_snapshot(repository: str, path: str, data: bytes) -> Path:
-    dest = SOURCE_ROOT / repository / path
+    dest = (SOURCE_ROOT / repository / path).resolve()
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(data)
     return dest
@@ -190,7 +190,7 @@ def relation_row(*, repository, framework, commit, source_file, source_path,
             "license": "upstream license snapshot included",
             "source_file": source_file,
             "source_sha256": source_sha,
-            "source_snapshot": str(source_path.relative_to(ROOT)),
+            "source_snapshot": str(source_path.resolve().relative_to(ROOT.resolve())),
             "excerpt_span": {
                 "start_byte": excerpt_start,
                 "end_byte": excerpt_end,

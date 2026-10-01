@@ -9,7 +9,8 @@ import torch
 from transformers import AutoTokenizer
 
 from xss_specialist.dual_branch import XSSDualBranchModel, XSSFlowBranchModel, LABEL_SPACES
-from xss_specialist.flow_relations import canonical_relation_text
+from xss_specialist.flow_relations import canonical_relation_text, deterministic_relation
+from xss_specialist.semantic_oracle import classify_source, classify_sink, classify_defense
 
 
 def _top(logits: torch.Tensor, labels: list[str]) -> dict:
@@ -40,18 +41,54 @@ class StructuralFieldAdvisor:
             raise ValueError(f"unsupported semantic field task: {task}")
         text=f"[{task.upper()}]\n{expression}"
         out=self.semantic_model.forward_semantic(**self._encode(self.semantic_tokenizer,text,96))
-        result=_top(out.logits[task],LABEL_SPACES[task])
-        result.update({"task":task,"expression":expression,"advisory_only":True,"confirmed":False})
-        return result
+        model=_top(out.logits[task],LABEL_SPACES[task])
+
+        oracle_fn={
+            "source": classify_source,
+            "sink": classify_sink,
+            "defense": classify_defense,
+        }[task]
+        deterministic=oracle_fn(expression)
+
+        # Known explicit APIs/literals are structural facts and do not need a
+        # statistical guess. Unrecognized fields remain OTHER; model output is
+        # retained only as routing advice.
+        label=deterministic["label"]
+        confidence=1.0 if label != "OTHER" else float(model["confidence"])
+        return {
+            "label":label,
+            "confidence":confidence,
+            "task":task,
+            "expression":expression,
+            "authority":"deterministic" if label != "OTHER" else "bounded_unknown",
+            "deterministic":deterministic,
+            "model_advice":model,
+            "advisory_only":True,
+            "confirmed":False,
+        }
 
     @torch.no_grad()
     def flow(self, relation: dict) -> dict:
         row={"task":"FLOW_RELATION",**relation}
         text=canonical_relation_text(row)
         out=self.flow_model(**self._encode(self.flow_tokenizer,text,128))
-        result=_top(out.logits["flow"],LABEL_SPACES["flow"])
-        result.update({"task":"flow","advisory_only":True,"confirmed":False})
-        return result
+        model=_top(out.logits["flow"],LABEL_SPACES["flow"])
+        deterministic=deterministic_relation(row)
+
+        # A deterministic CONNECTED/DISCONNECTED local relation wins. For an
+        # abstention the structural result stays UNKNOWN; the neural branch can
+        # only prioritize review and cannot turn uncertainty into proof.
+        relation_label=deterministic["relation"]
+        return {
+            "label":relation_label,
+            "confidence":1.0 if deterministic["authoritative"] else float(model["confidence"]),
+            "task":"flow",
+            "authority":"deterministic" if deterministic["authoritative"] else "bounded_unknown",
+            "deterministic":deterministic,
+            "model_advice":model,
+            "advisory_only":True,
+            "confirmed":False,
+        }
 
     def review_fields(self, *, source_expression: str, sink_expression: str,
                       defense_expression: str, relation: dict) -> dict:

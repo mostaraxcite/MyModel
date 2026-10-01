@@ -1,0 +1,499 @@
+name: Train XSS v0.4.1 Continual
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/train-v041-continual.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xss-v041-continual
+  cancel-in-progress: false
+
+env:
+  TOKENIZERS_PARALLELISM: "false"
+  PYTHONUNBUFFERED: "1"
+  FIRING_RANGE_SHA: "4f991a6418b07a66cd63006f4a2bec27c84b72f4"
+  DOMPURIFY_SHA: "368ee78d528087ab192bcf06838013ec61c87ec8"
+  SANITIZE_HTML_SHA: "6ac6b8ea4898c2ba7f843d8cdd5f7d036d760a0e"
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+
+      - name: Install dependencies
+        run: uv sync --group slm --group dev
+
+      - name: Regression tests
+        run: >
+          uv run pytest -q
+          tests/test_router.py
+          tests/test_xss_v04.py
+          tests/test_taint_v1.py
+          tests/test_pipeline.py
+
+      - name: Reproduce v0.4 checkpoint exactly
+        run: |
+          rm -rf security-models/xss/v04-reproduced
+          uv run --group slm python security-models/xss/scripts/train.py \
+            --data-dir security-models/xss/data \
+            --output-dir security-models/xss/v04-reproduced \
+            --model google/bert_uncased_L-4_H-256_A-4 \
+            --epochs 5 \
+            --batch-size 32 \
+            --seed 1337
+
+      - name: Build SAFE hard-negative curriculum
+        run: |
+          uv run python security-models/xss/scripts/build_v12_safe_hard_negatives.py \
+            --seed 2041 \
+            --groups 2400 \
+            --validation-fraction 0.20
+
+      - name: Fetch pinned independent real-world sources
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p external
+
+          git init external/firing-range
+          git -C external/firing-range remote add origin https://github.com/google/firing-range.git
+          git -C external/firing-range fetch --depth 1 origin "$FIRING_RANGE_SHA"
+          git -C external/firing-range checkout --detach FETCH_HEAD
+
+          git init external/DOMPurify
+          git -C external/DOMPurify remote add origin https://github.com/cure53/DOMPurify.git
+          git -C external/DOMPurify fetch --depth 1 origin "$DOMPURIFY_SHA"
+          git -C external/DOMPurify checkout --detach FETCH_HEAD
+
+          git init external/sanitize-html
+          git -C external/sanitize-html remote add origin https://github.com/apostrophecms/sanitize-html.git
+          git -C external/sanitize-html fetch --depth 1 origin "$SANITIZE_HTML_SHA"
+          git -C external/sanitize-html checkout --detach FETCH_HEAD
+
+      - name: Build independent real-world development split
+        run: |
+          uv run python security-models/xss/scripts/build_v08_realworld.py \
+            --firing-range-root external/firing-range \
+            --dompurify-root external/DOMPurify \
+            --sanitize-html-root external/sanitize-html \
+            --external-test security-models/xss/data/external_test_v5.jsonl \
+            --output-dir security-models/xss/data \
+            --seed 2041 \
+            --validation-fraction 0.35
+
+      - name: Build replay correction corpus
+        run: |
+          uv run python - <<'PY'
+          import hashlib, json, random
+          from collections import defaultdict
+          from pathlib import Path
+
+          data = Path("security-models/xss/data")
+
+          def read(name):
+              return [json.loads(x) for x in (data / name).read_text().splitlines() if x]
+
+          def digest(row):
+              return hashlib.sha256(row["code"].encode()).hexdigest()
+
+          original = read("train.jsonl")
+          original_val = read("validation.jsonl")
+          safe_train = read("safe_hard_train_v12.jsonl")
+          safe_val = read("safe_hard_validation_v12.jsonl")
+          real_train = read("realworld_train_v08.jsonl")
+          real_val = read("realworld_validation_v08.jsonl")
+          locked = read("hard_test.jsonl") + read("external_test_v5.jsonl")
+
+          forbidden = {digest(r) for r in original_val + safe_val + real_val + locked}
+
+          by_label = defaultdict(list)
+          for row in original:
+              by_label[row["label"]].append(row)
+
+          rng = random.Random(2041)
+          replay = []
+          for label in ("SAFE", "POSSIBLE_XSS", "XSS"):
+              rows = list(by_label[label])
+              rng.shuffle(rows)
+              replay.extend(rows[:min(2000, len(rows))])
+
+          safe_groups = defaultdict(list)
+          for row in safe_train:
+              safe_groups[row["group_id"]].append(row)
+          keys = sorted(safe_groups)
+          rng.shuffle(keys)
+          take = max(1, round(len(keys) * 0.25))
+          corrections = [r for key in keys[:take] for r in safe_groups[key]]
+
+          merged, seen = [], set()
+          for row in replay + corrections + real_train:
+              h = digest(row)
+              if h in forbidden or h in seen:
+                  continue
+              seen.add(h)
+              merged.append(row)
+
+          rng.shuffle(merged)
+          (data / "train_v041_replay.jsonl").write_text(
+              "".join(json.dumps(r, sort_keys=True) + "\n" for r in merged)
+          )
+
+          manifest = {
+              "seed": 2041,
+              "original_replay_rows": len(replay),
+              "safe_correction_groups": take,
+              "realworld_train_rows": len(real_train),
+              "final_rows": len(merged),
+              "labels": {
+                  label: sum(r["label"] == label for r in merged)
+                  for label in ("SAFE", "POSSIBLE_XSS", "XSS")
+              },
+              "locked_overlap": len({digest(r) for r in merged} & {digest(r) for r in locked}),
+              "dev_overlap": len({digest(r) for r in merged} & {digest(r) for r in original_val + safe_val + real_val}),
+          }
+          assert manifest["locked_overlap"] == 0
+          assert manifest["dev_overlap"] == 0
+          (data / "manifest_v041_replay.json").write_text(json.dumps(manifest, indent=2) + "\n")
+          print(json.dumps(manifest, indent=2))
+          PY
+
+      - name: Verify reproduced v0.4 on original validation
+        run: |
+          uv run --group slm python security-models/xss/evaluation/evaluate_full_model.py \
+            --model-dir security-models/xss/v04-reproduced \
+            --data security-models/xss/data/validation.jsonl \
+            --output security-models/xss/evaluation/v041_reproduced_validation.json \
+            --max-length 128
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xss-v041-prepared
+          retention-days: 14
+          path: |
+            security-models/xss/v04-reproduced/
+            security-models/xss/data/train_v041_replay.jsonl
+            security-models/xss/data/validation.jsonl
+            security-models/xss/data/safe_hard_validation_v12.jsonl
+            security-models/xss/data/realworld_validation_v08.jsonl
+            security-models/xss/data/manifest_v041_replay.json
+            security-models/xss/evaluation/v041_reproduced_validation.json
+
+  candidate:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - slug: f2-lr5e6-e1
+            freeze: 2
+            lr: 0.000005
+            epochs: 1
+          - slug: f2-lr5e6-e2
+            freeze: 2
+            lr: 0.000005
+            epochs: 2
+          - slug: f1-lr5e6-e1
+            freeze: 1
+            lr: 0.000005
+            epochs: 1
+          - slug: f2-lr1e5-e1
+            freeze: 2
+            lr: 0.00001
+            epochs: 1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+
+      - name: Install dependencies
+        run: uv sync --group slm --group dev
+
+      - name: Download v0.4 checkpoint and replay data
+        uses: actions/download-artifact@v4
+        with:
+          name: xss-v041-prepared
+          path: security-models/xss
+
+      - name: Continual fine-tune from v0.4
+        run: |
+          OUT="security-models/xss/full-models/v041-${{ matrix.slug }}"
+          rm -rf "$OUT"
+          uv run --group slm python training/train_v04_continual.py \
+            --model-dir security-models/xss/v04-reproduced \
+            --train-data security-models/xss/data/train_v041_replay.jsonl \
+            --validation-data security-models/xss/data/validation.jsonl \
+            --output-dir "$OUT" \
+            --run-name "xss-v0.4.1-${{ matrix.slug }}" \
+            --epochs ${{ matrix.epochs }} \
+            --batch-size 32 \
+            --max-length 128 \
+            --lr ${{ matrix.lr }} \
+            --freeze-layers ${{ matrix.freeze }} \
+            --seed 1337
+
+      - name: Evaluate original v0.4 validation
+        run: |
+          uv run --group slm python security-models/xss/evaluation/evaluate_full_model.py \
+            --model-dir "security-models/xss/full-models/v041-${{ matrix.slug }}" \
+            --data security-models/xss/data/validation.jsonl \
+            --output "security-models/xss/evaluation/v041_${{ matrix.slug }}_original.json" \
+            --max-length 128
+
+      - name: Evaluate SAFE correction holdout
+        run: |
+          uv run --group slm python security-models/xss/evaluation/evaluate_full_model.py \
+            --model-dir "security-models/xss/full-models/v041-${{ matrix.slug }}" \
+            --data security-models/xss/data/safe_hard_validation_v12.jsonl \
+            --output "security-models/xss/evaluation/v041_${{ matrix.slug }}_safe.json" \
+            --max-length 128
+
+      - name: Evaluate independent real-world holdout
+        run: |
+          uv run --group slm python security-models/xss/evaluation/evaluate_full_model.py \
+            --model-dir "security-models/xss/full-models/v041-${{ matrix.slug }}" \
+            --data security-models/xss/data/realworld_validation_v08.jsonl \
+            --output "security-models/xss/evaluation/v041_${{ matrix.slug }}_real.json" \
+            --external-binary \
+            --max-length 128
+
+      - name: Score candidate
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          slug = "${{ matrix.slug }}"
+          root = Path("security-models/xss/evaluation")
+          original = json.loads((root / f"v041_{slug}_original.json").read_text())
+          safe = json.loads((root / f"v041_{slug}_safe.json").read_text())
+          real = json.loads((root / f"v041_{slug}_real.json").read_text())
+
+          o = original["classification_report"]
+          s = safe["classification_report"]
+          original_macro = float(o["macro avg"]["f1-score"])
+          safe_macro = float(s["macro avg"]["f1-score"])
+          safe_recall = float(s["SAFE"]["recall"])
+          xss_recall = float(s["XSS"]["recall"])
+
+          viable = bool(
+              original_macro >= 0.95
+              and safe_macro >= 0.85
+              and safe_recall >= 0.90
+              and xss_recall >= 0.85
+              and real["coverage"] >= 0.90
+              and real["decided_macro_f1"] >= 0.85
+              and real["xss_false_positive_rate_all"] <= 0.15
+              and real["xss_false_negative_rate_all"] <= 0.10
+          )
+
+          score = (
+              0.25 * original_macro
+              + 0.20 * safe_macro
+              + 0.20 * float(real["decided_macro_f1"])
+              + 0.15 * (1.0 - float(real["xss_false_positive_rate_all"]))
+              + 0.10 * (1.0 - float(real["xss_false_negative_rate_all"]))
+              + 0.10 * float(real["coverage"])
+          )
+
+          out = {
+              "slug": slug,
+              "viable": viable,
+              "score": score,
+              "original_macro_f1": original_macro,
+              "safe_holdout": {
+                  "macro_f1": safe_macro,
+                  "safe_recall": safe_recall,
+                  "xss_recall": xss_recall,
+              },
+              "realworld": {
+                  "coverage": real["coverage"],
+                  "macro_f1": real["decided_macro_f1"],
+                  "xss_fpr": real["xss_false_positive_rate_all"],
+                  "xss_fnr": real["xss_false_negative_rate_all"],
+              },
+          }
+          path = root / f"v041_{slug}_score.json"
+          path.write_text(json.dumps(out, indent=2) + "\n")
+          print(path.read_text())
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xss-v041-candidate-${{ matrix.slug }}
+          retention-days: 30
+          path: |
+            security-models/xss/full-models/v041-${{ matrix.slug }}/
+            security-models/xss/evaluation/v041_${{ matrix.slug }}_original.json
+            security-models/xss/evaluation/v041_${{ matrix.slug }}_safe.json
+            security-models/xss/evaluation/v041_${{ matrix.slug }}_real.json
+            security-models/xss/evaluation/v041_${{ matrix.slug }}_score.json
+
+  select:
+    needs: candidate
+    runs-on: ubuntu-latest
+    outputs:
+      slug: ${{ steps.pick.outputs.slug }}
+      score: ${{ steps.pick.outputs.score }}
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: xss-v041-candidate-*
+          path: candidates
+          merge-multiple: false
+
+      - name: Select only viable continual candidate
+        id: pick
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          slugs = ("f2-lr5e6-e1", "f2-lr5e6-e2", "f1-lr5e6-e1", "f2-lr1e5-e1")
+          rows = []
+          for slug in slugs:
+              matches = list(Path("candidates").rglob(f"v041_{slug}_score.json"))
+              if len(matches) != 1:
+                  raise RuntimeError(f"missing score for {slug}: {matches}")
+              rows.append(json.loads(matches[0].read_text()))
+
+          viable = [r for r in rows if r["viable"]]
+          if not viable:
+              print(json.dumps({"candidates": rows, "winner": None, "stopped": True}, indent=2))
+              raise SystemExit("No v0.4.1 candidate passed development gates; locked tests remain untouched.")
+
+          viable.sort(
+              key=lambda r: (
+                  r["score"],
+                  -r["realworld"]["xss_fpr"],
+                  -r["realworld"]["xss_fnr"],
+                  r["original_macro_f1"],
+              ),
+              reverse=True,
+          )
+          winner = viable[0]
+          print(json.dumps({"candidates": rows, "winner": winner, "stopped": False}, indent=2))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"slug={winner['slug']}\n")
+              f.write(f"score={winner['score']}\n")
+          PY
+
+  final-eval:
+    needs: select
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      WINNER_SLUG: ${{ needs.select.outputs.slug }}
+      DEV_SCORE: ${{ needs.select.outputs.score }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+
+      - name: Install dependencies
+        run: uv sync --group slm --group dev
+
+      - name: Download selected candidate
+        uses: actions/download-artifact@v4
+        with:
+          name: xss-v041-candidate-${{ needs.select.outputs.slug }}
+          path: selected
+
+      - name: Locate model
+        id: locate
+        run: |
+          MODEL_DIR="$(find selected -type f -name config.json -printf '%h\n' | head -1)"
+          test -n "$MODEL_DIR"
+          echo "model=$MODEL_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Final Hard Test v4
+        run: |
+          uv run --group slm python security-models/xss/evaluation/evaluate_full_model.py \
+            --model-dir "${{ steps.locate.outputs.model }}" \
+            --data security-models/xss/data/hard_test.jsonl \
+            --output security-models/xss/evaluation/v041_hard.json \
+            --max-length 128
+
+      - name: Final External Test v5
+        run: |
+          uv run --group slm python security-models/xss/evaluation/evaluate_full_model.py \
+            --model-dir "${{ steps.locate.outputs.model }}" \
+            --data security-models/xss/data/external_test_v5.jsonl \
+            --output security-models/xss/evaluation/v041_external.json \
+            --external-binary \
+            --max-length 128
+
+      - name: Final summary
+        run: |
+          uv run python - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          root = Path("security-models/xss/evaluation")
+          hard = json.loads((root / "v041_hard.json").read_text())
+          ext = json.loads((root / "v041_external.json").read_text())
+
+          out = {
+              "candidate": "xss-v0.4.1-continual",
+              "winner_slug": os.environ["WINNER_SLUG"],
+              "development_score": float(os.environ["DEV_SCORE"]),
+              "method": "continual fine-tune from reproduced v0.4 with low-LR replay",
+              "max_length": 128,
+              "hard_test_v4": {
+                  "macro_f1": hard["classification_report"]["macro avg"]["f1-score"],
+                  "promotion": hard["promotion"],
+                  "false_rates": hard["false_rates"],
+              },
+              "external_test_v5": {
+                  "coverage": ext["coverage"],
+                  "decided_macro_f1": ext["decided_macro_f1"],
+                  "xss_false_positive_rate_all": ext["xss_false_positive_rate_all"],
+                  "xss_false_negative_rate_all": ext["xss_false_negative_rate_all"],
+                  "promotion": ext["promotion"],
+              },
+          }
+          out["eligible_for_promotion"] = bool(
+              out["hard_test_v4"]["promotion"]["passed"]
+              and out["external_test_v5"]["promotion"]["passed"]
+          )
+          (root / "v041_summary.json").write_text(json.dumps(out, indent=2) + "\n")
+          print(json.dumps(out, indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xss-v041-final
+          retention-days: 30
+          path: |
+            security-models/xss/evaluation/v041_hard.json
+            security-models/xss/evaluation/v041_external.json
+            security-models/xss/evaluation/v041_summary.json

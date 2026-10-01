@@ -20,3 +20,11 @@ def test_real_defense_semantics():
     assert classify_defense('v-text="foo"')["label"] == "FRAMEWORK_ESCAPING"
     # Angular bypass APIs explicitly disable sanitization; do not mislabel them as protection.
     assert classify_defense("sanitizer.bypassSecurityTrustHtml(value)")["label"] == "OTHER"
+
+
+def test_additional_framework_security_apis():
+    assert classify_sink("render(unsafeHTML(content))")["label"] == "DANGEROUS_HTML"
+    assert classify_sink('x-html="content"')["label"] == "DANGEROUS_HTML"
+    assert classify_sink('x-text="content"')["label"] == "SAFE_OUTPUT"
+    assert classify_defense("Handlebars.Utils.escapeExpression(value)")["label"] == "CONTEXTUAL_ENCODING"
+    assert classify_defense('x-text="content"')["label"] == "FRAMEWORK_ESCAPING"

@@ -21,7 +21,7 @@ def classify_source(expression: str) -> dict:
         "window.name","localstorage","sessionstorage","event.data","evt.data","message.data",
     )
     server=("req.query","req.body","req.params","request.query","request.body","request.params","$_get","$_post")
-    framework=("props.","route.params","router.query","parammap","ctx.params","pageprops","params.")
+    framework=("props.","route.params","router.query","parammap","ctx.params","pageprops","params.","_ctx.")
     if any(x in low for x in browser):
         return {"label":"BROWSER","matched":"known_browser_source"}
     if any(x in low for x in server):
@@ -38,10 +38,10 @@ def classify_source(expression: str) -> dict:
 
 def classify_sink(expression: str) -> dict:
     low=_s(expression)
-    html=("innerhtml","outerhtml","document.write","document.writeln","insertadjacenthtml",".html(","dangerouslysetinnerhtml")
+    html=("innerhtml","outerhtml","document.write","document.writeln","insertadjacenthtml",".html(","dangerouslysetinnerhtml","res.send(","v-html=")
     js=("eval(","function(","new function(","settimeout(","setinterval(")
-    url=(".href =", ".src =", ".action =", ".formaction =", "object.data =")
-    safe=("textcontent","innertext","insertadjacenttext",".text(","createtextnode","nodevalue")
+    url=(".href =", ".src =", ".action =", ".formaction =", "object.data =","res.redirect(")
+    safe=("textcontent","innertext","insertadjacenttext",".text(","createtextnode","nodevalue","v-text=")
     if any(x in low for x in html):
         return {"label":"DANGEROUS_HTML","matched":"known_html_sink"}
     if any(x in low for x in js):

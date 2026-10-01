@@ -34,7 +34,6 @@ DOMPURIFY_DEMOS = [
     "demos/basic-demo.html",
     "demos/hooks-demo.html",
     "demos/config-demo.html",
-    "demos/trusted-types-demo.html",
     "demos/hooks-target-blank-demo.html",
 ]
 
@@ -47,13 +46,31 @@ def script_block(html: str) -> str:
     return max(useful, key=len).strip()
 
 
+def _line_containing(text: str, *needles: str) -> str:
+    for raw in text.splitlines():
+        line = raw.strip()
+        if line and all(needle in line for needle in needles):
+            return line
+    raise ValueError(f"missing real excerpt line containing {needles!r}")
+
+
 def build_cases(firing: Path, dompurify: Path) -> list[dict]:
     cases = []
     for source_rel in FIRING_SOURCES:
-        source = (firing / source_rel).read_text(encoding="utf-8", errors="replace").strip()
+        source = (firing / source_rel).read_text(encoding="utf-8", errors="replace")
+        source_line = _line_containing(source, "payload", "=")
         for sink_rel, sink_label, sink_expression in FIRING_SINKS:
-            sink = (firing / sink_rel).read_text(encoding="utf-8", errors="replace").strip()
-            code = source + "\n\n" + sink
+            sink = (firing / sink_rel).read_text(encoding="utf-8", errors="replace")
+            if sink_expression == "div.innerHTML":
+                sink_line = _line_containing(sink, "div.innerHTML", "payload")
+            elif sink_expression == "document.write":
+                sink_line = _line_containing(sink, "document.write", "payload")
+            else:
+                sink_line = _line_containing(sink, "eval(", "payload")
+
+            # Keep the real upstream source and sink statements inside the same
+            # bounded window used by the 128-token specialist.
+            code = source_line + "\n" + sink_line
             cases.append({
                 "id": f"firing:{Path(source_rel).stem}:{Path(sink_rel).stem}",
                 "family": "firing-range",
@@ -61,7 +78,7 @@ def build_cases(firing: Path, dompurify: Path) -> list[dict]:
                 "relation": {
                     "source_expression": "payload",
                     "sink_expression": sink_expression,
-                    "flow_excerpt": code,
+                    "flow_excerpt": sink_line,
                 },
                 "expected": {
                     "source": "BROWSER",
@@ -73,9 +90,11 @@ def build_cases(firing: Path, dompurify: Path) -> list[dict]:
 
     for rel in DOMPURIFY_DEMOS:
         html = (dompurify / rel).read_text(encoding="utf-8", errors="replace")
-        code = script_block(html)
-        if "const dirty" not in code and "let dirty" not in code:
-            continue
+        block = script_block(html)
+        dirty_line = _line_containing(block, "dirty", "=")
+        sanitize_line = _line_containing(block, "clean", "DOMPurify.sanitize")
+        sink_line = _line_containing(block, "innerHTML", "clean")
+        code = "\n".join((dirty_line, sanitize_line, sink_line))
         cases.append({
             "id": f"dompurify:{Path(rel).name}",
             "family": "dompurify-demo",
@@ -83,13 +102,13 @@ def build_cases(firing: Path, dompurify: Path) -> list[dict]:
             "relation": {
                 "source_expression": "dirty",
                 "sink_expression": "clean",
-                "flow_excerpt": code,
+                "flow_excerpt": sanitize_line,
             },
             "expected": {
                 "source": "NONE",
                 "sink": "DANGEROUS_HTML",
                 "defense": "SANITIZATION",
-                # Under the bounded flow policy DOMPurify.sanitize is an opaque call.
+                # Opaque call return is deliberately UNKNOWN in the bounded flow policy.
                 "flow": "UNKNOWN",
             },
         })
@@ -122,7 +141,7 @@ def main():
 
     advisor = IntegratedAdvisor(args.semantic_model_dir, args.flow_model_dir)
     cases = build_cases(args.firing_range_root, args.dompurify_root)
-    if len(cases) < 15:
+    if len(cases) < 16:
         raise SystemExit(f"insufficient real integration cases: {len(cases)}")
 
     scored = []

@@ -43,6 +43,7 @@ jobs:
         run: |
           uv run python -m py_compile \
             xss_specialist/dual_branch.py \
+            xss_specialist/dual_branch_review.py \
             training/train_dual_branch_xss.py \
             training/build_multitask_xss_data.py
 

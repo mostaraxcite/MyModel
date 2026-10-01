@@ -94,7 +94,9 @@ def select_html_sinks(repo: str, root: Path) -> list[Case]:
         lowrel = rel.lower()
         if any(x in lowrel for x in ("/test", "/tests", "/spec", "__test")):
             continue
-        for lineno, raw in enumerate(p.read_text(errors="replace").splitlines(), 1):
+        lines = p.read_text(errors="replace").splitlines()
+        for i, raw in enumerate(lines):
+            lineno = i + 1
             line = raw.strip()
 
             # Lexical protocol: dynamic assignment through an HTML-producing DOM API.
@@ -106,14 +108,15 @@ def select_html_sinks(repo: str, root: Path) -> list[Case]:
                     "DANGEROUS_HTML",
                 ))
 
-            # Or a dynamic second argument to insertAdjacentHTML.
+            # Handle both one-line and formatted multi-line insertAdjacentHTML calls.
             if "insertAdjacentHTML" in line:
-                m = re.search(r"insertAdjacentHTML\s*\((?P<args>[^;]+)\)", line)
+                window = " ".join(x.strip() for x in lines[i:min(len(lines), i + 6)])
+                m = re.search(r"insertAdjacentHTML\s*\((?P<args>.*?)\)", window)
                 if m:
                     args = m.group("args").split(",", 1)
                     if len(args) == 2 and not _literal(args[1]):
                         out.append(_case(
-                            repo, rel, lineno, line, "sink",
+                            repo, rel, lineno, window, "sink",
                             f"element.insertAdjacentHTML({args[0].strip()}, VALUE)",
                             "DANGEROUS_HTML",
                         ))
@@ -140,6 +143,8 @@ def select_mustache(root: Path) -> list[Case]:
             patterns = (
                 r"\bescapeHtml\s*\(\s*(?P<arg>[^,)]+)",
                 r"\b(?:Mustache|mustache)\.escape\s*\(\s*(?P<arg>[^,)]+)",
+                r"\b[A-Za-z_$][\w$]*\.escape\s*\(\s*(?P<arg>[^,)]+)",
+                r"\bescape\s*\(\s*(?P<arg>[^,)]+)",
             )
             for pattern in patterns:
                 for m in re.finditer(pattern, line):

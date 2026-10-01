@@ -1,0 +1,299 @@
+name: Train XSS DualBranch v2
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/train-xss-dual-branch-v2.yml"
+      - "xss_specialist/dual_branch.py"
+      - "xss_specialist/dual_branch_review.py"
+      - "training/train_dual_branch_xss.py"
+      - "training/build_multitask_xss_data.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xss-dual-branch-v2
+  cancel-in-progress: true
+
+env:
+  TOKENIZERS_PARALLELISM: "false"
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+
+      - name: Install dependencies
+        run: uv sync --group slm --group dev
+
+      - name: Compile dual-branch path
+        run: |
+          uv run python -m py_compile \
+            xss_specialist/dual_branch.py \
+            training/train_dual_branch_xss.py \
+            training/build_multitask_xss_data.py
+
+      - name: Core regression tests
+        run: >
+          uv run pytest -q
+          tests/test_xss_v04.py
+          tests/test_taint_v1.py
+          tests/test_flow_relations.py
+          tests/test_pipeline.py
+
+      - name: Reproduce successful v0.4 checkpoint exactly
+        run: |
+          rm -rf security-models/xss/v04-dual-branch-backbone
+          uv run --group slm python security-models/xss/scripts/train.py \
+            --data-dir security-models/xss/data \
+            --output-dir security-models/xss/v04-dual-branch-backbone \
+            --model google/bert_uncased_L-4_H-256_A-4 \
+            --epochs 5 \
+            --batch-size 32 \
+            --seed 1337
+
+      - name: Build masked structural data
+        run: |
+          rm -rf data/dual-branch-v2
+          uv run python training/build_multitask_xss_data.py \
+            --train-per-template 160 \
+            --dev-per-template 100 \
+            --output-dir data/dual-branch-v2
+
+      - name: Show dataset manifest
+        run: cat data/dual-branch-v2/manifest.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xss-dual-branch-v2-prepared
+          retention-days: 14
+          path: |
+            security-models/xss/v04-dual-branch-backbone/
+            data/dual-branch-v2/train.jsonl
+            data/dual-branch-v2/dev.jsonl
+            data/dual-branch-v2/manifest.json
+
+  candidate:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - slug: v2-s2e5-f2e5-r16
+            semantic_lr: 0.00002
+            flow_lr: 0.00002
+            semantic_freeze: 0
+            flow_freeze: 0
+            flow_repeat: 16
+            sink_loss: 2.0
+            defense_loss: 2.5
+            semantic_power: 0.35
+          - slug: v2-s3e5-f2e5-r16
+            semantic_lr: 0.00003
+            flow_lr: 0.00002
+            semantic_freeze: 0
+            flow_freeze: 0
+            flow_repeat: 16
+            sink_loss: 2.0
+            defense_loss: 2.5
+            semantic_power: 0.35
+          - slug: v2-s2e5-f1e5-r24
+            semantic_lr: 0.00002
+            flow_lr: 0.00001
+            semantic_freeze: 0
+            flow_freeze: 0
+            flow_repeat: 24
+            sink_loss: 2.25
+            defense_loss: 2.75
+            semantic_power: 0.30
+          - slug: v2-s2e5-f2e5-r20-sf1
+            semantic_lr: 0.00002
+            flow_lr: 0.00002
+            semantic_freeze: 1
+            flow_freeze: 0
+            flow_repeat: 20
+            sink_loss: 2.25
+            defense_loss: 3.0
+            semantic_power: 0.30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+
+      - name: Install dependencies
+        run: uv sync --group slm --group dev
+
+      - name: Download prepared v0.4 backbone and data
+        uses: actions/download-artifact@v4
+        with:
+          name: xss-dual-branch-v2-prepared
+          path: prepared
+
+      - name: Locate prepared paths
+        id: locate
+        shell: bash
+        run: |
+          BACKBONE="$(find prepared -type f -path '*/v04-dual-branch-backbone/config.json' -printf '%h\n' | head -1)"
+          if [ -z "$BACKBONE" ]; then
+            BACKBONE="$(find prepared -type f -name config.json -path '*v04-dual-branch-backbone*' ! -path '*/checkpoint-*/*' -printf '%h\n' | head -1)"
+          fi
+          TRAIN="$(find prepared -type f -path '*dual-branch-v2/train.jsonl' | head -1)"
+          DEV="$(find prepared -type f -path '*dual-branch-v2/dev.jsonl' | head -1)"
+          test -n "$BACKBONE"
+          test -n "$TRAIN"
+          test -n "$DEV"
+          echo "backbone=$BACKBONE" >> "$GITHUB_OUTPUT"
+          echo "train=$TRAIN" >> "$GITHUB_OUTPUT"
+          echo "dev=$DEV" >> "$GITHUB_OUTPUT"
+
+      - name: Train isolated dual branches
+        run: |
+          OUT="artifacts/xss-dual-branch-v2-${{ matrix.slug }}"
+          uv run --group slm python training/train_dual_branch_xss.py \
+            --backbone "${{ steps.locate.outputs.backbone }}" \
+            --train-data "${{ steps.locate.outputs.train }}" \
+            --dev-data "${{ steps.locate.outputs.dev }}" \
+            --output-dir "$OUT" \
+            --epochs 8 \
+            --batch-size 32 \
+            --max-length 128 \
+            --semantic-lr ${{ matrix.semantic_lr }} \
+            --flow-lr ${{ matrix.flow_lr }} \
+            --semantic-freeze-layers ${{ matrix.semantic_freeze }} \
+            --flow-freeze-layers ${{ matrix.flow_freeze }} \
+            --flow-repeat ${{ matrix.flow_repeat }} \
+            --source-loss-weight 0.5 \
+            --sink-loss-weight ${{ matrix.sink_loss }} \
+            --defense-loss-weight ${{ matrix.defense_loss }} \
+            --semantic-class-power ${{ matrix.semantic_power }} \
+            --flow-class-power 0.0 \
+            --seed 5051
+
+      - name: Gate dual-branch component
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          slug = "${{ matrix.slug }}"
+          root = Path(f"artifacts/xss-dual-branch-v2-{slug}")
+          report = json.loads((root / "training_report.json").read_text())
+          best = json.loads((root / "best_metrics.json").read_text())["dev"]
+          tasks = best["tasks"]
+
+          source = float(tasks["source"]["macro_f1"])
+          sink = float(tasks["sink"]["macro_f1"])
+          defense = float(tasks["defense"]["macro_f1"])
+          flow = float(tasks["flow"]["macro_f1"])
+          weighted = float(best["weighted_macro_f1"])
+
+          viable = bool(
+              source >= 0.90
+              and sink >= 0.90
+              and defense >= 0.85
+              and flow >= 0.55
+              and weighted >= 0.78
+          )
+
+          result = {
+              "slug": slug,
+              "viable": viable,
+              "weighted_macro_f1": weighted,
+              "source_macro_f1": source,
+              "sink_macro_f1": sink,
+              "defense_macro_f1": defense,
+              "flow_macro_f1": flow,
+              "flow_accuracy": tasks["flow"]["accuracy"],
+              "architecture": report["architecture"],
+              "branches_share_trainable_parameters": report["branches_share_trainable_parameters"],
+              "whole_snippet_classifier_loss": report["whole_snippet_classifier_loss"],
+          }
+          path = root / "candidate_score.json"
+          path.write_text(json.dumps(result, indent=2) + "\n")
+          print(path.read_text())
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xss-dual-branch-v2-candidate-${{ matrix.slug }}
+          retention-days: 30
+          path: artifacts/xss-dual-branch-v2-${{ matrix.slug }}/
+
+  select:
+    needs: candidate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: xss-dual-branch-v2-candidate-*
+          path: candidates
+          merge-multiple: false
+
+      - name: Select best dual-branch component
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          rows = [
+              json.loads(path.read_text())
+              for path in Path("candidates").rglob("candidate_score.json")
+          ]
+          if len(rows) != 4:
+              raise RuntimeError(f"expected 4 candidate scores, got {len(rows)}")
+
+          rows.sort(
+              key=lambda r: (
+                  r["viable"],
+                  r["weighted_macro_f1"],
+                  r["flow_macro_f1"],
+                  r["defense_macro_f1"],
+                  r["sink_macro_f1"],
+              ),
+              reverse=True,
+          )
+          winner = rows[0]
+          summary = {
+              "schema": "xss-dual-branch-v2-selection",
+              "candidates": rows,
+              "winner": winner,
+              "research_gate_passed": bool(winner["viable"]),
+              "promotion_allowed": False,
+              "locked_hard_or_external_used": False,
+              "next_gate": "independent real XSS semantic/flow corpus plus deterministic/browser integration",
+          }
+          Path("xss_dual_branch_v2_selection.json").write_text(
+              json.dumps(summary, indent=2) + "\n"
+          )
+          print(json.dumps(summary, indent=2))
+          if not winner["viable"]:
+              raise SystemExit("No dual-branch candidate passed the research component gate.")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xss-dual-branch-v2-selection
+          retention-days: 30
+          path: xss_dual_branch_v2_selection.json

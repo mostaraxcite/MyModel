@@ -96,17 +96,31 @@ def select_html_sinks(repo: str, root: Path) -> list[Case]:
             continue
         for lineno, raw in enumerate(p.read_text(errors="replace").splitlines(), 1):
             line = raw.strip()
-            m = re.search(r"(?P<lhs>[A-Za-z_$][\w$\.\[\]'\"-]*\.(?:innerHTML|outerHTML))\s*=\s*(?P<rhs>.+?);?\s*$", line)
+
+            # Lexical protocol: dynamic assignment through an HTML-producing DOM API.
+            m = re.search(r"\b(?P<api>innerHTML|outerHTML)\s*=(?!=)\s*(?P<rhs>.+?);?\s*$", line)
             if m and not _literal(m.group("rhs")):
-                out.append(_case(repo, rel, lineno, line, "sink", f"{m.group('lhs')} = VALUE", "DANGEROUS_HTML"))
-            for cm in re.finditer(r"(?P<call>[A-Za-z_$][\w$\.\[\]'\"-]*\.insertAdjacentHTML)\s*\((?P<args>[^;]+)\)", line):
-                args = cm.group("args").split(",", 1)
-                if len(args) == 2 and not _literal(args[1]):
-                    out.append(_case(repo, rel, lineno, line, "sink", f"{cm.group('call')}({args[0].strip()}, VALUE)", "DANGEROUS_HTML"))
+                out.append(_case(
+                    repo, rel, lineno, line, "sink",
+                    f"element.{m.group('api')} = VALUE",
+                    "DANGEROUS_HTML",
+                ))
+
+            # Or a dynamic second argument to insertAdjacentHTML.
+            if "insertAdjacentHTML" in line:
+                m = re.search(r"insertAdjacentHTML\s*\((?P<args>[^;]+)\)", line)
+                if m:
+                    args = m.group("args").split(",", 1)
+                    if len(args) == 2 and not _literal(args[1]):
+                        out.append(_case(
+                            repo, rel, lineno, line, "sink",
+                            f"element.insertAdjacentHTML({args[0].strip()}, VALUE)",
+                            "DANGEROUS_HTML",
+                        ))
+
             if len(out) >= 2:
                 return out[:2]
     return out[:2]
-
 
 def select_mustache(root: Path) -> list[Case]:
     out = []
@@ -123,13 +137,21 @@ def select_mustache(root: Path) -> list[Case]:
             line = raw.strip()
             if "function escapeHtml" in line:
                 continue
-            for m in re.finditer(r"\bescapeHtml\s*\(\s*(?P<arg>[^,)]+)", line):
-                arg = m.group("arg").strip()
-                if _literal(arg):
-                    continue
-                out.append(_case("mustache", rel, lineno, line, "defense", "escapeHtml(VALUE)", "CONTEXTUAL_ENCODING"))
-                if len(out) >= 2:
-                    return out[:2]
+            patterns = (
+                r"\bescapeHtml\s*\(\s*(?P<arg>[^,)]+)",
+                r"\b(?:Mustache|mustache)\.escape\s*\(\s*(?P<arg>[^,)]+)",
+            )
+            for pattern in patterns:
+                for m in re.finditer(pattern, line):
+                    arg = m.group("arg").strip()
+                    if _literal(arg):
+                        continue
+                    out.append(_case(
+                        "mustache", rel, lineno, line, "defense",
+                        "escapeHtml(VALUE)", "CONTEXTUAL_ENCODING",
+                    ))
+                    if len(out) >= 2:
+                        return out[:2]
     return out[:2]
 
 
@@ -144,14 +166,14 @@ def _koa_source_expected(expr: str) -> str:
 
 def select_koa(root: Path) -> list[Case]:
     out = []
-    for rel, p in _files(root, ("lib", "examples", "test", "tests")):
+    for rel, p in _files(root, ("lib", "examples", "test", "tests", "__tests__")):
         for lineno, raw in enumerate(p.read_text(errors="replace").splitlines(), 1):
             line = raw.strip()
-            m = re.search(r"\b(?:ctx|context)\.body\s*=\s*(?P<rhs>.+?);?\s*$", line)
+            m = re.search(r"\b(?:ctx|context|this|res|response)\.body\s*=\s*(?P<rhs>.+?);?\s*$", line)
             if m and not _literal(m.group("rhs")):
                 expr = m.group("rhs").strip().rstrip(";")
                 out.append(_case("koa", rel, lineno, line, "source", expr, _koa_source_expected(expr)))
-            m = re.search(r"\b(?:ctx|context)\.redirect\s*\(\s*(?P<arg>[^,)]+)", line)
+            m = re.search(r"\b(?:ctx|context|this|res|response)\.redirect\s*\(\s*(?P<arg>[^,)]+)", line)
             if m and not _literal(m.group("arg")):
                 expr = m.group("arg").strip()
                 out.append(_case("koa", rel, lineno, line, "source", expr, _koa_source_expected(expr)))

@@ -259,8 +259,21 @@ def main():
     parser.add_argument("file", type=Path, help="Local JavaScript file; no URL inputs")
     parser.add_argument("--trusted-module", action="append", default=[],
                         help="Audited dependency identity; currently supports dompurify default HTML only")
+    parser.add_argument("--relation-model", type=Path, help="Optional advisory JSON flow-relation model")
+    parser.add_argument("--relation-record", type=Path, help="Reviewed relation spans bound to the input SHA256")
     args = parser.parse_args()
-    print(json.dumps(analyze(args.file.read_text(), trusted_modules=tuple(args.trusted_module)), indent=2))
+    if bool(args.relation_model) != bool(args.relation_record):
+        parser.error("--relation-model and --relation-record must be provided together")
+    code = args.file.read_text()
+    result = analyze(code, trusted_modules=tuple(args.trusted_module))
+    if args.relation_model:
+        import hashlib
+        from xss_specialist.flow_relations import FlowRelationAdvisor, advise_review
+        record = json.loads(args.relation_record.read_text())
+        if record.get("snippet_sha256") != hashlib.sha256(code.encode()).hexdigest():
+            parser.error("relation record is not bound to this JavaScript input")
+        result = advise_review(result, FlowRelationAdvisor(args.relation_model).predict(record))
+    print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":

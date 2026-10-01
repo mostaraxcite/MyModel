@@ -27,3 +27,4 @@ jobs:
           tests/test_v05_fixes.py
           tests/test_pipeline.py
           tests/test_taint_v1.py
+          tests/test_flow_relations.py

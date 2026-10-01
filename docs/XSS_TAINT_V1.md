@@ -89,3 +89,62 @@ Collect independently sourced, auditable group-disjoint cases; quantify coverage
 and error categories. Extend flow only for measured gaps. Then consider a small
 model for unresolved relations and a local isolated browser evidence bridge.
 Do not train five specialist models before proving which relations need learning.
+
+## Flow-relation training path
+
+A separate `training.train_flow_relations` entry point now trains a compact
+TF-IDF/logistic-regression baseline on bounded source/sink/flow spans. This is an
+advisory statistical baseline, not a new SLM and not a replacement whole-snippet
+XSS classifier. It outputs CONNECTED, DISCONNECTED or UNKNOWN probabilities.
+No predicted relation can override static safety, confirmation or oracle requirements.
+
+Each training/development JSONL row must contain:
+
+| Field | Required content |
+|---|---|
+| `id` | Unique relation identity |
+| `task` | `FLOW_RELATION` |
+| `source_expression` | Reviewed source expression, 1–4096 characters |
+| `sink_expression` | Reviewed sink expression, 1–4096 characters |
+| `flow_excerpt` | Reviewed bounded flow, 1–4096 characters |
+| `label` | `CONNECTED`, `DISCONNECTED` or `UNKNOWN` |
+| `verification.status` | `REVIEWED` |
+| `verification.reviewer` | Independent reviewer identity |
+| `verification.rationale` | Why the relation label is supported |
+| `verification.reference` | Review/evidence reference |
+| `provenance` | Actual repository, framework, template and generator identities |
+
+Group identities and exact relation inputs must be disjoint across training and
+development. Independent labels must come from audited code-flow review, not from
+the new analyzer's own output or rewritten v0.x labels. Minimum counts are 20 per
+class in training and 10 per class in development, as initial operational floors,
+not a statistically established sample-size guarantee. The external test is not
+accepted by this trainer and remains untouched. Model weights are inert JSON,
+not pickle. No candidate is auto-promoted.
+
+```
+uv run python -m training.train_flow_relations \
+  --train reviewed_relations_train.jsonl \
+  --dev reviewed_relations_dev.jsonl \
+  --output security-models/xss/adapters/flow-relation-v1
+```
+
+To attach an advisor to local review after a candidate exists:
+
+```
+uv run xss-taint local.js \
+  --relation-model security-models/xss/adapters/flow-relation-v1/model.json \
+  --relation-record reviewed_relation.json
+```
+
+The inference record also needs `snippet_sha256`, matching the UTF-8 code passed
+to the analyzer. Advice changes review priority only. A disconnected prediction
+never suppresses a candidate, resolves an abstention, or skips browser requirements.
+Probabilities are uncalibrated research scores and are not correctness guarantees.
+
+The attempted run on the repository's current `train.jsonl` and `validation.jsonl`
+was blocked before fitting: they contain whole-snippet classifier records, not
+independently reviewed relation records. See
+[`training_readiness.json`](../reports/taint-v1/training_readiness.json). No research
+checkpoint was created. The numerical serialization test uses artificial unit-test
+fixtures in a temporary directory and is not a training release or evaluation result.

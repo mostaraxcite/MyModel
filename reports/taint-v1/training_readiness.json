@@ -1,0 +1,47 @@
+{
+  "status": "BLOCKED_DATA_PREFLIGHT",
+  "reason": "expected task=FLOW_RELATION; whole-snippet classifier records are unsupported",
+  "training_started": false,
+  "promotion_allowed": false,
+  "external_evaluated": false,
+  "inputs": {
+    "train": {
+      "path": "security-models/xss/data/train.jsonl",
+      "sha256": "03ca0164efb25fad2195a2ea96015c3402dcda7988af0aacbd06a734e13967c9",
+      "records": 13564,
+      "reviewed_flow_relations": 0,
+      "complete_group_metadata": 0,
+      "labels": {
+        "XSS": 5708,
+        "POSSIBLE_XSS": 2619,
+        "SAFE": 5237
+      }
+    },
+    "validation": {
+      "path": "security-models/xss/data/validation.jsonl",
+      "sha256": "7b3886f697710308ab949e5741d698485b2841f931850a310a36bdb62fae127c",
+      "records": 1023,
+      "reviewed_flow_relations": 0,
+      "complete_group_metadata": 0,
+      "labels": {
+        "XSS": 410,
+        "SAFE": 408,
+        "POSSIBLE_XSS": 205
+      }
+    }
+  },
+  "minimum_needed": {
+    "train_per_class": 20,
+    "dev_per_class": 10,
+    "classes": [
+      "CONNECTED",
+      "DISCONNECTED",
+      "UNKNOWN"
+    ]
+  },
+  "validation": {
+    "local_tests_passed": 71,
+    "numerical_fit_serialization_test": "temporary artificial unit-test fixtures only",
+    "locked_external_opened": false
+  }
+}

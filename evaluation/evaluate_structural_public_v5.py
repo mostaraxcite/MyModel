@@ -204,7 +204,7 @@ def build_cases(*, firing: Path, dompurify: Path, nodegoat: Path, express: Path,
     add(
         out,
         "angular:security-bypass-open-set",
-        {"source":"OTHER","sink":"OTHER","defense":"OTHER","flow":"UNKNOWN"},
+        {"source":"OTHER","sink":"NONE","defense":"OTHER","flow":"CONNECTED"},
         "highlightedHtml",
         bypass,
         bypass,

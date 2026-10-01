@@ -461,7 +461,7 @@ def main():
     audit = audit_relation_splits({"train": train, "dev": dev})
     report = {
         "schema": "xss-flow-relations-v2-build",
-        "source_manifest": str(args.manifest.relative_to(ROOT)),
+        "source_manifest": str(args.manifest.resolve().relative_to(ROOT.resolve())),
         "train_rows": len(train),
         "dev_rows": len(dev),
         "train_counts": train_counts,

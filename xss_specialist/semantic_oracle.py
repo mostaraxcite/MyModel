@@ -38,10 +38,10 @@ def classify_source(expression: str) -> dict:
 
 def classify_sink(expression: str) -> dict:
     low=_s(expression)
-    html=("innerhtml","outerhtml","document.write","document.writeln","insertadjacenthtml",".html(","dangerouslysetinnerhtml","res.send(","v-html=")
+    html=("innerhtml","outerhtml","document.write","document.writeln","insertadjacenthtml",".html(","dangerouslysetinnerhtml","res.send(","v-html=","x-html","unsafehtml(")
     js=("eval(","function(","new function(","settimeout(","setinterval(")
     url=(".href =", ".src =", ".action =", ".formaction =", "object.data =","res.redirect(")
-    safe=("textcontent","innertext","insertadjacenttext",".text(","createtextnode","nodevalue","v-text=")
+    safe=("textcontent","innertext","insertadjacenttext",".text(","createtextnode","nodevalue","v-text=","x-text")
     if any(x in low for x in html):
         return {"label":"DANGEROUS_HTML","matched":"known_html_sink"}
     if any(x in low for x in js):
@@ -61,7 +61,7 @@ def classify_defense(expression: str) -> dict:
         return {"label":"NONE","matched":"explicit_absence"}
     if any(x in low for x in ("dompurify.sanitize","sanitizehtml(","purifier.sanitize","htmlsanitizer.clean","xssfilter.process","sanitize(")):
         return {"label":"SANITIZATION","matched":"known_sanitizer"}
-    if any(x in low for x in ("escapehtml","htmlspecialchars","encodeforhtml","escapeattribute","htmlencode","encodeforattribute","encodeuri(","encodeuricomponent(")):
+    if any(x in low for x in ("escapehtml","htmlspecialchars","encodeforhtml","escapeattribute","htmlencode","encodeforattribute","encodeuri(","encodeuricomponent(","escapeexpression(")):
         return {"label":"CONTEXTUAL_ENCODING","matched":"known_encoder"}
     if any(x in low for x in ("textcontent","innertext","insertadjacenttext",".text(","createtextnode")):
         return {"label":"SAFE_DOM_API","matched":"safe_dom_api"}
@@ -71,6 +71,7 @@ def classify_defense(expression: str) -> dict:
         ("{" in expression and "}" in expression and "<" in expression and ">" in expression)
         or "{{" in expression
         or "v-text=" in low
+        or "x-text" in low
         or "safeinterpolation(" in low
         or "rendertext(" in low
     ):

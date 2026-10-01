@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: xss-multitask-v1
+  group: xss-multitask-v1-fixed
   cancel-in-progress: true
 
 env:

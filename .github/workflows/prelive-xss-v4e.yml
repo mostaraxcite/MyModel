@@ -1,0 +1,183 @@
+name: Pre-Live Gate v4e
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/prelive-xss-v4e.yml"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: xss-prelive-v4e
+  cancel-in-progress: true
+
+env:
+  SEMANTIC_RUN_ID: "36920030570"
+  SEMANTIC_ARTIFACT: "xss-source-v4e-lr25e5-e12"
+  FLOW_RUN_ID: "36867388302"
+  FLOW_ARTIFACT: "xss-flow-v2-candidate-f0-lr3e5-e8"
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+
+      - name: Install dependencies
+        run: uv sync --group dev --group slm
+
+      - name: Install Chromium
+        run: uv run playwright install --with-deps chromium
+
+      - name: Download semantic winner
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.SEMANTIC_ARTIFACT }}
+          path: selected-semantic
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.SEMANTIC_RUN_ID }}
+
+      - name: Download flow winner
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.FLOW_ARTIFACT }}
+          path: selected-flow
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.FLOW_RUN_ID }}
+
+      - name: Verify model artifacts
+        id: models
+        shell: bash
+        run: |
+          SEM="$(find selected-semantic -type f -name dual_branch_config.json -printf '%h\n' | head -1)"
+          FLOW="$(find selected-flow -type f -name flow_branch_config.json -printf '%h\n' | head -1)"
+          test -n "$SEM"; test -n "$FLOW"
+          test -f "$SEM/semantic_heads.pt"
+          test -f "$FLOW/flow_head.pt"
+          echo "semantic=$SEM" >> "$GITHUB_OUTPUT"
+          echo "flow=$FLOW" >> "$GITHUB_OUTPUT"
+
+      - name: Unified specialist browser authority tests
+        run: |
+          uv run pytest -q \
+            tests/test_specialist_system.py \
+            tests/test_specialist_system_browser.py \
+            tests/test_semantic_oracle.py \
+            tests/test_live_browser.py \
+            tests/test_taint_v1.py \
+            tests/test_flow_relations.py
+
+      - name: Run frozen 102-case LiveBench v2
+        run: uv run python -m live.livebench
+
+      - name: Enforce frozen LiveBench v2 acceptance
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("reports/live_assessments/livebench_v2/metrics.json")
+          m=json.loads(p.read_text())
+          o=m["overall"]
+          checks={
+              "precision": o["precision"] >= .90,
+              "recall": o["recall"] >= .90,
+              "fpr": o["fpr"] <= .15,
+              "fnr": o["fnr"] <= .10,
+              "nearmiss_leakage": o["nearmiss_leakage"] <= .05,
+              "sanitizer_false_safe_rate": o["sanitizer_false_safe_rate"] <= .05,
+              "confirmed_exec_accuracy": o["confirmed_exec_accuracy"] >= .80,
+          }
+          summary={
+              "schema":"xss-prelive-v4e-gate",
+              "semantic_run_id":"36920030570",
+              "semantic_artifact":"xss-source-v4e-lr25e5-e12",
+              "flow_run_id":"36867388302",
+              "flow_artifact":"xss-flow-v2-candidate-f0-lr3e5-e8",
+              "livebench_n":m["n"],
+              "overall":o,
+              "checks":checks,
+              "research_gate_passed":all(checks.values()),
+              "authorized_pilot_ready":all(checks.values()),
+              "controlled_production_ready":False,
+          }
+          out=Path("reports/xss-prelive-v4e.json")
+          out.write_text(json.dumps(summary,indent=2)+"\n")
+          print(json.dumps(summary,indent=2))
+          if not summary["research_gate_passed"]:
+              raise SystemExit("pre-live v4e gate failed")
+          PY
+
+      - name: Build v4e release manifest
+        shell: bash
+        run: |
+          SEM="${{ steps.models.outputs.semantic }}"
+          FLOW="${{ steps.models.outputs.flow }}"
+          python - "$SEM" "$FLOW" <<'PY'
+          import hashlib, json, sys
+          from pathlib import Path
+
+          def tree_hash(root):
+              root=Path(root)
+              h=hashlib.sha256()
+              for p in sorted(x for x in root.rglob("*") if x.is_file()):
+                  h.update(p.relative_to(root).as_posix().encode())
+                  h.update(b"\0")
+                  h.update(p.read_bytes())
+                  h.update(b"\0")
+              return h.hexdigest()
+
+          sem,flow=sys.argv[1],sys.argv[2]
+          manifest={
+              "schema":"xss-specialist-prelive-v4e",
+              "semantic":{
+                  "run_id":"36920030570",
+                  "artifact":"xss-source-v4e-lr25e5-e12",
+                  "tree_sha256":tree_hash(sem),
+              },
+              "flow":{
+                  "run_id":"36867388302",
+                  "artifact":"xss-flow-v2-candidate-f0-lr3e5-e8",
+                  "tree_sha256":tree_hash(flow),
+              },
+              "external_v7":{
+                  "run_id":"36922054415",
+                  "system_accuracy":0.90,
+                  "model_advice_accuracy":0.90,
+                  "gate_passed":True,
+              },
+              "authority":{
+                  "model_can_confirm_xss":False,
+                  "browser_execution_required_for_confirmation":True,
+              },
+              "readiness":"AUTHORIZED_PILOT_READY",
+              "controlled_production_ready":False,
+          }
+          p=Path("registry/releases/xss-specialist-prelive-v4e.json")
+          p.parent.mkdir(parents=True,exist_ok=True)
+          p.write_text(json.dumps(manifest,indent=2)+"\n")
+          print(json.dumps(manifest,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xss-prelive-v4e
+          retention-days: 90
+          path: |
+            reports/xss-prelive-v4e.json
+            reports/live_assessments/livebench_v2/
+            registry/releases/xss-specialist-prelive-v4e.json

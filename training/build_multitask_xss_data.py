@@ -83,7 +83,7 @@ def xss_rows(group: str, n_per_template: int, names: str) -> list[dict]:
             "source_label": idx(SOURCE_LABELS, source_class(source)),
             "sink_label": idx(SINK_LABELS, sink_class(sink)),
             "defense_label": idx(DEFENSE_LABELS, defense_class(case.existing_defense)),
-            "flow_label": idx(FLOW_LABELS, "CONNECTED"),
+            "flow_label": IGNORE_INDEX,
             "metadata": {
                 "origin": "xsscase-structural",
                 "template": case.tags[-1] if case.tags else "",

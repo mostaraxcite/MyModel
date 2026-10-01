@@ -158,25 +158,33 @@ jobs:
       - name: Verify final-decision authority boundary
         run: |
           uv run --group slm python - <<'PY'
-          from xss_specialist.dual_branch_review import review
+          from xss_specialist.dual_branch_review import IntegratedAdvisor
+          from xss_specialist.system import review
 
+          advisor = IntegratedAdvisor(
+              "${{ steps.models.outputs.semantic }}",
+              "${{ steps.models.outputs.flow }}",
+          )
           result = review(
               "const x = location.hash; box.innerHTML = x;",
-              semantic_model_dir="${{ steps.models.outputs.semantic }}",
-              flow_model_dir="${{ steps.models.outputs.flow }}",
-              relation={
-                  "source_expression": "x",
-                  "sink_expression": "box.innerHTML",
-                  "flow_excerpt": "box.innerHTML = x;",
+              fields={
+                  "source_expression": "location.hash",
+                  "sink_expression": "box.innerHTML = VALUE",
+                  "defense_expression": "[NO_DEFENSE]",
+                  "relation": {
+                      "source_expression": "x",
+                      "sink_expression": "box.innerHTML",
+                      "flow_excerpt": "box.innerHTML = x;",
+                  },
               },
-              confirm_browser=False,
+              structural_advisor=advisor,
           )
-          assert result["advisory"]["final_judge"] is False
-          assert result["final"]["confirmed"] is False
-          assert result["final"]["verdict"] != "XSS"
-          assert result["policy"]["model_can_confirm_xss"] is False
-          assert result["policy"]["browser_execution_required_for_confirmation"] is True
-          print(result)
+          payload = result.to_dict()
+          assert payload["confirmed"] is False
+          assert payload["verdict"] != "XSS"
+          assert payload["requires_browser"] is True
+          assert payload["structural"]["final_judge"] is False
+          print(payload)
           PY
 
       - uses: actions/upload-artifact@v4

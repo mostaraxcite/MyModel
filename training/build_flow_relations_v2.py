@@ -20,7 +20,7 @@ import urllib.request
 from tree_sitter import Language, Parser
 import tree_sitter_javascript
 
-from xss_specialist.flow_relations import audit_relation_splits
+from xss_specialist.flow_relations import audit_relation_splits, MAX_EXCERPT
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "data" / "flow-relations-v2" / "source_manifest.json"
@@ -221,7 +221,7 @@ def extract_file(entry: dict, source_file: str, data: bytes, source_path: Path):
         key = item["container_key"]
         prior = by_container.setdefault(key, [])
 
-        if rhs.type in DIRECT_TYPES:
+        if rhs.type in DIRECT_TYPES and stmt.end_byte - stmt.start_byte <= MAX_EXCERPT:
             out.append(relation_row(
                 repository=entry["repository"],
                 framework=entry["framework"],
@@ -242,7 +242,7 @@ def extract_file(entry: dict, source_file: str, data: bytes, source_path: Path):
             ))
 
         opaque_source = first_unknown_source(rhs)
-        if opaque_source is not None:
+        if opaque_source is not None and stmt.end_byte - stmt.start_byte <= MAX_EXCERPT:
             out.append(relation_row(
                 repository=entry["repository"],
                 framework=entry["framework"],

@@ -1,0 +1,391 @@
+name: Train XSS Structural Field v4
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/train-xss-structural-field-v4.yml"
+      - "training/build_semantic_field_v4.py"
+      - "training/train_semantic_field_v4.py"
+      - "training/train_flow_branch_v3.py"
+      - "xss_specialist/flow_relations.py"
+      - "xss_specialist/field_advisor.py"
+      - "evaluation/evaluate_structural_field_v4_real.py"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: xss-structural-field-v4
+  cancel-in-progress: true
+
+env:
+  TOKENIZERS_PARALLELISM: "false"
+  PYTHONUNBUFFERED: "1"
+  FLOW_PREP_RUN_ID: "36867388302"
+  FIRING_RANGE_SHA: "4f991a6418b07a66cd63006f4a2bec27c84b72f4"
+  DOMPURIFY_SHA: "368ee78d528087ab192bcf06838013ec61c87ec8"
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+      - name: Install dependencies
+        run: uv sync --group slm --group dev
+      - name: Compile v4 path
+        run: |
+          uv run python -m py_compile \
+            training/build_semantic_field_v4.py \
+            training/train_semantic_field_v4.py \
+            training/train_flow_branch_v3.py \
+            xss_specialist/field_advisor.py \
+            evaluation/evaluate_structural_field_v4_real.py
+      - name: Reuse audited flow-v2 data and exact v0.4 backbone
+        uses: actions/download-artifact@v4
+        with:
+          name: xss-flow-v2-prepared
+          path: reused
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.FLOW_PREP_RUN_ID }}
+      - name: Locate reused assets
+        id: locate
+        shell: bash
+        run: |
+          BACKBONE="$(find reused -type f -path '*/v04-flow-v2-backbone/config.json' -printf '%h\n' | head -1)"
+          FLOW_TRAIN="$(find reused -type f -path '*/flow-relations-v2/train.jsonl' | head -1)"
+          FLOW_DEV="$(find reused -type f -path '*/flow-relations-v2/dev.jsonl' | head -1)"
+          test -n "$BACKBONE"; test -n "$FLOW_TRAIN"; test -n "$FLOW_DEV"
+          mkdir -p prepared/v04 prepared/flow
+          cp -R "$BACKBONE"/. prepared/v04/
+          cp "$FLOW_TRAIN" prepared/flow/train.jsonl
+          cp "$FLOW_DEV" prepared/flow/dev.jsonl
+      - name: Build field-level semantic corpus
+        run: |
+          uv run python training/build_semantic_field_v4.py \
+            --output-dir data/semantic-field-v4 \
+            --train-repeat 12 \
+            --dev-repeat 6 \
+            --seed 8081
+      - name: Verify field corpus
+        run: |
+          python - <<'PY'
+          import json
+          m=json.load(open("data/semantic-field-v4/manifest.json"))
+          assert m["exact_text_overlap"] == 0
+          assert m["whole_snippet_xss_target"] is False
+          for split in ("train","dev"):
+              for task in ("source","sink","defense"):
+                  assert all(v>0 for v in m[split][task].values()), (split,task,m[split][task])
+          print(json.dumps(m,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xss-structural-field-v4-prepared
+          retention-days: 14
+          path: |
+            prepared/v04/
+            prepared/flow/
+            data/semantic-field-v4/
+
+  semantic:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - slug: s-lr2e5-e6
+            lr: 0.00002
+            epochs: 6
+          - slug: s-lr3e5-e6
+            lr: 0.00003
+            epochs: 6
+          - slug: s-lr5e5-e8
+            lr: 0.00005
+            epochs: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+      - name: Install dependencies
+        run: uv sync --group slm --group dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: xss-structural-field-v4-prepared
+          path: prepared
+      - name: Locate inputs
+        id: locate
+        shell: bash
+        run: |
+          BACKBONE="$(find prepared -type f -path '*/v04/config.json' -printf '%h\n' | head -1)"
+          TRAIN="$(find prepared -type f -path '*/semantic-field-v4/train.jsonl' | head -1)"
+          DEV="$(find prepared -type f -path '*/semantic-field-v4/dev.jsonl' | head -1)"
+          test -n "$BACKBONE"; test -n "$TRAIN"; test -n "$DEV"
+          echo "backbone=$BACKBONE" >> "$GITHUB_OUTPUT"
+          echo "train=$TRAIN" >> "$GITHUB_OUTPUT"
+          echo "dev=$DEV" >> "$GITHUB_OUTPUT"
+      - name: Train semantic fields
+        run: |
+          OUT="artifacts/xss-structural-v4-${{ matrix.slug }}"
+          uv run --group slm python training/train_semantic_field_v4.py \
+            --backbone "${{ steps.locate.outputs.backbone }}" \
+            --train "${{ steps.locate.outputs.train }}" \
+            --dev "${{ steps.locate.outputs.dev }}" \
+            --output-dir "$OUT" \
+            --epochs ${{ matrix.epochs }} \
+            --batch-size 48 \
+            --max-length 96 \
+            --lr ${{ matrix.lr }} \
+            --class-power 0.25 \
+            --seed 8082
+      - name: Score semantic candidate
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          slug="${{ matrix.slug }}"
+          root=Path(f"artifacts/xss-structural-v4-{slug}")
+          b=json.loads((root/"best_metrics.json").read_text())["dev"]
+          t=b["tasks"]
+          mins={k:min(t[k]["per_class_f1"].values()) for k in ("source","sink","defense")}
+          passed=bool(
+              t["source"]["macro_f1"]>=.90 and t["sink"]["macro_f1"]>=.90
+              and t["defense"]["macro_f1"]>=.85
+              and mins["source"]>=.70 and mins["sink"]>=.70 and mins["defense"]>=.60
+          )
+          out={"slug":slug,"passed":passed,"mean":b["mean_macro_f1"],
+               "tasks":t,"mins":mins,"promotion_allowed":False}
+          (root/"candidate_score.json").write_text(json.dumps(out,indent=2)+"\n")
+          print(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xss-structural-v4-semantic-${{ matrix.slug }}
+          retention-days: 30
+          path: artifacts/xss-structural-v4-${{ matrix.slug }}/
+
+  flow:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - slug: f-lr2e5-e6
+            lr: 0.00002
+            epochs: 6
+          - slug: f-lr3e5-e8
+            lr: 0.00003
+            epochs: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+      - name: Install dependencies
+        run: uv sync --group slm --group dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: xss-structural-field-v4-prepared
+          path: prepared
+      - name: Locate inputs
+        id: locate
+        shell: bash
+        run: |
+          BACKBONE="$(find prepared -type f -path '*/v04/config.json' -printf '%h\n' | head -1)"
+          TRAIN="$(find prepared -type f -path '*/flow/train.jsonl' | head -1)"
+          DEV="$(find prepared -type f -path '*/flow/dev.jsonl' | head -1)"
+          test -n "$BACKBONE"; test -n "$TRAIN"; test -n "$DEV"
+          echo "backbone=$BACKBONE" >> "$GITHUB_OUTPUT"
+          echo "train=$TRAIN" >> "$GITHUB_OUTPUT"
+          echo "dev=$DEV" >> "$GITHUB_OUTPUT"
+      - name: Train canonical flow
+        run: |
+          OUT="artifacts/xss-structural-v4-${{ matrix.slug }}"
+          uv run --group slm python training/train_flow_branch_v3.py \
+            --backbone "${{ steps.locate.outputs.backbone }}" \
+            --train "${{ steps.locate.outputs.train }}" \
+            --dev "${{ steps.locate.outputs.dev }}" \
+            --output-dir "$OUT" \
+            --epochs ${{ matrix.epochs }} \
+            --batch-size 32 \
+            --max-length 128 \
+            --lr ${{ matrix.lr }} \
+            --freeze-layers 0 \
+            --class-balance-power 0.0 \
+            --seed 8083
+      - name: Score flow candidate
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          slug="${{ matrix.slug }}"
+          root=Path(f"artifacts/xss-structural-v4-{slug}")
+          b=json.loads((root/"best_metrics.json").read_text())["dev"]
+          recalls={k:v["recall"] for k,v in b["per_class"].items()}
+          passed=bool(b["macro_f1"]>=.85 and min(recalls.values())>=.75)
+          out={"slug":slug,"passed":passed,"macro_f1":b["macro_f1"],
+               "accuracy":b["accuracy"],"recalls":recalls,
+               "promotion_allowed":False}
+          (root/"candidate_score.json").write_text(json.dumps(out,indent=2)+"\n")
+          print(json.dumps(out,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xss-structural-v4-flow-${{ matrix.slug }}
+          retention-days: 30
+          path: artifacts/xss-structural-v4-${{ matrix.slug }}/
+
+  select-semantic:
+    needs: semantic
+    runs-on: ubuntu-latest
+    outputs:
+      artifact: ${{ steps.pick.outputs.artifact }}
+      slug: ${{ steps.pick.outputs.slug }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: xss-structural-v4-semantic-*
+          path: candidates
+      - id: pick
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          rows=[json.loads(p.read_text()) for p in Path("candidates").rglob("candidate_score.json")]
+          rows.sort(key=lambda r:(r["passed"],r["mean"],r["tasks"]["defense"]["macro_f1"]),reverse=True)
+          w=rows[0]
+          print(json.dumps({"candidates":rows,"winner":w},indent=2))
+          if not w["passed"]: raise SystemExit("semantic field gate failed")
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:
+              f.write(f"slug={w['slug']}\n")
+              f.write(f"artifact=xss-structural-v4-semantic-{w['slug']}\n")
+          PY
+
+  select-flow:
+    needs: flow
+    runs-on: ubuntu-latest
+    outputs:
+      artifact: ${{ steps.pick.outputs.artifact }}
+      slug: ${{ steps.pick.outputs.slug }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: xss-structural-v4-flow-*
+          path: candidates
+      - id: pick
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          rows=[json.loads(p.read_text()) for p in Path("candidates").rglob("candidate_score.json")]
+          rows.sort(key=lambda r:(r["passed"],r["macro_f1"],min(r["recalls"].values())),reverse=True)
+          w=rows[0]
+          print(json.dumps({"candidates":rows,"winner":w},indent=2))
+          if not w["passed"]: raise SystemExit("canonical flow gate failed")
+          with open(os.environ["GITHUB_OUTPUT"],"a") as f:
+              f.write(f"slug={w['slug']}\n")
+              f.write(f"artifact=xss-structural-v4-flow-{w['slug']}\n")
+          PY
+
+  integrate:
+    needs: [select-semantic, select-flow]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+      - name: Install dependencies
+        run: uv sync --group slm --group dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.select-semantic.outputs.artifact }}
+          path: semantic
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.select-flow.outputs.artifact }}
+          path: flow
+      - name: Locate selected models
+        id: locate
+        shell: bash
+        run: |
+          SEM="$(find semantic -type f -name dual_branch_config.json -printf '%h\n' | head -1)"
+          FLOW="$(find flow -type f -name flow_branch_config.json -printf '%h\n' | head -1)"
+          test -n "$SEM"; test -n "$FLOW"
+          echo "semantic=$SEM" >> "$GITHUB_OUTPUT"
+          echo "flow=$FLOW" >> "$GITHUB_OUTPUT"
+      - name: Fetch independent real upstream gate
+        shell: bash
+        run: |
+          mkdir -p external
+          git init external/firing-range
+          git -C external/firing-range remote add origin https://github.com/google/firing-range.git
+          git -C external/firing-range fetch --depth 1 origin "$FIRING_RANGE_SHA"
+          git -C external/firing-range checkout --detach FETCH_HEAD
+          git init external/DOMPurify
+          git -C external/DOMPurify remote add origin https://github.com/cure53/DOMPurify.git
+          git -C external/DOMPurify fetch --depth 1 origin "$DOMPURIFY_SHA"
+          git -C external/DOMPurify checkout --detach FETCH_HEAD
+      - name: Real upstream integration gate
+        run: |
+          uv run --group slm python evaluation/evaluate_structural_field_v4_real.py \
+            --semantic-dir "${{ steps.locate.outputs.semantic }}" \
+            --flow-dir "${{ steps.locate.outputs.flow }}" \
+            --firing-range-root external/firing-range \
+            --dompurify-root external/DOMPurify \
+            --output reports/xss-structural-field-v4-real.json
+          python - <<'PY'
+          import json
+          r=json.load(open("reports/xss-structural-field-v4-real.json"))
+          if not r["research_gate_passed"]:
+              raise SystemExit("real upstream integration gate failed")
+          PY
+      - name: Build integrated bundle
+        shell: bash
+        run: |
+          mkdir -p artifacts/xss-structural-field-v4/semantic artifacts/xss-structural-field-v4/flow
+          cp -R "${{ steps.locate.outputs.semantic }}"/. artifacts/xss-structural-field-v4/semantic/
+          cp -R "${{ steps.locate.outputs.flow }}"/. artifacts/xss-structural-field-v4/flow/
+          cp reports/xss-structural-field-v4-real.json artifacts/xss-structural-field-v4/
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          cfg={
+              "schema":"xss-structural-field-v4",
+              "semantic_candidate":"${{ needs.select-semantic.outputs.slug }}",
+              "flow_candidate":"${{ needs.select-flow.outputs.slug }}",
+              "semantic":"semantic","flow":"flow",
+              "model_can_confirm_xss":False,
+              "browser_execution_required_for_confirmation":True,
+              "promotion_allowed":False,
+              "locked_hard_or_external_used":False,
+          }
+          Path("artifacts/xss-structural-field-v4/config.json").write_text(json.dumps(cfg,indent=2)+"\n")
+          print(json.dumps(cfg,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xss-structural-field-v4-bundle
+          retention-days: 30
+          path: artifacts/xss-structural-field-v4/

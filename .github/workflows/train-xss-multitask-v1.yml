@@ -6,6 +6,9 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/train-xss-multitask-v1.yml"
+      - "xss_specialist/multitask.py"
+      - "training/train_multitask_xss.py"
+      - "training/build_multitask_xss_data.py"
 
 permissions:
   contents: read

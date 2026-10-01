@@ -13,7 +13,7 @@ import torch
 from transformers import AutoTokenizer
 
 from verification.browser_oracle import verify_dom_case
-from xss_specialist.dual_branch import XSSDualBranchModel, LABEL_SPACES
+from xss_specialist.dual_branch import XSSDualBranchModel, XSSFlowBranchModel, LABEL_SPACES
 from xss_specialist.taint import analyze as taint_analyze
 
 
@@ -82,6 +82,80 @@ class DualBranchAdvisor:
         return result
 
 
+
+class IntegratedAdvisor:
+    """Use a trained semantic branch and a separately trained standalone flow branch."""
+
+    def __init__(
+        self,
+        semantic_model_dir: str | Path,
+        flow_model_dir: str | Path,
+        device: str | None = None,
+    ):
+        self.semantic_model_dir = Path(semantic_model_dir)
+        self.flow_model_dir = Path(flow_model_dir)
+        self.device = torch.device(
+            device or ("cuda" if torch.cuda.is_available() else "cpu")
+        )
+
+        # Semantic artifact is a dual-branch training artifact; only its semantic
+        # encoder/heads are used here. Its historical flow branch is ignored.
+        self.semantic_model = XSSDualBranchModel.load(self.semantic_model_dir)
+        self.semantic_model.to(self.device)
+        self.semantic_model.eval()
+
+        self.flow_model = XSSFlowBranchModel.load(self.flow_model_dir)
+        self.flow_model.to(self.device)
+        self.flow_model.eval()
+
+        self.semantic_tokenizer = AutoTokenizer.from_pretrained(
+            self.semantic_model_dir / "semantic_backbone"
+        )
+        self.flow_tokenizer = AutoTokenizer.from_pretrained(
+            self.flow_model_dir / "flow_backbone"
+        )
+
+    @staticmethod
+    def _encode(tokenizer, text: str, device) -> dict[str, torch.Tensor]:
+        batch = tokenizer(
+            text,
+            return_tensors="pt",
+            truncation=True,
+            max_length=128,
+        )
+        return {k: v.to(device) for k, v in batch.items()}
+
+    @torch.no_grad()
+    def semantic(self, code: str) -> dict:
+        tokens = self._encode(self.semantic_tokenizer, code, self.device)
+        out = self.semantic_model.forward_semantic(**tokens)
+        return {
+            task: _top(_distribution(out.logits[task], LABEL_SPACES[task]))
+            for task in ("source", "sink", "defense")
+        }
+
+    @torch.no_grad()
+    def flow(self, relation: dict) -> dict:
+        required = ("source_expression", "sink_expression", "flow_excerpt")
+        if any(not relation.get(k) for k in required):
+            return {
+                "label": "UNKNOWN",
+                "confidence": 0.0,
+                "probabilities": {},
+                "status": "MISSING_REVIEWED_RELATION_INPUT",
+            }
+        relation_text = (
+            f"[SOURCE]\n{relation['source_expression']}\n"
+            f"[SINK]\n{relation['sink_expression']}\n"
+            f"[FLOW]\n{relation['flow_excerpt']}"
+        )
+        tokens = self._encode(self.flow_tokenizer, relation_text, self.device)
+        out = self.flow_model(**tokens)
+        result = _top(_distribution(out.logits["flow"], LABEL_SPACES["flow"]))
+        result["status"] = "ADVISORY_ONLY"
+        return result
+
+
 def _advisory_risk(semantic: dict, flow: dict | None) -> float:
     source = semantic["source"]["probabilities"]
     sink = semantic["sink"]["probabilities"]
@@ -107,18 +181,29 @@ def _advisory_risk(semantic: dict, flow: dict | None) -> float:
 def review(
     code: str,
     *,
-    model_dir: str | Path,
+    model_dir: str | Path | None = None,
+    semantic_model_dir: str | Path | None = None,
+    flow_model_dir: str | Path | None = None,
     relation: dict | None = None,
     trusted_modules: tuple[str, ...] = (),
     confirm_browser: bool = False,
 ) -> dict:
-    advisor = DualBranchAdvisor(model_dir)
+    if semantic_model_dir is not None or flow_model_dir is not None:
+        if semantic_model_dir is None or flow_model_dir is None:
+            raise ValueError("semantic_model_dir and flow_model_dir must be provided together")
+        advisor = IntegratedAdvisor(semantic_model_dir, flow_model_dir)
+        engine = "xss-integrated-v1"
+    else:
+        if model_dir is None:
+            raise ValueError("model_dir is required for legacy dual-branch review")
+        advisor = DualBranchAdvisor(model_dir)
+        engine = "xss-dual-branch-v2"
     semantic = advisor.semantic(code)
     flow = advisor.flow(relation) if relation else None
     risk = _advisory_risk(semantic, flow)
 
     advisory = {
-        "engine": "xss-dual-branch-v2",
+        "engine": engine,
         "semantic": semantic,
         "flow": flow,
         "risk_score": risk,
@@ -186,7 +271,9 @@ def main():
 
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("file", type=Path)
-    p.add_argument("--model-dir", type=Path, required=True)
+    p.add_argument("--model-dir", type=Path)
+    p.add_argument("--semantic-model-dir", type=Path)
+    p.add_argument("--flow-model-dir", type=Path)
     p.add_argument("--relation", type=Path)
     p.add_argument("--trusted-module", action="append", default=[])
     p.add_argument("--confirm-browser", action="store_true")
@@ -196,6 +283,8 @@ def main():
     result = review(
         args.file.read_text(),
         model_dir=args.model_dir,
+        semantic_model_dir=args.semantic_model_dir,
+        flow_model_dir=args.flow_model_dir,
         relation=relation,
         trusted_modules=tuple(args.trusted_module),
         confirm_browser=args.confirm_browser,

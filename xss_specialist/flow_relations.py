@@ -103,6 +103,50 @@ def canonical_relation_text(row: dict) -> str:
     )
 
 
+
+def deterministic_relation(row: dict) -> dict:
+    """Resolve only obvious local value relations; otherwise abstain UNKNOWN."""
+    source = str(row.get("source_expression", "")).strip()
+    sink = str(row.get("sink_expression", "")).strip()
+    excerpt = str(row.get("flow_excerpt", "")).strip()
+    if not source or not sink or not excerpt:
+        return {"relation": "UNKNOWN", "reason": "missing_field", "authoritative": False}
+
+    compact = " ".join(excerpt.split())
+    source_esc = re.escape(source)
+    sink_esc = re.escape(sink)
+
+    # Opaque call/new return: source is an argument to a call whose result is
+    # written to the sink. The bounded deterministic engine deliberately abstains.
+    opaque = re.search(
+        rf"(?:const|let|var)?\s*{sink_esc}\s*=\s*(?:new\s+)?[A-Za-z_$][\w$\.]*\([^;]*{source_esc}[^;]*\)",
+        compact,
+    )
+    if opaque:
+        return {"relation": "UNKNOWN", "reason": "opaque_call_return", "authoritative": False}
+
+    direct_assign = re.search(
+        rf"{sink_esc}\s*=\s*{source_esc}(?:\s*;|\s*$)",
+        compact,
+    )
+    direct_call = re.search(
+        rf"{sink_esc}\s*\([^;]*\b{source_esc}\b[^;]*\)",
+        compact,
+    )
+    if direct_assign or direct_call:
+        return {"relation": "CONNECTED", "reason": "direct_local_value_use", "authoritative": True}
+
+    literal_assign = re.search(
+        rf"{sink_esc}\s*=\s*(?:['\"][^'\"]*['\"]|\d+(?:\.\d+)?|true|false|null|undefined)(?:\s*;|\s*$)",
+        compact,
+        re.I,
+    )
+    if literal_assign:
+        return {"relation": "DISCONNECTED", "reason": "literal_overwrite", "authoritative": True}
+
+    return {"relation": "UNKNOWN", "reason": "bounded_abstain", "authoritative": False}
+
+
 def audit_relation_splits(splits: dict[str, list[dict]]) -> dict:
     identities = {}
     counts = {}

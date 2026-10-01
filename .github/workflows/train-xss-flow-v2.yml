@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: xss-flow-branch-v2
+  group: xss-flow-branch-v2-fast
   cancel-in-progress: true
 
 env:

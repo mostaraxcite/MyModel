@@ -33,6 +33,7 @@ class Case:
     commit: str
     path: str
     line: int
+    excerpt: str
     excerpt_sha256: str
     task: str
     expression: str
@@ -79,6 +80,7 @@ def _case(repo: str, rel: str, lineno: int, line: str, task: str, expression: st
         commit=COMMITS[repo],
         path=rel,
         line=lineno,
+        excerpt=line,
         excerpt_sha256=hashlib.sha256(line.encode()).hexdigest(),
         task=task,
         expression=expression.strip(),

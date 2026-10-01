@@ -54,6 +54,16 @@ def _line_containing(text: str, *needles: str) -> str:
     raise ValueError(f"missing real excerpt line containing {needles!r}")
 
 
+def _rhs(line: str) -> str:
+    if "=" not in line:
+        raise ValueError(f"expected assignment line, got: {line!r}")
+    return line.split("=", 1)[1].strip().rstrip(";").strip()
+
+
+def _as_value_expression(text: str, identifier: str) -> str:
+    return re.sub(rf"\b{re.escape(identifier)}\b", "VALUE", text)
+
+
 def build_cases(firing: Path, dompurify: Path) -> list[dict]:
     cases = []
     for source_rel in FIRING_SOURCES:
@@ -75,6 +85,11 @@ def build_cases(firing: Path, dompurify: Path) -> list[dict]:
                 "id": f"firing:{Path(source_rel).stem}:{Path(sink_rel).stem}",
                 "family": "firing-range",
                 "code": code,
+                "fields": {
+                    "source_expression": _rhs(source_line),
+                    "sink_expression": _as_value_expression(sink_line, "payload"),
+                    "defense_expression": "[NO_DEFENSE]",
+                },
                 "relation": {
                     "source_expression": "payload",
                     "sink_expression": sink_expression,
@@ -99,6 +114,11 @@ def build_cases(firing: Path, dompurify: Path) -> list[dict]:
             "id": f"dompurify:{Path(rel).name}",
             "family": "dompurify-demo",
             "code": code,
+            "fields": {
+                "source_expression": _rhs(dirty_line),
+                "sink_expression": _as_value_expression(sink_line, "clean"),
+                "defense_expression": _as_value_expression(_rhs(sanitize_line), "dirty"),
+            },
             "relation": {
                 "source_expression": "dirty",
                 "sink_expression": "clean",
@@ -146,25 +166,31 @@ def main():
 
     scored = []
     for case in cases:
-        sem = advisor.semantic(case["code"])
-        flow = advisor.flow(case["relation"])
+        structural = advisor.review_fields(
+            source_expression=case["fields"]["source_expression"],
+            sink_expression=case["fields"]["sink_expression"],
+            defense_expression=case["fields"]["defense_expression"],
+            relation=case["relation"],
+        )
         predicted = {
-            "source": sem["source"]["label"],
-            "sink": sem["sink"]["label"],
-            "defense": sem["defense"]["label"],
-            "flow": flow["label"],
+            "source": structural["source"]["label"],
+            "sink": structural["sink"]["label"],
+            "defense": structural["defense"]["label"],
+            "flow": structural["flow"]["label"],
         }
         scored.append({
             "id": case["id"],
             "family": case["family"],
+            "fields": case["fields"],
             "expected": case["expected"],
             "predicted": predicted,
             "confidence": {
-                "source": sem["source"]["confidence"],
-                "sink": sem["sink"]["confidence"],
-                "defense": sem["defense"]["confidence"],
-                "flow": flow["confidence"],
+                "source": structural["source"]["confidence"],
+                "sink": structural["sink"]["confidence"],
+                "defense": structural["defense"]["confidence"],
+                "flow": structural["flow"]["confidence"],
             },
+            "flow_status": structural["flow"].get("status"),
             "tuple_correct": predicted == case["expected"],
         })
 
@@ -174,7 +200,7 @@ def main():
     }
     tuple_accuracy = sum(r["tuple_correct"] for r in scored) / len(scored)
 
-    # Development-only integration gate. It intentionally does not promote.
+    # Real-upstream research integration gate. It intentionally does not promote.
     passed = bool(
         metrics["source"]["macro_f1_present"] >= 0.75
         and metrics["sink"]["macro_f1_present"] >= 0.80

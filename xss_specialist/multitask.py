@@ -58,10 +58,36 @@ class XSSMultiTaskModel(nn.Module):
         hidden = int(self.backbone.config.hidden_size)
         self.dropout = nn.Dropout(0.1)
         self.heads = nn.ModuleDict({
-            name: nn.Linear(hidden, len(labels))
+            name: nn.Sequential(
+                nn.Linear(hidden, hidden),
+                nn.GELU(),
+                nn.LayerNorm(hidden),
+                nn.Dropout(0.1),
+                nn.Linear(hidden, len(labels)),
+            )
             for name, labels in LABEL_SPACES.items()
         })
-        self.loss_fn = nn.CrossEntropyLoss(ignore_index=IGNORE_INDEX)
+        self.task_loss_weights = {name: 1.0 for name in LABEL_SPACES}
+        self.class_weights: dict[str, torch.Tensor | None] = {
+            name: None for name in LABEL_SPACES
+        }
+
+    def configure_losses(
+        self,
+        *,
+        task_loss_weights: dict[str, float] | None = None,
+        class_weights: dict[str, torch.Tensor | None] | None = None,
+    ) -> None:
+        if task_loss_weights:
+            for name, value in task_loss_weights.items():
+                if name not in LABEL_SPACES:
+                    raise ValueError(f"unknown task: {name}")
+                self.task_loss_weights[name] = float(value)
+        if class_weights:
+            for name, value in class_weights.items():
+                if name not in LABEL_SPACES:
+                    raise ValueError(f"unknown task: {name}")
+                self.class_weights[name] = value
 
     def forward(
         self,
@@ -91,14 +117,29 @@ class XSSMultiTaskModel(nn.Module):
         }
 
         losses = []
+        loss_weights = []
         for name, target in labels.items():
             if target is None:
                 continue
             active = target.ne(IGNORE_INDEX)
             if active.any():
-                losses.append(self.loss_fn(logits[name], target))
+                class_weight = self.class_weights.get(name)
+                if class_weight is not None:
+                    class_weight = class_weight.to(logits[name].device)
+                task_loss = nn.functional.cross_entropy(
+                    logits[name],
+                    target,
+                    weight=class_weight,
+                    ignore_index=IGNORE_INDEX,
+                )
+                task_weight = float(self.task_loss_weights.get(name, 1.0))
+                losses.append(task_loss * task_weight)
+                loss_weights.append(task_weight)
 
-        loss = torch.stack(losses).mean() if losses else None
+        loss = (
+            torch.stack(losses).sum() / max(sum(loss_weights), 1e-12)
+            if losses else None
+        )
         return MultiTaskOutput(loss=loss, logits=logits)
 
     def save(self, output_dir: str | Path) -> None:
@@ -111,6 +152,7 @@ class XSSMultiTaskModel(nn.Module):
                 "schema": "xss-multitask-v1",
                 "backbone": "backbone",
                 "label_spaces": LABEL_SPACES,
+                "head_type": "two_layer_mlp",
                 "final_judge": False,
             }, indent=2) + "\n"
         )

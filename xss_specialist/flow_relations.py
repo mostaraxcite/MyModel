@@ -30,9 +30,14 @@ def verify_repository_excerpt(row: dict) -> bool:
         raise ValueError("native source reference must identify the pinned repository/file")
     root = Path(__file__).resolve().parents[1]
     snapshot = (root / provenance.get("source_snapshot", "")).resolve()
-    approved_root = (root / "data/flow-relations-v1/sources").resolve()
-    if not snapshot.is_relative_to(approved_root) or not snapshot.is_file():
-        raise ValueError("native source snapshot must be under data/flow-relations-v1/sources")
+    approved_roots = [
+        (root / "data/flow-relations-v1/sources").resolve(),
+        (root / "data/flow-relations-v2/sources").resolve(),
+    ]
+    if not any(snapshot.is_relative_to(approved) for approved in approved_roots) or not snapshot.is_file():
+        raise ValueError(
+            "native source snapshot must be under an approved flow-relations source root"
+        )
     content = snapshot.read_bytes()
     if hashlib.sha256(content).hexdigest() != provenance.get("source_sha256"):
         raise ValueError("native source snapshot hash mismatch")

@@ -4,16 +4,18 @@ on:
   workflow_dispatch:
     inputs:
       kaggle_username:
-        description: "Kaggle username that owns the private training kernel"
+        description: "Exact Kaggle username from kaggle.com/code/OWNER/slug (not Kaggle)"
         required: true
+        default: "dody2004"
         type: string
       mode:
-        description: "Package only, or explicitly submit training to Kaggle free T4"
+        description: "Package only; publish without running; or experimental API submit"
         required: true
         type: choice
         default: package
         options:
           - package
+          - publish
           - submit
 
 permissions:
@@ -33,6 +35,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Validate notebook owner from Kaggle URL
+        env:
+          KAGGLE_OWNER: ${{ inputs.kaggle_username }}
+        run: |
+          if [ "${KAGGLE_OWNER,,}" = "kaggle" ]; then
+            echo "::error::Enter your real Kaggle username from the notebook URL (currently dody2004), not Kaggle."
+            exit 1
+          fi
       - name: Test packaging on CPU (does not train)
         run: |
           python -m pip install -q pytest
@@ -58,7 +68,7 @@ jobs:
           retention-days: 14
           if-no-files-found: error
       - name: Check Kaggle API connection for explicitly requested submission
-        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'submit'
+        if: github.event_name == 'workflow_dispatch' && inputs.mode != 'package'
         env:
           KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
         run: |
@@ -66,14 +76,21 @@ jobs:
             echo "::error::Add the Kaggle API token as repository Actions secret KAGGLE_API_TOKEN. No training has been submitted."
             exit 1
           fi
-      - name: Submit private GPU training to Kaggle (free quota)
-        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'submit'
+      - name: Publish to Kaggle; manual GPU activation recommended
+        if: github.event_name == 'workflow_dispatch' && inputs.mode != 'package'
         env:
           KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
           KAGGLE_OWNER: ${{ inputs.kaggle_username }}
+          SUBMIT_MODE: ${{ inputs.mode }}
         run: |
           set -euo pipefail
           python -m pip install -q --upgrade kaggle
-          kaggle kernels push -p kaggle-dist --accelerator NvidiaTeslaT4 --timeout 18000
-          echo "Training has been submitted to Kaggle. Check GPU quota and results in the Kaggle account."
+          if [ "$SUBMIT_MODE" = "publish" ]; then
+            kaggle kernels push -p kaggle-dist --no-run --accelerator NvidiaTeslaT4 --timeout 18000
+            echo "::notice::Kernel saved WITHOUT execution. Open Kaggle editor, enable GPU T4 x2 and Internet, then Save Version > Save & Run All."
+          else
+            kaggle kernels push -p kaggle-dist --accelerator NvidiaTeslaT4 --timeout 18000
+            echo "::warning::Kaggle accepted the version. This does NOT prove a GPU was allocated or training started. Verify Accelerator in Kaggle Logs."
+          fi
+          echo "Open your notebook: https://www.kaggle.com/code/$KAGGLE_OWNER/spark-xss-qlora-kaggle"
           kaggle kernels status "$KAGGLE_OWNER/spark-xss-qlora-kaggle" || true

@@ -18,9 +18,10 @@ No GPU training happens simply by merging this documentation or the code.
 2. Obtain your Kaggle API token at https://www.kaggle.com/settings/api .
 3. In GitHub MyModel, use Settings > Secrets and variables > Actions to add the secret named KAGGLE_API_TOKEN. Do not put a token into code or commit messages.
 4. Go to Actions > Kaggle Free GPU - Spark XSS > Run workflow.
-5. Supply YOUR Kaggle username and choose one of two modes:
-   - package (default): validates the scripts and creates a downloadable kernel package on GitHub; no Kaggle GPU time is consumed.
-   - submit: publishes a PRIVATE Kaggle script and starts the Kaggle GPU training, subject to quota, using the API token secret.
+5. Supply the EXACT Kaggle username from the notebook URL (for the current account: dody2004, NOT "Kaggle") and choose:
+   - package (default): validates scripts and produces an archive; no Kaggle job.
+   - publish (**recommended**): uploads the private script but uses kaggle kernels push --no-run. Then open the notebook on Kaggle, click Edit, use Settings / Session options > Accelerator > GPU T4 x2, enable Internet, and choose Save Version > Save & Run All. The GPU assignment occurs in Kaggle's editor.
+   - submit (experimental): requests an accelerated run via Kaggle CLI, but the API can accept a push while the actual session runs with Accelerator: None. This is NOT proof of training or GPU assignment. Always confirm the Logs tab and CUDA availability.
 
 You can inspect the kernel at:
 
@@ -33,6 +34,14 @@ Once submitted, monitor through the authenticated Kaggle CLI:
     kaggle kernels output YOUR_USERNAME/spark-xss-qlora-kaggle -p output
 
 Or use the Kaggle Notebook page. Kaggle must permit Internet access to download pinned model and framework code. Kaggle may queue/reject jobs that exceed your free quota.
+
+## October 2026: accepted kernel without GPU
+
+The first Kaggle run at https://www.kaggle.com/code/dody2004/spark-xss-qlora-kaggle was marked failed in 14 seconds. Its Logs tab said "Accelerator: None" and the CUDA preflight correctly raised "CUDA GPU unavailable". The GitHub step had successfully pushed the kernel version; that alone did not guarantee a GPU. The workflow also received a mistaken Kaggle username ("Kaggle") instead of the actual account "dody2004", causing its status check to fail.
+
+**Current recovery:** The notebook already exists, so DO NOT push the same version again just to enable the GPU. Open it in the Kaggle editor, turn on GPU T4 x2 and Internet, and use Save Version > Save & Run All. Verify that the new version's Logs tab shows Accelerator: GPU T4 x2 and that its CUDA preflight reports a real device. If the GPU option is disabled, check Kaggle phone verification and remaining free quota. The CLI-supported accelerator flag may be ignored by Kaggle's scheduling/API, so a successful push must not be described as successful GPU training.
+
+Docs: https://www.kaggle.com/docs/notebooks and https://www.kaggle.com/discussions/product-feedback/268333 .
 
 ## Offline packaging without any Kaggle credentials
 

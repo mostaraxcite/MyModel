@@ -65,3 +65,17 @@ def test_no_automatic_kaggle_submission():
     assert "github.event_name == 'workflow_dispatch'" in workflow
     assert "self-hosted" not in workflow
     assert "mode" in workflow
+
+
+def test_kaggle_workflow_supports_no_run_publish_and_correct_owner():
+    """An accepted Kaggle version does not prove a GPU has been assigned."""
+    workflow = (
+        Path(__file__).resolve().parents[1]
+        / ".github/workflows/kaggle-free-xss-training.yml"
+    ).read_text()
+    assert 'default: "dody2004"' in workflow
+    assert '          - publish' in workflow
+    assert 'kaggle kernels push -p kaggle-dist --no-run' in workflow
+    assert "inputs.mode != 'package'" in workflow
+    assert 'if [ "${KAGGLE_OWNER,,}" = "kaggle" ]' in workflow
+    assert 'This does NOT prove a GPU was allocated' in workflow

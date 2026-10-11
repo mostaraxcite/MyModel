@@ -249,7 +249,7 @@ def generated_summary(cases_by_id: dict, base_rows: list[dict], tuned_rows: list
 def run_evaluation(adapter: Path, training_file: Path, destination: Path) -> dict:
     """Actual side-effecting CUDA evaluation invoked by Kaggle kernel only."""
     import torch
-    from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+    from transformers import AutoTokenizer, AutoModelForCausalLM
     from peft import PeftModel
 
     if not torch.cuda.is_available():
@@ -260,16 +260,30 @@ def run_evaluation(adapter: Path, training_file: Path, destination: Path) -> dic
         raise FileNotFoundError("Trained adapter_model.safetensors missing")
     manifest = assert_no_training_overlap(training_file)
     test = cases()
-    cfg = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
-                             bnb_4bit_use_double_quant=True,
-                             bnb_4bit_compute_dtype=torch.float16)
+    # Spark2_5DecoderLayer casts hidden_states to gate_proj.weight.dtype.
+    # bitsandbytes Params4bit storage is torch.uint8/Byte, which makes the
+    # following attention torch.matmul fail with baddbmm_cuda/Byte.
+    # Run BOTH baseline and tuned LoRA adapter in ordinary FP16 on one T4;
+    # do not modify the original QLoRA training recipe/checkpoint.
     name = "XHToken/Spark-X2.5-4B"
     tok = AutoTokenizer.from_pretrained(name, revision=EXPECTED_BASE_REVISION,
                                         trust_remote_code=True)
     model = AutoModelForCausalLM.from_pretrained(
         name, revision=EXPECTED_BASE_REVISION, trust_remote_code=True,
-        torch_dtype=torch.float16, quantization_config=cfg, device_map={"": 0},
+        torch_dtype=torch.float16, device_map={"": 0},
+        low_cpu_mem_usage=True,
     ).eval()
+    # Fail fast if any custom Spark layer accidentally has a Byte/quantized
+    # gate projection; a successful load is not proof that inference works.
+    for layer in model.model.layers:
+        gate_dtype = layer.mlp.gate_proj.weight.dtype
+        if gate_dtype != torch.float16:
+            raise RuntimeError(
+                f"Unsafe Spark gate projection dtype: {gate_dtype}; "
+                "requires FP16 without 4-bit storage for evaluation"
+            )
+    print("GPU allocated GiB:", round(torch.cuda.get_device_properties(0).total_memory / (1024**3), 2), flush=True)
+    print("Base FP16 memory GiB:", round(torch.cuda.memory_allocated(0) / (1024**3), 2), flush=True)
     baseline = []
     for i, item in enumerate(test, 1):
         pred = predict_label(model, tok, item["prompt"])

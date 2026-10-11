@@ -117,3 +117,21 @@ def test_existing_xss_sft_v3_corpus_prepares_without_gpu(tmp_path):
     assert manifest["train_template_groups"] + manifest["eval_template_groups"] == 8
     assert manifest["status"] == "DATA_PREPARED_NOT_TRAINED"
     assert manifest["promotion"] == "NOT_EVALUATED"
+
+
+def test_kaggle_t4_four_bit_recipe(tmp_path):
+    """The free Kaggle T4 must use FP16 and a recognized NF4 quantizer."""
+    with tempfile.TemporaryDirectory(prefix="spark-test-", dir=PROJECT / "data" / "training") as directory:
+        source = make_source(Path(directory))
+        convert(source, tmp_path / "qlora", four_bit=True)
+        recipe = yaml.safe_load((tmp_path / "qlora" / "train.yaml").read_text())
+        assert recipe["fp16"] is True
+        assert recipe["bf16"] is False
+        assert recipe["quantization_bit"] == 4
+        assert recipe["quantization_method"] == "bitsandbytes"
+        assert recipe["quantization_type"] == "nf4"
+        assert recipe["double_quantization"] is True
+        assert recipe["gradient_checkpointing"] is True
+        assert recipe["cutoff_len"] <= 1024
+        assert recipe["lora_rank"] == 8
+        assert recipe["template"] == "spark"

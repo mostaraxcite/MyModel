@@ -107,7 +107,7 @@ jobs:
           nvidia-smi
           VRAM="$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -1 | tr -d ' ')"
           if [ "$VRAM" -lt 22000 ]; then
-            echo "::error::4B Spark LoRA requires a GPU with >=22GB VRAM for this FP32-based recipe. Available: ${D}{VRAM}MiB."
+            echo "::error::4B Spark LoRA requires a GPU with >=22GB VRAM for this FP32-based recipe. Available: $VRAMMiB."
             exit 1
           fi
       - name: Install model-author fork of LLaMA-Factory
@@ -143,7 +143,7 @@ jobs:
           set -euo pipefail
           ARGS=(--input data/training/sft_v3.jsonl --output-dir models/spark-x25-xss --model-revision "$MODEL_REVISION" --template spark --launch-training)
           if [ "$FOUR_BIT" = "true" ]; then ARGS+=(--four-bit); fi
-          python -m training.spark_xss "${D}{ARGS[@]}"
+          python -m training.spark_xss "${ARGS[@]}"
       - name: Publish candidate adapter only (no deployment or registry promotion)
         if: success()
         uses: actions/upload-artifact@v4

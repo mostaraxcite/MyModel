@@ -79,3 +79,20 @@ def test_kaggle_workflow_supports_no_run_publish_and_correct_owner():
     assert "inputs.mode != 'package'" in workflow
     assert 'if [ "${KAGGLE_OWNER,,}" = "kaggle" ]' in workflow
     assert 'This does NOT prove a GPU was allocated' in workflow
+
+
+def test_kaggle_spark_pins_legacy_transformers_before_loading_model():
+    """Regress Kaggle v4 crash: Spark 4B list-style tied weights vs HF 5.x."""
+    import ast
+
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "kaggle/spark_xss_train.py"
+    )
+    source = script.read_text(encoding="utf-8")
+    ast.parse(source)
+    assert 'TRANSFORMERS_VERSION = "4.57.1"' in source
+    assert 'f"transformers=={TRANSFORMERS_VERSION}"' in source
+    assert 'transformers.__version__ != TRANSFORMERS_VERSION' in source
+    assert 'huggingface_hub>=0.34,<1' in source
+    assert 'bitsandbytes>=0.45' in source

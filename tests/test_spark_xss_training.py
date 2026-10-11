@@ -67,7 +67,8 @@ def test_export_is_group_disjoint_and_never_launches_training(tmp_path):
         assert recipe["finetuning_type"] == "lora"
         assert recipe["dataset"] == "spark_xss_train"
         assert recipe["eval_dataset"] == "spark_xss_eval"
-        assert "template" not in recipe
+        assert recipe["template"] == "spark"
+        assert recipe["gradient_checkpointing"] is True
         assert not (out / "adapter").exists()
 
 

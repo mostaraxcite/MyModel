@@ -69,6 +69,37 @@ WARNING: Kaggle kernels push starts a remote GPU job. Pass --no-run if you only 
 - Successful completion requires status candidate_saved_not_evaluated and an actual adapter_config.json file.
 - A model candidate is NEVER automatically added to the runtime or registry. Browser confirmation remains the authority for CONFIRMED XSS findings. Use independent held-out near-miss and hard-negative evaluations before promotion.
 
+## Kaggle Version 4: Transformers 5.x incompatibility
+
+The October 11 Kaggle Version 4 reached Tesla T4, downloaded the 4B model,
+and tokenized **308 training / 51 development examples**. It failed while
+constructing the Spark model, BEFORE the first training step:
+
+    AttributeError: 'list' object has no attribute 'keys'
+
+The traceback was in Transformers 5.x
+`get_expanded_tied_weights_keys`. Spark model code supplies an old-style
+list mapping but Transformers 5.x expects a dict. The model-author's
+Spark fine-tuning guide documents **transformers 4.57.1**, so the Kaggle
+launcher now explicitly pins 4.57.1 after installing the framework fork and
+verifies the version BEFORE downloading model weights.
+
+**The existing Kaggle notebook remains pinned to an OLD MyModel commit.**
+A new GitHub commit does not silently update an already-saved Kaggle notebook.
+
+To install the corrected script safely, choose Actions > Kaggle Free GPU -
+Spark XSS on GitHub and manually dispatch with username **dody2004**
+and mode **publish** (uploads source without running it). Then open the
+notebook on Kaggle and explicitly enable GPU T4 x2 plus Internet before
+Save Version > Save & Run All. Alternatively update the existing Kaggle
+notebook's install_training_deps function to install transformers==4.57.1
+before starting training. Merely repeating the OLD Kaggle Version 4 will
+repeat the same crash.
+
+This is a compatibility fix based on the identified traceback. It does
+**not** demonstrate that 4B QLoRA fits within the first T4's 16 GiB
+or that training/evaluation subsequently succeeds.
+
 Existing paid GPU workflow remains unchanged:
 .github/workflows/spark-xss-github-training.yml
 

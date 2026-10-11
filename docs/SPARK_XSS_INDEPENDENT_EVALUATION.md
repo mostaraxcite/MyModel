@@ -22,7 +22,7 @@ any website. It cannot justify claiming a runtime-confirmed XSS vulnerability.
 ## Metric protocol
 
 - Run base Spark and adapter on **identical** inputs using the same tokenizer,
-  first-label inference, seed-independent deterministic logits and 4-bit T4.
+  first-label inference, seed-independent deterministic logits and FP16 T4.
 - Gold labels are static code-review judgments only, not runtime proofs.
 - We report TP/TN/FP/FN, false-positive rate, false-negative rate, precision,
   recall, F1, balanced accuracy, breakdown per family, and correct matched
@@ -62,3 +62,25 @@ A submitted kernel is never called a completed GPU evaluation until the
 Before production: independently audited real site-specific/browser-confirmed
 XSS experiments under authorization, unknown/abstain calibration, output
 format/evidence validation, and safety review are all still required.
+
+## CUDA Byte dtype failure — repaired evaluation loader
+
+The first Kaggle evaluation failed in the custom Spark attention block with
+`NotImplementedError: "baddbmm_cuda" not implemented for 'Byte'`.
+The diagnostic job `38179693623` recovered the trace and status from Kaggle
+without re-running GPU evaluation.
+
+Spark's custom decoder casts intermediate tensors to the dtype of
+`mlp.gate_proj.weight`. In a 4-bit `bitsandbytes` model, this packed weight
+is `torch.uint8`, **not** the actual FP16 compute dtype. Forward inference
+therefore reaches attention with a byte tensor and fails. Training succeeded
+through the author's own LLaMA-Factory integration; the failed independent
+evaluator had directly loaded Spark with an incompatible 4-bit path.
+
+The evaluator now loads the **same base model for both baseline and adapted
+comparisons in FP16**, on one T4, and verifies the decoder gate weight dtype
+before the first inference. This changes no training data, QLoRA adapter,
+weights, thresholds, or production deployment. It trades 4-bit inference
+memory savings for a correct compute dtype; 4.13B FP16 weights are expected
+to require about 8.3 GB decimal before activation/cache overhead, versus
+14.9 GiB reported T4 memory. Actual fit is pending a GPU evaluation run.

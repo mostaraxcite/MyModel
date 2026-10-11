@@ -51,10 +51,9 @@ Training is **not** started by CI, a scheduled job, or the default command.
 Use a CUDA-capable environment with a validated LLaMA-Factory installation
 that explicitly supports the Spark spark2_5 architecture and its native
 chat template. Validate versions against upstream; compatibility is NOT
-established by this repository's normal CI. The recipe intentionally omits
-template so a compatible LLaMA-Factory can auto-detect the model's native
-chat template. If auto-detection fails, supply a verified one using
---template; do not substitute another model's chat template blindly.
+established by this repository's normal CI. The recipe uses the Spark
+model-author LLaMA-Factory fork's native template named spark, and enables
+gradient checkpointing. Do not substitute another model's template.
 
 Pin the base revision to the actual **40-character Hugging Face commit SHA**:
 
@@ -104,3 +103,29 @@ real GPU performance, or XSS accuracy.
 Further reading:
 [Current architecture](ARCHITECTURE.md) and
 [Known limitations](KNOWN_LIMITATIONS.md).
+
+## GitHub Actions: online preparation and GPU training
+
+Workflow: .github/workflows/spark-xss-github-training.yml
+
+- An initial push of this workflow to main runs the **prepare** job on the
+  standard GitHub-hosted Ubuntu runner and uploads an artifact containing
+  data splits, hashes and the training YAML.
+- Actual **train** is available in the Actions tab using **Run workflow**,
+  mode=train, plus an immutable 40-hex Hugging Face model revision.
+- The train job targets a **self-hosted Linux x64 GPU runner** with labels
+  `self-hosted`, `linux`, `x64`, and `gpu`.
+  It rejects missing CUDA, BF16 support, and less than 22 GiB VRAM, and
+  installs a pinned revision of XHToken/LlamaFactory (the model-author fork).
+- The model-author training guide documents a LoRA path and the native
+  `spark` chat template.
+- The output is an **unpromoted LoRA adapter**, uploaded as a short-lived
+  GitHub Actions artifact on success. There is no automatic deployment,
+  registry promotion or target scanning.
+- If no matching GPU runner is connected, a manual train dispatch will remain
+  queued; do not expect the standard Ubuntu runner to train Spark 4B.
+
+Important: GitHub-hosted GPU larger runners require an eligible organization
+plan, and are not automatically available to personal repositories. A
+self-hosted GPU runner can perform the training inside GitHub Actions, but
+the hardware must be provided independently.

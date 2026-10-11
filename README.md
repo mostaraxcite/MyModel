@@ -129,6 +129,16 @@ See [XSS_TAINT_V1.md](docs/XSS_TAINT_V1.md) for usage, sanitizer trust assumptio
 coverage boundaries, disjoint evaluation and remaining milestones. No v1 external
 accuracy has been measured and no new model has been promoted.
 
+## Experimental Spark-X2.5 XSS training option
+
+An opt-in Spark-X2.5-4B LoRA training **recipe and dataset conversion** are now
+available in [Spark XSS training](docs/SPARK_XSS_TRAINING.md). This uses
+MyModel's existing synthetic XSS SFT corpus with group-isolated training and
+development splits; it is separate from the current XSS Taint v1 path.
+No model weights are trained, promoted, scanned, or deployed automatically.
+A trained candidate must pass independent testing and the frozen promotion gate
+before it can ever influence confirmed findings.
+
 ## Kev-style XSS decision model
 
 For the smaller CPU-first classifier path (`SAFE / POSSIBLE_XSS / XSS`), see

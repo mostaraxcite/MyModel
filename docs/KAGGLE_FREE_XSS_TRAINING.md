@@ -43,6 +43,24 @@ The first Kaggle run at https://www.kaggle.com/code/dody2004/spark-xss-qlora-kag
 
 Docs: https://www.kaggle.com/docs/notebooks and https://www.kaggle.com/discussions/product-feedback/268333 .
 
+## GitHub Actions failure #2: unsupported --no-run flag
+
+The GitHub Actions run 38176279389 failed during **publish**, after preparing
+the private Kaggle package. It did not submit a new Kaggle job. The PyPI
+Kaggle CLI version installed by `pip install --upgrade kaggle` rejected
+`--no-run` (exit code 2).
+
+The workflow now installs Kaggle's upstream CLI from the immutable commit
+`9c57dd74c29904c40ff7879eed33644be89d2e2f`, whose `kernels push`
+implementation supports `--no-run`. It checks the option exists BEFORE
+sending any request in publish mode, failing closed instead of accidentally
+executing the kernel. GitHub CI performs a separate command-line smoke test
+without needing Kaggle credentials.
+
+After this fix is merged, run the GitHub workflow **as a new Run workflow**
+with username `dody2004` and mode `publish`. Do NOT rerun the old failed
+run, since it checks out an older MyModel commit.
+
 ## Offline packaging without any Kaggle credentials
 
 From a clone of the MyModel repository:

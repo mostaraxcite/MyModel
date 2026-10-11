@@ -84,7 +84,16 @@ jobs:
           SUBMIT_MODE: ${{ inputs.mode }}
         run: |
           set -euo pipefail
-          python -m pip install -q --upgrade kaggle
+          # PyPI's latest release lacks --no-run (confirmed in Actions run 38176279389).
+          # Install a reviewed immutable upstream Kaggle CLI commit whose push
+          # parser supports --no-run and QUICK_SAVE.
+          python -m pip install -q "git+https://github.com/Kaggle/kaggle-cli.git@9c57dd74c29904c40ff7879eed33644be89d2e2f"
+          if [ "$SUBMIT_MODE" = "publish" ]; then
+            if ! kaggle kernels push --help | grep -q -- '--no-run'; then
+              echo "::error::Installed Kaggle CLI does not support safe --no-run; refusing to submit training."
+              exit 1
+            fi
+          fi
           if [ "$SUBMIT_MODE" = "publish" ]; then
             kaggle kernels push -p kaggle-dist --no-run --accelerator NvidiaTeslaT4 --timeout 18000
             echo "::notice::Kernel saved WITHOUT execution. Open Kaggle editor, enable GPU T4 x2 and Internet, then Save Version > Save & Run All."

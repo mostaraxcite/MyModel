@@ -124,20 +124,35 @@ def predict_label(model, tokenizer, prompt: str) -> dict:
     encoded = tokenizer(prefix, return_tensors="pt", add_special_tokens=False)
     gpu = next(model.parameters()).device
     encoded = {k: v.to(gpu) for k, v in encoded.items()}
-    variants = {}
-    # Candidate labels should be one next token for efficient, fair scoring.
-    for label in sorted(GOLD):
-        token_ids = tokenizer.encode(" " + label, add_special_tokens=False)
-        if len(token_ids) != 1:
-            raise RuntimeError(
-                f"Controlled classifier needs one token for label {label}; "
-                f"got {token_ids}. Refusing uncalibrated comparison."
-            )
-        variants[label] = token_ids[0]
+    variants = {
+        label: tokenizer.encode(" " + label, add_special_tokens=False)
+        for label in sorted(GOLD)
+    }
+    if not all(variants.values()):
+        raise RuntimeError("Tokenizer failed to encode comparison labels")
+    # Both labels are expected to be single tokens for Spark; if that changes,
+    # evaluate complete candidate sequence log-likelihood rather than silently
+    # comparing only a shared prefix or using a biased partial target.
     with torch.inference_mode():
-        out = model(**encoded, use_cache=False)
-        logits = out.logits[0, -1].float()
-        pair = torch.stack((logits[variants["safe"]], logits[variants["vulnerable"]]))
+        if all(len(ids) == 1 for ids in variants.values()):
+            logits = model(**encoded, use_cache=False).logits[0, -1].float()
+            pair = torch.stack((logits[variants["safe"][0]],
+                                logits[variants["vulnerable"][0]]))
+        else:
+            scores = {}
+            for label, ids in variants.items():
+                prompt_ids = encoded["input_ids"]
+                combined = torch.cat(
+                    (prompt_ids, torch.tensor([ids[:-1]], device=gpu)), dim=1
+                )
+                outputs = model(input_ids=combined, use_cache=False).logits
+                start = prompt_ids.size(1) - 1
+                positions = outputs[0, start : start + len(ids)].float()
+                targets = torch.tensor(ids, device=gpu)
+                scores[label] = torch.log_softmax(positions, dim=-1).gather(
+                    1, targets.unsqueeze(1)
+                ).sum() / len(ids)
+            pair = torch.stack((scores["safe"], scores["vulnerable"]))
         p = torch.softmax(pair, dim=0)
     return {
         "prediction": "vulnerable" if float(p[1]) >= 0.5 else "safe",

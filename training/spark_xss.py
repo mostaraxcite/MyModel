@@ -160,7 +160,9 @@ def convert(source: Path, output_dir: Path, *, seed: int = 1337,
         "dataset_dir": str(output_dir.resolve()),
         "dataset": "spark_xss_train",
         "eval_dataset": "spark_xss_eval",
+        "template": template or "spark",
         "cutoff_len": 2048,
+        "gradient_checkpointing": True,
         "learning_rate": 1.0e-4,
         "num_train_epochs": 2.0,
         "per_device_train_batch_size": 1,
@@ -181,8 +183,7 @@ def convert(source: Path, output_dir: Path, *, seed: int = 1337,
     }
     if revision:
         recipe["model_revision"] = revision
-    if template:
-        recipe["template"] = template
+    # Spark-X2.5's model-author fork documents the native "spark" template.
     if four_bit:
         recipe["quantization_bit"] = 4
         recipe["quantization_method"] = "bnb"

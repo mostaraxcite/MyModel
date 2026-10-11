@@ -89,7 +89,7 @@ References: <e.g. OWASP/CWE-79, or none>"""
 
 
 def prompt(code: str) -> str:
-    return f"{PREAMBLE}\n\nAnalyze this javascript code for XSS:\n\n\`\`\`javascript\n{code}\n\`\`\`\n\n{OUTPUT_FORMAT}\n"
+    return f"{PREAMBLE}\n\nAnalyze this javascript code for XSS:\n\n```javascript\n{code}\n```\n\n{OUTPUT_FORMAT}\n"
 
 
 def cases() -> list[dict]:
@@ -112,7 +112,7 @@ def assert_no_training_overlap(training_file: Path) -> dict:
         question = row["messages"][0]["content"]
         known.add(hashlib.sha256(question.strip().encode()).hexdigest())
         import re
-        match = re.search(r"\`\`\`javascript\n(.*?)\n\`\`\`", question, re.S)
+        match = re.search(r"```javascript\n(.*?)\n```", question, re.S)
         if match:
             known.add(hashlib.sha256(match.group(1).strip().encode()).hexdigest())
     overlaps = []

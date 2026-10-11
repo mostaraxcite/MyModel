@@ -185,8 +185,19 @@ def convert(source: Path, output_dir: Path, *, seed: int = 1337,
         recipe["model_revision"] = revision
     # Spark-X2.5's model-author fork documents the native "spark" template.
     if four_bit:
+        # GitHub-hosted paid GPU currently uses Tesla T4 (16 GiB): no native BF16.
+        # QLoRA is experimental on Spark; use FP16, NF4, shorter sequences.
+        recipe["bf16"] = False
+        recipe["fp16"] = True
         recipe["quantization_bit"] = 4
-        recipe["quantization_method"] = "bnb"
+        recipe["quantization_method"] = "bitsandbytes"
+        recipe["quantization_type"] = "nf4"
+        recipe["double_quantization"] = True
+        recipe["cutoff_len"] = 1024
+        recipe["lora_rank"] = 8
+        recipe["lora_alpha"] = 16
+        recipe["learning_rate"] = 5.0e-5
+        recipe["num_train_epochs"] = 1.0
     (output_dir / "train.yaml").write_text(
         yaml.safe_dump(recipe, sort_keys=False, allow_unicode=True), encoding="utf-8"
     )

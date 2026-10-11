@@ -97,3 +97,45 @@ def test_no_training_frozen_data_dependency_or_auto_promotion():
     assert "AutoModelForCausalLM.from_pretrained" in source
     assert "DO_NOT_PROMOTE" in source
     assert "assert_no_training_overlap" in source
+
+
+def test_strict_free_generation_parser_and_runtime_claim_guard():
+    from evaluation.spark_xss_benchmark import (
+        FIELDS, parse_free_response, GENERATION_CASE_INDICES,
+    )
+    answer = "\n".join(
+        f"{key}: {('safe' if key == 'Classification' else '0.8' if key == 'Confidence' else 'not established')}"
+        for key in FIELDS
+    )
+    result = parse_free_response(answer)
+    assert result["prediction"] == "safe"
+    assert result["complete_fields"] is True
+    assert result["fields_present"] == 14
+    assert result["runtime_claim_without_evidence"] is False
+    assert len(GENERATION_CASE_INDICES) == 16
+    assert {cases()[i]["label"] for i in GENERATION_CASE_INDICES} == {"safe", "vulnerable"}
+    poisoned = parse_free_response(answer + "\nConfirmed XSS executed in browser")
+    assert poisoned["runtime_claim_without_evidence"] is True
+    invalid = parse_free_response("Classification: not sure\nConfidence: 9.1")
+    assert invalid["prediction"] == "invalid"
+    assert invalid["complete_fields"] is False
+
+
+def test_free_generation_metrics_penalize_invalid_answers():
+    from evaluation.spark_xss_benchmark import generated_summary
+    base = [
+        {"id": "p", "prediction": "invalid", "complete_fields": False,
+         "runtime_claim_without_evidence": True},
+        {"id": "n", "prediction": "safe", "complete_fields": True,
+         "runtime_claim_without_evidence": False},
+    ]
+    tuned = [
+        {"id": "p", "prediction": "vulnerable", "complete_fields": True,
+         "runtime_claim_without_evidence": False},
+        {"id": "n", "prediction": "safe", "complete_fields": True,
+         "runtime_claim_without_evidence": False},
+    ]
+    report = generated_summary({"p": {"label": "vulnerable"}, "n": {"label": "safe"}}, base, tuned)
+    assert report["baseline"]["fn"] == 1
+    assert report["baseline"]["unverified_runtime_claims"] == 1
+    assert report["trained"]["accuracy"] == 1.0

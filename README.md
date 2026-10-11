@@ -132,7 +132,11 @@ accuracy has been measured and no new model has been promoted.
 ## Experimental Spark-X2.5 XSS training option
 
 An opt-in Spark-X2.5-4B LoRA training **recipe and dataset conversion** are now
-available in [Spark XSS training](docs/SPARK_XSS_TRAINING.md). This uses
+available in [Spark XSS training](docs/SPARK_XSS_TRAINING.md).
+A separate [free Kaggle T4 GPU training workflow](docs/KAGGLE_FREE_XSS_TRAINING.md)
+packages a private Kaggle kernel via GitHub Actions and can submit it only on
+explicit request with the owner's Kaggle API token. Neither path auto-promotes
+or deploys a model. This uses
 MyModel's existing synthetic XSS SFT corpus with group-isolated training and
 development splits; it is separate from the current XSS Taint v1 path.
 No model weights are trained, promoted, scanned, or deployed automatically.

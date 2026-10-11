@@ -29,3 +29,4 @@ jobs:
           tests/test_taint_v1.py
           tests/test_flow_relations.py
           tests/test_spark_xss_training.py
+          tests/test_kaggle_xss_kernel.py

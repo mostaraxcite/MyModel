@@ -1,0 +1,79 @@
+name: Kaggle Free GPU - Spark XSS
+
+on:
+  workflow_dispatch:
+    inputs:
+      kaggle_username:
+        description: "Kaggle username that owns the private training kernel"
+        required: true
+        type: string
+      mode:
+        description: "Package only, or explicitly submit training to Kaggle free T4"
+        required: true
+        type: choice
+        default: package
+        options:
+          - package
+          - submit
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spark-xss-kaggle-${{ github.ref }}-${{ inputs.kaggle_username }}
+  cancel-in-progress: false
+
+jobs:
+  kaggle:
+    name: Package pinned XSS training kernel
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test packaging on CPU (does not train)
+        run: |
+          python -m pip install -q pytest
+          python -m pytest -q tests/test_kaggle_xss_kernel.py
+      - name: Package private Kaggle kernel pinned to this commit
+        env:
+          KAGGLE_OWNER: ${{ inputs.kaggle_username }}
+          MYMODEL_SHA: ${{ github.sha }}
+        run: |
+          python scripts/build_kaggle_xss_kernel.py \
+            --owner "$KAGGLE_OWNER" \
+            --sha "$MYMODEL_SHA" \
+            --output-dir kaggle-dist
+          python -m py_compile kaggle-dist/spark_xss_train.py
+      - name: Save source + metadata without exposing Kaggle credentials
+        uses: actions/upload-artifact@v4
+        with:
+          name: kaggle-spark-xss-kernel-${{ github.run_id }}
+          path: |
+            kaggle-dist/spark_xss_train.py
+            kaggle-dist/kernel-metadata.json
+            kaggle-dist/packaging-manifest.json
+          retention-days: 14
+          if-no-files-found: error
+      - name: Check Kaggle API connection for explicitly requested submission
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'submit'
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+        run: |
+          if [ -z "$KAGGLE_API_TOKEN" ]; then
+            echo "::error::Add the Kaggle API token as repository Actions secret KAGGLE_API_TOKEN. No training has been submitted."
+            exit 1
+          fi
+      - name: Submit private GPU training to Kaggle (free quota)
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'submit'
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+          KAGGLE_OWNER: ${{ inputs.kaggle_username }}
+        run: |
+          set -euo pipefail
+          python -m pip install -q --upgrade kaggle
+          kaggle kernels push -p kaggle-dist --accelerator NvidiaTeslaT4 --timeout 18000
+          echo "Training has been submitted to Kaggle. Check GPU quota and results in the Kaggle account."
+          kaggle kernels status "$KAGGLE_OWNER/spark-xss-qlora-kaggle" || true

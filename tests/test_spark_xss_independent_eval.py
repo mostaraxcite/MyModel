@@ -139,3 +139,24 @@ def test_free_generation_metrics_penalize_invalid_answers():
     assert report["baseline"]["fn"] == 1
     assert report["baseline"]["unverified_runtime_claims"] == 1
     assert report["trained"]["accuracy"] == 1.0
+
+
+def test_cuda_byte_attention_failure_regression():
+    """Spark custom decoder must see FP16 weight.dtype, not BNB packed uint8."""
+    benchmark = (ROOT / "evaluation/spark_xss_benchmark.py").read_text()
+    assert 'from transformers import AutoTokenizer, AutoModelForCausalLM' in benchmark
+    assert 'quantization_config=cfg' not in benchmark
+    assert 'BitsAndBytesConfig' not in benchmark
+    assert 'torch_dtype=torch.float16, device_map={"": 0}' in benchmark
+    assert "layer.mlp.gate_proj.weight.dtype" in benchmark
+    assert "gate_dtype != torch.float16" in benchmark
+    assert "Unsafe Spark gate projection dtype" in benchmark
+
+
+def test_trained_adapter_is_loaded_after_baseline_without_retraining():
+    benchmark = (ROOT / "evaluation/spark_xss_benchmark.py").read_text()
+    before = benchmark.index("baseline = []")
+    after = benchmark.index("PeftModel.from_pretrained(model, str(adapter)")
+    assert before < after
+    assert "is_trainable=False" in benchmark
+    assert "DO_NOT_PROMOTE" in benchmark

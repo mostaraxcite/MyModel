@@ -96,3 +96,16 @@ def test_kaggle_spark_pins_legacy_transformers_before_loading_model():
     assert 'transformers.__version__ != TRANSFORMERS_VERSION' in source
     assert 'huggingface_hub>=0.34,<1' in source
     assert 'bitsandbytes>=0.45' in source
+
+
+def test_kaggle_cli_pinned_to_no_run_capable_revision():
+    """The PyPI CLI missed --no-run; pin upstream CLI and fail closed."""
+    workflow = (
+        Path(__file__).resolve().parents[1]
+        / ".github/workflows/kaggle-free-xss-training.yml"
+    ).read_text()
+    cli_sha = "9c57dd74c29904c40ff7879eed33644be89d2e2f"
+    assert f"Kaggle/kaggle-cli.git@{cli_sha}" in workflow
+    assert "kaggle kernels push --help | grep -q -- '--no-run'" in workflow
+    assert "refusing to submit training" in workflow
+    assert "python -m pip install -q --upgrade kaggle" not in workflow

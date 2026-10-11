@@ -77,7 +77,7 @@ jobs:
             exit 1
           fi
       - name: Publish to Kaggle; manual GPU activation recommended
-        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'submit'
+        if: github.event_name == 'workflow_dispatch' && inputs.mode != 'package'
         env:
           KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
           KAGGLE_OWNER: ${{ inputs.kaggle_username }}

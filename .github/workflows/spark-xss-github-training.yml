@@ -1,0 +1,157 @@
+name: Spark XSS - online preparation and GPU training
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/spark-xss-github-training.yml"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Prepare dataset, or train on your configured GPU runner"
+        type: choice
+        required: true
+        default: prepare
+        options:
+          - prepare
+          - train
+      model_revision:
+        description: "Pinned 40-character Hugging Face model commit (required for train)"
+        type: string
+        required: false
+        default: ""
+      four_bit:
+        description: "Enable experimental QLoRA if your GPU and fork support bitsandbytes"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spark-xss-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare XSS dataset on GitHub-hosted runner
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: python -m pip install --upgrade uv
+      - name: Validate existing MyModel Spark trainer
+        run: |
+          uv sync --group dev
+          uv run pytest -q tests/test_spark_xss_training.py
+      - name: Build train/eval splits and native Spark LoRA recipe online
+        run: |
+          uv run python -m training.spark_xss \
+            --input data/training/sft_v3.jsonl \
+            --output-dir models/spark-x25-xss
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          base = Path("models/spark-x25-xss")
+          manifest = json.loads((base / "manifest.json").read_text())
+          assert manifest["status"] == "DATA_PREPARED_NOT_TRAINED"
+          assert manifest["promotion"] == "NOT_EVALUATED"
+          assert manifest["train_records"] + manifest["eval_records"] == 359
+          assert manifest["train_template_groups"] + manifest["eval_template_groups"] == 8
+          assert not (base / "adapter").exists()
+          print(json.dumps(manifest, indent=2))
+          PY
+      - name: Publish redacted dataset/recipe artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: spark-xss-prepared-${{ github.run_id }}
+          path: models/spark-x25-xss/
+          retention-days: 14
+          if-no-files-found: error
+
+  gpu-train:
+    name: Train Spark-X2.5-4B LoRA (GPU runner only)
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'train'
+    needs: prepare
+    runs-on: [self-hosted, linux, x64, gpu]
+    timeout-minutes: 360
+    env:
+      DISABLE_VERSION_CHECK: "1"
+      TOKENIZERS_PARALLELISM: "false"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: spark-xss-prepared-${{ github.run_id }}
+          path: models/spark-x25-xss
+      - name: Reject missing GPU or unpinned base model
+        env:
+          MODEL_REVISION: ${{ inputs.model_revision }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! [[ "$MODEL_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Training requires a pinned 40-character model commit."
+            exit 1
+          fi
+          command -v nvidia-smi
+          nvidia-smi
+          VRAM="$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -1 | tr -d ' ')"
+          if [ "$VRAM" -lt 22000 ]; then
+            echo "::error::4B Spark LoRA requires a GPU with >=22GB VRAM for this FP32-based recipe. Available: ${D}{VRAM}MiB."
+            exit 1
+          fi
+      - name: Install model-author fork of LLaMA-Factory
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          git clone https://github.com/XHToken/LlamaFactory.git external/LlamaFactory
+          git -C external/LlamaFactory checkout --detach f56888d47dc5681e15b83ddbea01adddf2050adf
+          python -m pip install -e external/LlamaFactory
+          python -m pip install "huggingface_hub>=0.34,<2" "pyyaml>=6"
+      - name: Verify GPU BF16 support and base model commit
+        env:
+          MODEL_REVISION: ${{ inputs.model_revision }}
+        run: |
+          python - <<'PY'
+          import os
+          import torch
+          from huggingface_hub import HfApi
+          assert torch.cuda.is_available(), "CUDA unavailable"
+          assert torch.cuda.is_bf16_supported(), "GPU does not support BF16"
+          revision = os.environ["MODEL_REVISION"]
+          # Verifies a real immutable commit before model download.
+          HfApi().model_info("XHToken/Spark-X2.5-4B", revision=revision)
+          print("Pinned Spark model commit verified:", revision)
+          PY
+      - name: Train XSS LoRA candidate (not promoted)
+        env:
+          MODEL_REVISION: ${{ inputs.model_revision }}
+          FOUR_BIT: ${{ inputs.four_bit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARGS=(--input data/training/sft_v3.jsonl --output-dir models/spark-x25-xss --model-revision "$MODEL_REVISION" --template spark --launch-training)
+          if [ "$FOUR_BIT" = "true" ]; then ARGS+=(--four-bit); fi
+          python -m training.spark_xss "${D}{ARGS[@]}"
+      - name: Publish candidate adapter only (no deployment or registry promotion)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spark-xss-4b-lora-candidate-${{ github.run_id }}
+          path: |
+            models/spark-x25-xss/adapter/
+            models/spark-x25-xss/manifest.json
+            models/spark-x25-xss/train.yaml
+          retention-days: 14
+          if-no-files-found: error

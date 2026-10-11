@@ -108,3 +108,11 @@ def test_duplicate_prompt_across_groups_fails(tmp_path):
         source.write_text("".join(json.dumps(r) + "\n" for r in values))
         with pytest.raises(ValueError, match="Identical prompts"):
             convert(source, tmp_path / "out")
+
+
+def test_existing_xss_sft_v3_corpus_prepares_without_gpu(tmp_path):
+    manifest = convert(PROJECT / "data" / "training" / "sft_v3.jsonl", tmp_path / "prepared")
+    assert manifest["train_records"] + manifest["eval_records"] == 359
+    assert manifest["train_template_groups"] + manifest["eval_template_groups"] == 8
+    assert manifest["status"] == "DATA_PREPARED_NOT_TRAINED"
+    assert manifest["promotion"] == "NOT_EVALUATED"

@@ -26,8 +26,8 @@ def build(*, owner: str, sha: str, output_dir: Path,
     if not re.fullmatch(r"[0-9a-f]{40}", sha):
         raise ValueError("MyModel SHA must be an immutable 40-character commit")
     code = TEMPLATE.read_text(encoding="utf-8")
-    if code.count(COMMIT_PLACEHOLDER) != 2:
-        # One occurrence in assignment, one in the comment.
+    if code.count(COMMIT_PLACEHOLDER) != 1:
+        # A single exact replacement in the template assignment.
         raise ValueError("Unexpected Kaggle script template; refusing unsafe substitution")
     code = code.replace(f'REPO_SHA = "{COMMIT_PLACEHOLDER}"', f'REPO_SHA = "{sha}"')
     if f'REPO_SHA = "{sha}"' not in code:

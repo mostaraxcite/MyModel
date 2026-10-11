@@ -1,0 +1,137 @@
+name: Spark XSS Independent GPU Evaluation
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spark-xss-independent-eval
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[launch-xss-eval]')
+    name: Kaggle GPU base-vs-trained comparison
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify independent corpus, scoring, and no training leakage
+        run: |
+          python -m pip install -q pytest
+          python -m pytest -q tests/test_spark_xss_independent_eval.py
+          python -m compileall -q kaggle/spark_xss_eval.py evaluation/
+      - name: Package immutable GPU evaluation notebook
+        env:
+          EVAL_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, re
+          owner = "dody2004"
+          sha = os.environ["EVAL_SHA"]
+          if not re.fullmatch(r"[0-9a-f]{40}", sha):
+              raise ValueError("Evaluation commit must be immutable")
+          src = pathlib.Path("kaggle/spark_xss_eval.py").read_text()
+          assert src.count("__MYMODEL_EVAL_SHA__") == 1
+          dst = pathlib.Path("kaggle-eval-dist")
+          dst.mkdir(exist_ok=True)
+          (dst / "spark_xss_eval.py").write_text(
+              src.replace('"__MYMODEL_EVAL_SHA__"', '"' + sha + '"')
+          )
+          meta = {
+              "id": f"{owner}/spark-xss-independent-evaluation",
+              "title": "Spark XSS Independent Evaluation",
+              "code_file": "spark_xss_eval.py",
+              "language": "python",
+              "kernel_type": "script",
+              "is_private": True,
+              "enable_gpu": True,
+              "enable_internet": True,
+              "machine_shape": "NvidiaTeslaT4",
+              "kernel_sources": [f"{owner}/spark-xss-qlora-kaggle"],
+              "dataset_sources": [],
+              "competition_sources": [],
+              "model_sources": [],
+          }
+          (dst / "kernel-metadata.json").write_text(json.dumps(meta, indent=2) + "\n")
+          print(f"Evaluation source={sha}; pretrained adapter kernel={meta['kernel_sources'][0]}")
+          PY
+      - name: Save evaluator package even if publishing is unavailable
+        uses: actions/upload-artifact@v4
+        with:
+          name: spark-xss-evaluation-source
+          path: kaggle-eval-dist
+          retention-days: 14
+      - name: Submit evaluation with GPU requested
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KAGGLE_API_TOKEN" ]; then
+            echo "::error::Missing KAGGLE_API_TOKEN secret; evaluation cannot start."
+            exit 1
+          fi
+          python -m pip install -q "git+https://github.com/Kaggle/kaggle-cli.git@9c57dd74c29904c40ff7879eed33644be89d2e2f"
+          kaggle kernels push -p kaggle-eval-dist --accelerator NvidiaTeslaT4 --timeout 18000
+          echo "::notice::Kaggle evaluation submitted; submission does NOT confirm GPU allocation."
+          echo "https://www.kaggle.com/code/dody2004/spark-xss-independent-evaluation"
+      - name: Await independent evaluation and collect auditable results
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          kernel="dody2004/spark-xss-independent-evaluation"
+          finished=0
+          for i in $(seq 1 48); do
+            status="$(kaggle kernels status "$kernel" 2>&1 || true)"
+            printf 'Check %s/48: %s\n' "$i" "$status"
+            if echo "$status" | grep -Eqi 'error|failed|cancelled|canceled'; then
+              echo "::error::Kaggle evaluation failed. Review Kaggle kernel logs."
+              exit 1
+            fi
+            if echo "$status" | grep -Eqi 'complete|success'; then
+              finished=1
+              break
+            fi
+            sleep 60
+          done
+          if [ "$finished" != 1 ]; then
+            echo "::error::Kaggle evaluation not complete within the polling window."
+            exit 1
+          fi
+          mkdir -p evaluation-results
+          kaggle kernels output "$kernel" -p evaluation-results -o
+          python - <<'PY'
+          import json, pathlib
+          results = list(pathlib.Path("evaluation-results").rglob("report.json"))
+          statuses = list(pathlib.Path("evaluation-results").rglob("status.json"))
+          if len(results) != 1 or len(statuses) != 1:
+              raise SystemExit("Missing benchmark report/status: results not verified")
+          status = json.loads(statuses[0].read_text())
+          report = json.loads(results[0].read_text())
+          if status.get("status") != "success" or not status.get("evaluated"):
+              raise SystemExit("GPU benchmark did not complete successfully")
+          assert report["trained"]["n"] == 48, "Incomplete GPU benchmark"
+          print("Final independent XSS metrics:")
+          print(json.dumps({
+              "baseline": report["baseline"],
+              "trained": report["trained"],
+              "contrast_accuracy": report["paired_contrast_accuracy"],
+              "promotion": report["promotion_recommendation"],
+          }, indent=2))
+          PY
+      - name: Archive baseline and adapter results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spark-xss-independent-gpu-eval-${{ github.run_id }}
+          path: evaluation-results
+          if-no-files-found: warn
+          retention-days: 30

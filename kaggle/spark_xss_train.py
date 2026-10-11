@@ -20,6 +20,11 @@ REPO_SHA = "__MYMODEL_SHA__"  # replaced only by scripts/build_kaggle_xss_kernel
 FORK_URL = "https://github.com/XHToken/LlamaFactory.git"
 FORK_SHA = "f56888d47dc5681e15b83ddbea01adddf2050adf"
 MODEL_ID = "XHToken/Spark-X2.5-4B"
+# The Spark author training guide supports Transformers 4.57.1. In Kaggle v4,
+# the fork resolved Transformers 5.8.0, which requires a dict for
+# `_tied_weights_keys`, while Spark remote model code still supplies a list.
+# Do not silently use Transformers 5.x for this experimental training path.
+TRANSFORMERS_VERSION = "4.57.1"
 KAGGLE_ROOT = Path("/kaggle/working")
 RESULTS = KAGGLE_ROOT / "spark-xss-result"
 
@@ -75,7 +80,16 @@ def install_training_deps() -> None:
     run("git", "checkout", "--detach", "FETCH_HEAD", cwd=folder)
     run(sys.executable, "-m", "pip", "install", "-q", "-e", str(folder))
     run(sys.executable, "-m", "pip", "install", "-q",
-        "bitsandbytes>=0.45", "huggingface_hub>=0.34,<2", "pyyaml>=6")
+        f"transformers=={TRANSFORMERS_VERSION}",
+        "bitsandbytes>=0.45", "huggingface_hub>=0.34,<1", "pyyaml>=6")
+    # Fail before downloading a multi-GB model if Kaggle pip resolves 5.x again.
+    import transformers
+    print("Pinned Transformers version:", transformers.__version__, flush=True)
+    if transformers.__version__ != TRANSFORMERS_VERSION:
+        raise RuntimeError(
+            f"Spark requires transformers=={TRANSFORMERS_VERSION}; "
+            f"installed: {transformers.__version__}"
+        )
 
 
 def main() -> None:

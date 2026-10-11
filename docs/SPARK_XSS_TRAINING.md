@@ -113,10 +113,15 @@ Workflow: .github/workflows/spark-xss-github-training.yml
   data splits, hashes and the training YAML.
 - Actual **train** is available in the Actions tab using **Run workflow**,
   mode=train, plus an immutable 40-hex Hugging Face model revision.
-- The train job targets a **self-hosted Linux x64 GPU runner** with labels
-  `self-hosted`, `linux`, `x64`, and `gpu`.
-  It rejects missing CUDA, BF16 support, and less than 22 GiB VRAM, and
-  installs a pinned revision of XHToken/LlamaFactory (the model-author fork).
+- The train job targets the GitHub-hosted PAID GPU larger runner identified by
+  the Run workflow input gpu_runner_label, or repository variable
+  SPARK_GPU_RUNNER_LABEL. This is not a self-hosted runner.
+- GitHub's available paid GPU larger-runner specification is Tesla T4,
+  16 GB VRAM, 28 GB system RAM. T4 does not offer native BF16; the
+  workflow uses experimental FP16 4-bit QLoRA and gradient checkpointing.
+  Real Spark 4B compatibility/VRAM fit must be proven by an actual GPU run.
+- The workflow requires a pinned 40-character model revision, checks
+  CUDA and VRAM before training, and installs the model-author fork.
 - The model-author training guide documents a LoRA path and the native
   `spark` chat template.
 - The output is an **unpromoted LoRA adapter**, uploaded as a short-lived
@@ -125,7 +130,18 @@ Workflow: .github/workflows/spark-xss-github-training.yml
 - If no matching GPU runner is connected, a manual train dispatch will remain
   queued; do not expect the standard Ubuntu runner to train Spark 4B.
 
-Important: GitHub-hosted GPU larger runners require an eligible organization
-plan, and are not automatically available to personal repositories. A
-self-hosted GPU runner can perform the training inside GitHub Actions, but
-the hardware must be provided independently.
+Important: GitHub-hosted GPU larger runners are available only to
+organizations on GitHub Team or Enterprise Cloud, NOT directly to a
+repository owned by a personal User account. MyModel is currently owned
+by the personal account mostaraxcite. It must be moved or mirrored into
+an eligible organization repository which has access to that runner before
+paid GPU training can start.
+
+Once the eligible repository has been configured, copy the runner's EXACT
+name/label from the repository's Actions > Runners page. Select
+Actions > Spark XSS > Run workflow, mode=train, paste the GPU runner
+label and the pinned model revision, and leave four_bit=true for Tesla T4.
+
+The model-author documents LoRA on Spark, but 4-bit QLoRA compatibility
+on 16 GB T4 is an experimental path rather than a guaranteed result.
+Training does not auto-promote results or scan any targets.

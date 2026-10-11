@@ -117,3 +117,29 @@ def test_existing_xss_sft_v3_corpus_prepares_without_gpu(tmp_path):
     assert manifest["train_template_groups"] + manifest["eval_template_groups"] == 8
     assert manifest["status"] == "DATA_PREPARED_NOT_TRAINED"
     assert manifest["promotion"] == "NOT_EVALUATED"
+
+
+def test_tesla_t4_qlora_recipe(tmp_path):
+    """GitHub's Tesla T4 uses FP16 + 4-bit, not a BF16 LoRA recipe."""
+    with tempfile.TemporaryDirectory(prefix="spark-test-", dir=PROJECT / "data" / "training") as directory:
+        source = make_source(Path(directory))
+        convert(source, tmp_path / "qlora", four_bit=True)
+        recipe = yaml.safe_load((tmp_path / "qlora" / "train.yaml").read_text())
+        assert recipe["fp16"] is True
+        assert recipe["bf16"] is False
+        assert recipe["quantization_method"] == "bitsandbytes"
+        assert recipe["quantization_bit"] == 4
+        assert recipe["quantization_type"] == "nf4"
+        assert recipe["double_quantization"] is True
+        assert recipe["gradient_checkpointing"] is True
+        assert recipe["cutoff_len"] <= 1024
+        assert recipe["template"] == "spark"
+
+
+def test_paid_gpu_workflow_never_defaults_to_self_hosted():
+    text = (PROJECT / ".github" / "workflows" / "spark-xss-github-training.yml").read_text()
+    assert "gpu_runner_label" in text
+    assert "vars.SPARK_GPU_RUNNER_LABEL" in text
+    assert "runs-on: [self-hosted" not in text
+    assert "needs: [prepare, validate-gpu-runner]" in text
+    assert "default: true" in text

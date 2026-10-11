@@ -27,9 +27,12 @@ any website. It cannot justify claiming a runtime-confirmed XSS vulnerability.
 - We report TP/TN/FP/FN, false-positive rate, false-negative rate, precision,
   recall, F1, balanced accuracy, breakdown per family, and correct matched
   safe-vulnerable pairs.
-- The scoring interface measures the conditional probability of the first
-  classification label. It does **not** prove that unforced generation
-  produces fully compliant 14-field answers or sound source/sink evidence.
+- The full 48-case run scores conditional classification-label probabilities.
+  A separate 16-case stratified free-generation smoke test measures actual
+  14-field output format, classification correctness, and unsupported claims
+  that XSS executed in a real browser. Generation errors count as invalid
+  predictions. Even perfect format compliance cannot prove that free-form
+  source/sink explanations are evidence-grounded.
 - Invalid/abstained outputs are penalized rather than omitted. No training or
   threshold selection is performed on the frozen evaluation corpus.
 - Results have **DO_NOT_PROMOTE** status even if accuracy is perfect.

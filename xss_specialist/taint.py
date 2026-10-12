@@ -93,8 +93,9 @@ class Analyzer:
             return literal
         return None
 
-    def callback(self, call_node, cb, *, source: str) -> bool:
-        """Review a bounded callback body under a known untrusted event source.
+    def callback(self, call_node, cb, *, source: str | None = None,
+                 bound_value: Value | None = None) -> bool:
+        """Review bounded callbacks with either event input or resolved Promise input.
 
         The event could arrive later; this only establishes potential static
         paths and is NEVER proof that browser execution occurred.
@@ -120,8 +121,18 @@ class Analyzer:
         previous_env = dict(self.env)
         previous_bindings = dict(self.bindings)
         previous_tags = dict(self.dom_tags)
-        self.observed_sources.add(source)
-        self.env[name] = Value((source,), (source, name))
+        if bound_value is not None:
+            self.observed_sources.update(bound_value.sources)
+            self.env[name] = Value(bound_value.sources,
+                                   bound_value.trace + (name,),
+                                   bound_value.sanitizer,
+                                   bound_value.unknown)
+        elif source is not None:
+            self.observed_sources.add(source)
+            self.env[name] = Value((source,), (source, name))
+        else:
+            self.limitation(call_node, "callback input origin unknown")
+            self.env[name] = Value(unknown=True)
         if body.type == "statement_block":
             self.statement(body)
         else:
@@ -187,6 +198,8 @@ class Analyzer:
             # We do not assert fields of untainted/unknown objects are safe.
             if base.sources and not base.unknown:
                 return Value(base.sources, base.trace + (path or self.text(node),),
+                             base.sanitizer if path.endswith(".href")
+                             and base.sanitizer == "fixed-relative-url" else None,
                              unknown=False)
             return join(base, Value(unknown=True))
         if kind in ("array", "array_expression"):
@@ -201,6 +214,17 @@ class Analyzer:
                 value = values[0]
                 return Value(value.sources, value.trace + ("new " + ctor,),
                              unknown=value.unknown)
+            if ctor == "URL" and params and len(values) == 2:
+                args = params.named_children
+                origin = self.path(args[1])
+                if (origin in ("location.origin", "window.location.origin")
+                        and origin.split(".")[0] not in self.env
+                        and "URL" not in self.env
+                        and values[0].sanitizer == "fixed-relative-url"
+                        and not values[0].unknown):
+                    return Value(values[0].sources,
+                                 values[0].trace + ("new URL relative origin",),
+                                 "fixed-relative-url", unknown=False)
             if ctor == "Function":
                 self.sink(node, values[0] if values else Value(unknown=True), "javascript")
                 return Value(unknown=True)
@@ -300,6 +324,22 @@ class Analyzer:
                     return Value()
                 self.limitation(node, "unresolved event listener/callback")
                 return Value(unknown=True)
+            if function.type == "member_expression":
+                obj = self.field(function, "object")
+                prop = self.path(self.field(function, "property"))
+                if (prop == "then" and len(args) == 1
+                        and obj is not None and obj.type == "call_expression"
+                        and self.path(self.field(obj, "function")) == "Promise.resolve"
+                        and "Promise" not in self.env):
+                    previous = self.expression(obj)
+                    if self.callback(node, args[0], bound_value=previous):
+                        return Value()
+                    return Value(unknown=True)
+            if (call in ("setTimeout", "setInterval", "window.setTimeout",
+                         "window.setInterval") and args
+                    and args[0].type in ("arrow_function", "function_expression")):
+                self.limitation(node, "timer function callback not statically resolved")
+                return Value(unknown=True)
             values = [self.expression(a) for a in args]
             # Narrow, audited taint-preserving operations. These are NOT
             # sanitizers and never prove a dangerous sink safe.
@@ -327,6 +367,10 @@ class Analyzer:
                 # Browser console methods read their arguments but do not
                 # normally mutate lexical bindings. Reject shadowed aliases.
                 return Value()
+            if call == "Promise.resolve" and len(values) == 1 and "Promise" not in self.env:
+                value = values[0]
+                return Value(value.sources, value.trace + ("Promise.resolve",),
+                             value.sanitizer, value.unknown)
             if call == "document.createTextNode" and len(values) == 1:
                 value = values[0]
                 return Value(value.sources, value.trace + (call,),
@@ -364,6 +408,11 @@ class Analyzer:
             if call.endswith(".insertAdjacentText") and len(values) == 2:
                 self.sink(function, values[1], "text")
                 return Value(unknown=True)
+            if (call.endswith(".replaceChildren") and values
+                    and all(v.sanitizer == "dom-text-node" and not v.unknown
+                            for v in values)):
+                self.sink(function, join(*values), "text")
+                return Value(unknown=True)
             if (call.endswith(".appendChild") and len(values) == 1 and
                     values[0].sanitizer == "dom-text-node" and
                     not values[0].unknown):
@@ -396,7 +445,8 @@ class Analyzer:
                 # Dynamic attributes/URLs require context-aware review.
                 self.limitation(node, "attribute name/context not safely resolved")
                 return Value(unknown=True)
-            if call in ("eval", "window.eval", "setTimeout", "setInterval"):
+            if call in ("eval", "window.eval", "setTimeout", "setInterval",
+                        "window.setTimeout", "window.setInterval"):
                 self.sink(function, values[0] if values else Value(unknown=True), "javascript")
                 return Value(unknown=True)
             owner = call.removesuffix(".sanitize")

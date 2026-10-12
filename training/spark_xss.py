@@ -85,7 +85,7 @@ def validate_record(row: dict[str, Any], line: int) -> tuple[str, dict, str]:
 def convert(source: Path, output_dir: Path, *, seed: int = 1337,
             valid_fraction: float = 0.2, model: str = DEFAULT_MODEL,
             revision: str | None = None, template: str | None = None,
-            four_bit: bool = False) -> dict[str, Any]:
+            four_bit: bool = False, balanced_v2: bool = False) -> dict[str, Any]:
     if not source_is_training_data(source):
         raise ValueError("Only data/training inputs inside MyModel are allowed; frozen tests are excluded")
     if not source.is_file():
@@ -198,7 +198,17 @@ def convert(source: Path, output_dir: Path, *, seed: int = 1337,
         recipe["lora_alpha"] = 16
         recipe["learning_rate"] = 5.0e-5
         recipe["num_train_epochs"] = 1.0
-    (output_dir / "train.yaml").write_text(
+    if balanced_v2:
+        # Repair previous candidate's inflated false positives: use a balanced
+        # hard-negative corpus and a smaller one-epoch update.
+        if not four_bit:
+            raise ValueError("Balanced v2 recipe requires 4-bit training mode")
+        if source.name != "sft_v4_balanced.jsonl" and "v4" not in source.name:
+            raise ValueError("Balanced v2 must use its dedicated generated dataset")
+        recipe["learning_rate"] = 2.0e-5
+        recipe["logging_steps"] = 5
+        recipe["warmup_ratio"] = 0.1
+        (output_dir / "train.yaml").write_text(
         yaml.safe_dump(recipe, sort_keys=False, allow_unicode=True), encoding="utf-8"
     )
 
@@ -216,6 +226,7 @@ def convert(source: Path, output_dir: Path, *, seed: int = 1337,
         "eval_template_groups": len(valid_groups),
         "class_counts": {name: dict(counter) for name, counter in distributions.items()},
         "promotion": "NOT_EVALUATED",
+        "recipe_variant": "balanced_v2_hard_negatives" if balanced_v2 else "baseline_v1",
         "browser_confirmation_required": True,
         "notes": "Synthetic code labels are not live vulnerability confirmation. "
                  "Evaluate on independent held-out suites before any model promotion.",
@@ -234,6 +245,8 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=1337)
     parser.add_argument("--valid-fraction", type=float, default=0.2)
     parser.add_argument("--four-bit", action="store_true", help="Experimental bitsandbytes QLoRA, GPU required")
+    parser.add_argument("--balanced-v2", action="store_true",
+                        help="Opt in to balanced v2 hard-negative recipe (lower LR), never auto-promote")
     parser.add_argument("--launch-training", action="store_true",
                         help="Explicitly start training (requires pinned revision and installed LLaMA-Factory)")
     args = parser.parse_args()
@@ -246,7 +259,7 @@ def main() -> None:
         args.input, args.output_dir, seed=args.seed,
         valid_fraction=args.valid_fraction, model=args.model,
         revision=args.model_revision, template=args.template,
-        four_bit=args.four_bit,
+        four_bit=args.four_bit, balanced_v2=args.balanced_v2,
     )
     print(json.dumps(manifest, indent=2))
     if args.launch_training:

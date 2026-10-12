@@ -104,7 +104,6 @@ def review(
             browser_evidence=None,
             limitations=list(static.get("limitations", [])),
             evidence=static_evidence,
-        model_assistance=model_assistance,
             model_assistance=model_assistance,
         )
 
@@ -184,4 +183,5 @@ def review(
         browser_evidence=evidence,
         limitations=list(static.get("limitations", [])),
         evidence=static_evidence,
+        model_assistance=model_assistance,
     )

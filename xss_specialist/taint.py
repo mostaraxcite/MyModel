@@ -151,7 +151,7 @@ class Analyzer:
             context == "html" and
             value.sanitizer in {"dompurify:default-html",
                                 "encodeURIComponent:html-markup"}
-        )
+        ) or (context == "url" and value.sanitizer == "fixed-relative-url")
         # A text-only DOM output API is never an HTML execution sink.
         # Preserve the input provenance even when the output is safe.
         verdict = "INCONCLUSIVE" if value.unknown else (
@@ -225,6 +225,20 @@ class Analyzer:
                 self.limitation(node, "non-concatenation operator/control effects are not resolved")
                 self.env = {k: join(v, Value(unknown=True)) for k, v in self.env.items()}
                 return join(value, Value(unknown=True))
+            # A fixed, root-relative path followed by a single percent-encoded
+            # value cannot create a javascript: scheme. Do not generalize this
+            # policy to arbitrary concatenation, multiple raw values or other
+            # URI contexts.
+            if operator == "+":
+                left_node = self.field(node, "left")
+                literal = self.text(left_node)
+                if (left_node is not None and left_node.type == "string"
+                        and literal.startswith(("'/", '"/'))
+                        and not literal.startswith(("'//", '"//'))
+                        and right.sanitizer == "encodeURIComponent:html-markup"
+                        and not value.unknown):
+                    return Value(value.sources, value.trace,
+                                 "fixed-relative-url", unknown=False)
             return Value(value.sources, value.trace, unknown=value.unknown)
         if kind == "ternary_expression":
             # Conditions may contain assignments or sinks; inspect them too.
@@ -246,7 +260,21 @@ class Analyzer:
                 self.sink(left, value, "html")
             elif suffix in ("textContent", "innerText"):
                 self.sink(left, value, "text")
+            elif suffix in ("href", "src"):
+                obj = self.field(left, "object")
+                owner = self.path(obj)
+                tag = self.dom_tags.get(owner) or self.recognized_dom_tag(obj)
+                is_location = name in ("location.href", "window.location.href",
+                                       "document.location.href")
+                if suffix == "href" and (is_location or tag == "a"):
+                    self.sink(left, value, "url")
+                elif suffix == "src" and tag == "script":
+                    self.sink(left, value, "remote_script")
+                else:
+                    self.limitation(left, "untyped href/src destination requires DOM element identity")
+                    self.env = {k: join(v, Value(unknown=True)) for k,v in self.env.items()}
             elif left.type == "identifier":
+                self.dom_tags.pop(name, None)
                 self.bindings.pop(name, None)
                 self.env[name] = Value(value.sources, value.trace + (name,), value.sanitizer, value.unknown)
             else:
@@ -290,6 +318,15 @@ class Analyzer:
                 )
                 return Value(value.sources, value.trace + (call,),
                              encoder, value.unknown)
+            if call == "document.createElement" and self.recognized_dom_tag(node):
+                return Value()
+            if call == "document.querySelector" and self.recognized_dom_tag(node):
+                return Value()
+            if call in ("console.log", "console.info", "console.warn",
+                        "console.error", "console.debug") and "console" not in self.env:
+                # Browser console methods read their arguments but do not
+                # normally mutate lexical bindings. Reject shadowed aliases.
+                return Value()
             if call == "document.createTextNode" and len(values) == 1:
                 value = values[0]
                 return Value(value.sources, value.trace + (call,),
@@ -341,6 +378,16 @@ class Analyzer:
                     if key.startswith("on") and len(key) > 2:
                         self.sink(function, values[1], "javascript")
                         return Value(unknown=True)
+                    if key == "href":
+                        self.sink(function, values[1], "url")
+                        return Value(unknown=True)
+                    if key == "src":
+                        receiver = self.field(function, "object")
+                        owner = self.path(receiver)
+                        tag = self.dom_tags.get(owner) or self.recognized_dom_tag(receiver)
+                        if tag == "script":
+                            self.sink(function, values[1], "remote_script")
+                            return Value(unknown=True)
                     if (key in {"title", "alt", "class", "id", "role"}
                             or key.startswith("aria-") or
                             (key.startswith("data-") and len(key) > 5)):

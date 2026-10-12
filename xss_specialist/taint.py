@@ -6,7 +6,7 @@ SAFE means supported expressions at reviewed sinks, not whole-program safety.
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
 import re
 from pathlib import Path
@@ -21,6 +21,7 @@ class Value:
     trace: tuple[str, ...] = ()
     sanitizer: str | None = None
     unknown: bool = False
+    properties: tuple[tuple[str, "Value"], ...] = ()
 
 
 def join(*values: Value) -> Value:
@@ -45,12 +46,161 @@ class Analyzer:
         # Only literal createElement/querySelector bindings are type-proven.
         # Never infer an element's tag from a variable name like "script".
         self.dom_tags: dict[str, str] = {}
+        self.functions: dict[str, object] = {}
+        self.call_depth = 0
+
+    def literal_string(self, node) -> str | None:
+        # Escape sequences require JS decoding; abstain rather than compare
+        # the raw spelling (e.g. '/\\x2f' is not a fixed-origin prefix).
+        if node is None or node.type != "string":
+            return None
+        raw = self.text(node)
+        return raw[1:-1] if "\\" not in raw else None
+
+    def invalidate(self):
+        self.dom_tags.clear()
+        self.bindings.clear()
+        self.functions.clear()
+        self.env = {k: replace(v, unknown=True) for k, v in self.env.items()}
+
+    def block(self, node):
+        # All lexical declarations shadow from block entry (including TDZ).
+        # Restore only block-local bindings; assignments to outer names survive.
+        locals_ = set()
+        start_limitations = len(self.limitations)
+        for child in node.named_children:
+            if child.type == "lexical_declaration":
+                for decl in child.named_children:
+                    name = self.field(decl, "name")
+                    if name is not None and name.type == "identifier":
+                        locals_.add(self.text(name))
+            elif child.type == "function_declaration":
+                locals_.add(self.text(self.field(child, "name")))
+        maps = (self.env, self.bindings, self.dom_tags, self.functions)
+        saved = [{k: m[k] for k in locals_ if k in m} for m in maps]
+        for name in locals_:
+            self.env[name] = Value(unknown=True)
+            self.bindings.pop(name, None)
+            self.dom_tags.pop(name, None)
+            self.functions.pop(name, None)
+        for child in node.named_children:
+            if child.type == "function_declaration":
+                self.register_function(child)
+        for child in node.named_children:
+            self.statement(child)
+        # Unknown calls can invalidate outer identities even while hidden by
+        # a local binding. A block must not resurrect these trusted identities.
+        poisoned = len(self.limitations) > start_limitations
+        for attr, prior in zip(("env", "bindings", "dom_tags", "functions"), saved):
+            current = getattr(self, attr)
+            for name in locals_:
+                current.pop(name, None)
+            if attr == "env":
+                current.update({k: replace(v, unknown=True) if poisoned else v for k,v in prior.items()})
+            elif not poisoned:
+                current.update(prior)
+
+    def register_function(self, node):
+        name = self.text(self.field(node, "name"))
+        self.env[name] = Value(unknown=True)
+        self.functions[name] = node
+
+    def pure_expression(self, node) -> bool:
+        if node is None:
+            return False
+        if node.type in {"identifier", "string", "number", "true", "false", "null", "undefined"}:
+            return True
+        if node.type in {"member_expression", "subscript_expression"}:
+            path=self.path(node)
+            return self.source(path) and path.split('.')[0] not in self.env
+        if node.type in {"parenthesized_expression", "array", "object", "pair", "property_identifier"}:
+            return all(self.pure_expression(c) for c in node.named_children)
+        if node.type == "binary_expression":
+            return self.text(self.field(node,"operator")) == "+" and all(self.pure_expression(c) for c in node.named_children)
+        if node.type == "call_expression":
+            call = self.path(self.field(node, "function"))
+            args = self.field(node, "arguments")
+            return (call in {"encodeURIComponent", "decodeURIComponent", "String"}
+                    and call not in self.env and args is not None
+                    and len(args.named_children) == 1
+                    and self.pure_expression(args.named_children[0]))
+        return False
+
+    def local_call(self, node, fn, values) -> Value:
+        params = self.field(fn, "parameters")
+        body = self.field(fn, "body")
+        args = params.named_children if params is not None else []
+        statements = [c for c in body.named_children if c.type != "comment"] if body else []
+        supported = (self.call_depth < 3 and len(args) <= 4 and len(args) == len(values)
+                     and all(p.type == "identifier" for p in args)
+                     and 1 <= len(statements) <= 12
+                     and statements[-1].type == "return_statement"
+                     and len(statements[-1].named_children) == 1
+                     and self.pure_expression(statements[-1].named_children[0]))
+        for stmt in statements[:-1]:
+            supported = supported and stmt.type == "lexical_declaration"
+            for decl in stmt.named_children:
+                name = self.field(decl,"name") if decl.type == "variable_declarator" else None
+                supported = supported and name is not None and name.type == "identifier" and self.pure_expression(self.field(decl,"value"))
+        if not supported:
+            self.limitation(node,"local function exceeds bounded straight-line return review")
+            self.invalidate()
+            return join(*values,Value(unknown=True))
+        saved = (dict(self.env),dict(self.bindings),dict(self.dom_tags),dict(self.functions))
+        initial_limitations=len(self.limitations)
+        self.call_depth += 1
+        try:
+            for param,value in zip(args,values):
+                name=self.text(param)
+                self.env[name]=replace(value,trace=value.trace+(name,))
+                self.bindings.pop(name,None); self.dom_tags.pop(name,None); self.functions.pop(name,None)
+            for stmt in statements[:-1]:
+                self.statement(stmt)
+            result=self.expression(statements[-1].named_children[0])
+            return replace(result,trace=result.trace+(self.text(self.field(fn,'name'))+' return',))
+        finally:
+            self.call_depth -= 1
+            self.env,self.bindings,self.dom_tags,self.functions=saved
+            if len(self.limitations)>initial_limitations:self.invalidate()
+
+    def html_composition(self, node) -> bool:
+        # Preserve percent-encoding only at HTML text positions, never in
+        # attributes, script/style bodies, or partially decoded/raw values.
+        parts=[]; markers=[]
+        def walk(n):
+            if n.type == "binary_expression" and self.text(self.field(n,"operator")) == "+":
+                return walk(self.field(n,"left")) and walk(self.field(n,"right"))
+            literal=self.literal_string(n)
+            if literal is not None:
+                parts.append(literal); return True
+            value=None
+            if n.type == "identifier":
+                value=self.env.get(self.text(n))
+            elif n.type == "call_expression" and self.path(self.field(n,"function")) == "encodeURIComponent" and "encodeURIComponent" not in self.env:
+                arguments=self.field(n,"arguments")
+                if arguments and len(arguments.named_children)==1:
+                    arg=arguments.named_children[0]
+                    if arg.type == "identifier": value=self.env.get(self.text(arg))
+                    elif self.source(self.path(arg)) and self.path(arg).split('.')[0] not in self.env: value=Value((self.path(arg),))
+                    if value is not None and not value.unknown: value=replace(value,sanitizer="encodeURIComponent:html-markup")
+            if value is None or value.unknown or value.sanitizer != "encodeURIComponent:html-markup": return False
+            marker='XSSENCODEDMARKER'+str(len(markers))+'END'
+            markers.append(marker); parts.append(marker); return True
+        if not walk(node) or not markers: return False
+        # Restrict the static skeleton to text and inert, attribute-free wrapper
+        # tags. No HTML-parser/browser disagreement, raw-text or attr context
+        # is generalized into an encoding guarantee.
+        skeleton=''.join(parts)
+        wrappers=r"div|span|article|section|p|strong|b|em|i|main|aside|br"
+        return re.fullmatch(r"(?:[^<>]|</?(?:"+wrappers+r")\s*>)*",skeleton,re.I) is not None
 
     def text(self, node) -> str:
         return self.code[node.start_byte:node.end_byte].decode() if node else ""
 
     def limitation(self, node, message: str):
         self.limitations.append(f"line {node.start_point.row + 1}: {message}")
+        # Unreviewed effects cannot preserve a function's previously known identity.
+        self.functions.clear()
 
     def field(self, node, name):
         return node.child_by_field_name(name)
@@ -87,9 +237,12 @@ class Analyzer:
         if len(args) != 1 or args[0].type != "string":
             return None
         literal = self.text(args[0])[1:-1].strip().lower()
-        if fn == "document.createElement" and literal in {"script", "a", "iframe"}:
+        if fn.split('.')[0] in self.env:
+            return None
+        tags={"script", "a", "area", "iframe", "div", "span", "img", "p", "button"}
+        if fn == "document.createElement" and literal in tags:
             return literal
-        if fn == "document.querySelector" and literal in {"script", "a", "iframe"}:
+        if fn == "document.querySelector" and literal in tags:
             return literal
         return None
 
@@ -106,7 +259,7 @@ class Analyzer:
         param = self.field(cb, "parameter")
         params = self.field(cb, "parameters")
         if param is None and params is not None:
-            candidates = [c for c in params.named_children if c.type == "identifier"]
+            candidates = params.named_children
             param = candidates[0] if len(candidates) == 1 else None
         if param is None:
             # Some tree-sitter versions expose the single arrow parameter
@@ -114,19 +267,42 @@ class Analyzer:
             candidates = [c for c in cb.named_children if c.type == "identifier"]
             param = candidates[0] if len(candidates) == 1 else None
         body = self.field(cb, "body")
-        if param is None or param.type != "identifier" or body is None:
+        destructured = False
+        if param is not None and param.type == "object_pattern" and source == "message-event.data":
+            properties = param.named_children
+            if len(properties) == 1:
+                item = properties[0]
+                if item.type == "shorthand_property_identifier_pattern" and self.text(item) == "data":
+                    param = item; destructured = True
+                elif item.type == "pair_pattern" and self.text(self.field(item,"key")) == "data":
+                    param = self.field(item,"value"); destructured = param is not None and param.type == "identifier"
+        if param is None or (param.type != "identifier" and not destructured) or body is None:
             self.limitation(call_node, "callback parameter/body not resolvable")
             return False
         name = self.text(param)
         previous_env = dict(self.env)
         previous_bindings = dict(self.bindings)
         previous_tags = dict(self.dom_tags)
+        previous_functions = dict(self.functions)
+        initial_limitations = len(self.limitations)
+        # var declarations belong to the callback, including nested blocks;
+        # declarations in a nested function belong to that nested function.
+        callback_locals = {name}
+        def collect_vars(n):
+            for child in n.named_children:
+                if child.type in {"function_declaration","function_expression","arrow_function"}: continue
+                if child.type == "variable_declaration":
+                    for decl in child.named_children:
+                        ident=self.field(decl,"name")
+                        if ident is not None and ident.type == "identifier":callback_locals.add(self.text(ident))
+                collect_vars(child)
+        collect_vars(body)
+        for local in callback_locals:
+            self.env[local]=Value(unknown=True)
+            self.bindings.pop(local,None); self.dom_tags.pop(local,None); self.functions.pop(local,None)
         if bound_value is not None:
             self.observed_sources.update(bound_value.sources)
-            self.env[name] = Value(bound_value.sources,
-                                   bound_value.trace + (name,),
-                                   bound_value.sanitizer,
-                                   bound_value.unknown)
+            self.env[name] = replace(bound_value,trace=bound_value.trace+(name,))
         elif source is not None:
             self.observed_sources.add(source)
             self.env[name] = Value((source,), (source, name))
@@ -142,15 +318,16 @@ class Analyzer:
         # safe. Preserve only the pre-registration local state with a warning.
         mutated = any(
             k in previous_env and self.env.get(k) != previous_env[k]
-            for k in self.env if k != name
+            for k in self.env if k not in callback_locals
         )
         if mutated:
             self.limitation(call_node, "callback writes to outer state; scheduling is unresolved")
         self.env = previous_env
         self.bindings = previous_bindings
         self.dom_tags = previous_tags
-        if mutated:
-            self.env = {k: join(v, Value(unknown=True)) for k, v in self.env.items()}
+        self.functions = previous_functions
+        if mutated or len(self.limitations) > initial_limitations:
+            self.invalidate()
         return True
 
     def sink(self, node, value: Value, context: str):
@@ -162,7 +339,7 @@ class Analyzer:
             context == "html" and
             value.sanitizer in {"dompurify:default-html",
                                 "encodeURIComponent:html-markup"}
-        ) or (context == "url" and value.sanitizer == "fixed-relative-url")
+        ) or (context == "url" and value.sanitizer in {"fixed-relative-url", "fixed-navigation-url"})
         # A text-only DOM output API is never an HTML execution sink.
         # Preserve the input provenance even when the output is safe.
         verdict = "INCONCLUSIVE" if value.unknown else (
@@ -185,6 +362,9 @@ class Analyzer:
         if self.source(path) and path.split('.')[0] not in self.env:
             self.observed_sources.add(path)
             return Value((path,), (path,))
+        if self.source(path) and path.split('.')[0] in self.env:
+            self.limitation(node,"source root is shadowed; browser identity unresolved")
+            return Value(unknown=True)
         if kind in ("string", "number", "true", "false", "null", "undefined"):
             return Value()
         if kind == "identifier":
@@ -193,6 +373,13 @@ class Analyzer:
             if path in self.env:
                 return self.env[path]
             base = self.expression(self.field(node, "object"))
+            if base.properties and not base.unknown:
+                prop=self.field(node,"property") if kind == "member_expression" else self.field(node,"index")
+                key=self.text(prop) if kind == "member_expression" else self.literal_string(prop)
+                if key in dict(base.properties):
+                    value=dict(base.properties)[key]
+                    return replace(value,trace=value.trace+(path or self.text(node),))
+                return Value(unknown=True)
             # A field of a tainted JSON object, URL wrapper, or similar
             # explicitly propagated container remains attacker-influenced.
             # We do not assert fields of untainted/unknown objects are safe.
@@ -206,6 +393,20 @@ class Analyzer:
             value = join(*(self.expression(child) for child in node.named_children))
             return Value(value.sources, value.trace + ("array_literal",),
                          unknown=value.unknown)
+        if kind == "object":
+            properties=[]
+            for child in node.named_children:
+                if child.type != "pair" or self.field(child,"key").type not in {"property_identifier","string"}:
+                    self.limitation(node,"object getter/spread/computed property is unresolved")
+                    self.invalidate();return Value(unknown=True)
+                key_node=self.field(child,"key")
+                key=self.literal_string(key_node) if key_node.type == "string" else self.text(key_node)
+                if key is None or key in {"__proto__","constructor","prototype"}:
+                    self.limitation(node,"object prototype semantics unresolved")
+                    self.invalidate();return Value(unknown=True)
+                properties.append((key,self.expression(self.field(child,"value"))))
+            value=join(*(v for _,v in properties))
+            return replace(value,properties=tuple(properties))
         if kind == "new_expression":
             ctor = self.path(self.field(node, "constructor"))
             params = self.field(node, "arguments")
@@ -255,14 +456,18 @@ class Analyzer:
             # URI contexts.
             if operator == "+":
                 left_node = self.field(node, "left")
-                literal = self.text(left_node)
-                if (left_node is not None and left_node.type == "string"
-                        and literal.startswith(("'/", '"/'))
-                        and not literal.startswith(("'//", '"//'))
-                        and right.sanitizer == "encodeURIComponent:html-markup"
-                        and not value.unknown):
+                literal = self.literal_string(left_node)
+                relative = literal is not None and bool(re.match(r"(?:/[A-Za-z0-9_.~-]|\./|\.\./)",literal))
+                # Keep the existing encoded URL-constructor protection narrow.
+                if (relative and right.sanitizer == "encodeURIComponent:html-markup" and not value.unknown):
                     return Value(value.sources, value.trace,
                                  "fixed-relative-url", unknown=False)
+                if literal is not None and not value.unknown and (
+                    relative or re.match(r"https?://[A-Za-z0-9.-]+(?::[0-9]+)?/",literal)
+                ):
+                    return Value(value.sources,value.trace,"fixed-navigation-url")
+                if not value.unknown and self.html_composition(node):
+                    return Value(value.sources,value.trace,"encodeURIComponent:html-markup")
             return Value(value.sources, value.trace, unknown=value.unknown)
         if kind == "ternary_expression":
             # Conditions may contain assignments or sinks; inspect them too.
@@ -275,6 +480,9 @@ class Analyzer:
         if kind in ("assignment_expression", "augmented_assignment_expression"):
             left = self.field(node, "left")
             name = self.path(left)
+            if name == "window.onmessage" and "window" not in self.env:
+                if self.callback(node,self.field(node,"right"),source="message-event.data"):
+                    return Value()
             value = self.expression(self.field(node, "right"))
             if kind == "augmented_assignment_expression":
                 combined = join(self.expression(left), value)
@@ -290,8 +498,10 @@ class Analyzer:
                 tag = self.dom_tags.get(owner) or self.recognized_dom_tag(obj)
                 is_location = name in ("location.href", "window.location.href",
                                        "document.location.href")
-                if suffix == "href" and (is_location or tag == "a"):
+                if suffix == "href" and (is_location or tag in {"a","area"}):
                     self.sink(left, value, "url")
+                elif suffix == "href" and tag in {"div","span","img","p","button"}:
+                    self.sink(left,value,"text")
                 elif suffix == "src" and tag == "script":
                     self.sink(left, value, "remote_script")
                 else:
@@ -300,7 +510,8 @@ class Analyzer:
             elif left.type == "identifier":
                 self.dom_tags.pop(name, None)
                 self.bindings.pop(name, None)
-                self.env[name] = Value(value.sources, value.trace + (name,), value.sanitizer, value.unknown)
+                self.functions.pop(name, None)
+                self.env[name] = replace(value,trace=value.trace+(name,))
             else:
                 self.limitation(left, "object mutation/aliasing is not resolved")
                 self.bindings.clear()
@@ -322,7 +533,8 @@ class Analyzer:
                         call == "window.addEventListener" and "window" in self.env):
                     self.limitation(node, "event listener API is shadowed")
                     return Value(unknown=True)
-                if (len(args) == 2 and self.text(args[0]) in ("'message'", '"message"')
+                options_ok=(len(args)==2 or (len(args)==3 and args[2].type in {"true","false"}))
+                if (options_ok and self.text(args[0]) in ("'message'", '"message"')
                         and self.callback(node, args[1], source="message-event.data")):
                     return Value()
                 self.limitation(node, "unresolved event listener/callback")
@@ -344,11 +556,16 @@ class Analyzer:
                 self.limitation(node, "timer function callback not statically resolved")
                 return Value(unknown=True)
             values = [self.expression(a) for a in args]
+            if call in self.functions:
+                return self.local_call(node,self.functions[call],values)
             # Narrow, audited taint-preserving operations. These are NOT
             # sanitizers and never prove a dangerous sink safe.
             if call in ("decodeURIComponent", "decodeURI", "encodeURIComponent",
                         "encodeURI", "String", "JSON.stringify", "JSON.parse",
                         "URLSearchParams") and len(values) == 1:
+                if call.split('.')[0] in self.env:
+                    self.limitation(node,"transform API is shadowed")
+                    self.invalidate();return join(*values,Value(unknown=True))
                 value = values[0]
                 # Percent-encoding an entire untrusted value prevents forming
                 # HTML delimiters in direct HTML parser text insertion. This
@@ -431,7 +648,11 @@ class Analyzer:
                         self.sink(function, values[1], "javascript")
                         return Value(unknown=True)
                     if key == "href":
-                        self.sink(function, values[1], "url")
+                        receiver=self.field(function,"object")
+                        tag=self.dom_tags.get(self.path(receiver)) or self.recognized_dom_tag(receiver)
+                        if tag in {"a","area"}: self.sink(function,values[1],"url")
+                        elif tag in {"div","span","img","p","button"}: self.sink(function,values[1],"text")
+                        else:self.limitation(node,"href attribute requires a proven DOM element kind")
                         return Value(unknown=True)
                     if key == "src":
                         receiver = self.field(function, "object")
@@ -458,9 +679,7 @@ class Analyzer:
                 return Value(value.sources, value.trace + (call,), self.bindings[owner], value.unknown)
             self.limitation(node, f"unresolved call: {call or self.text(function)}")
             # Unknown calls can mutate objects or overwrite bindings through closures.
-            self.dom_tags.clear()
-            self.bindings.clear()
-            self.env = {k: join(v, Value(unknown=True)) for k, v in self.env.items()}
+            self.invalidate()
             return join(*values, Value(unknown=True))
         self.limitation(node, f"unsupported expression: {kind}")
         self.dom_tags.clear()
@@ -470,9 +689,16 @@ class Analyzer:
 
     def statement(self, node):
         kind = node.type
-        if kind in ("program", "statement_block"):
+        if kind == "statement_block":
+            self.block(node)
+        elif kind == "program":
+            for child in node.named_children:
+                if child.type == "function_declaration":self.register_function(child)
             for child in node.named_children:
                 self.statement(child)
+        elif kind == "function_declaration":
+            # Registered at scope entry, matching JavaScript hoisting.
+            return
         elif kind == "comment":
             return
         elif kind == "import_statement":
@@ -494,11 +720,12 @@ class Analyzer:
                     continue
                 key = self.text(name)
                 self.bindings.pop(key, None)
+                self.functions.pop(key, None)
                 tag = self.recognized_dom_tag(self.field(declaration, "value"))
                 self.dom_tags.pop(key, None)
                 if tag is not None:
                     self.dom_tags[key] = tag
-                self.env[key] = Value(value.sources, value.trace + (key,), value.sanitizer, value.unknown)
+                self.env[key] = replace(value,trace=value.trace+(key,))
         elif kind == "expression_statement":
             for child in node.named_children:
                 self.expression(child)
@@ -507,12 +734,15 @@ class Analyzer:
             initial = dict(self.env)
             initial_bindings = dict(self.bindings)
             initial_tags = dict(self.dom_tags)
+            initial_functions = dict(self.functions)
             self.statement(self.field(node, "consequence"))
             consequence, consequence_bindings = dict(self.env), dict(self.bindings)
             consequence_tags = dict(self.dom_tags)
+            consequence_functions = dict(self.functions)
             self.env, self.bindings, self.dom_tags = (
                 dict(initial), dict(initial_bindings), dict(initial_tags)
             )
+            self.functions = dict(initial_functions)
             alternative = self.field(node, "alternative")
             if alternative:
                 self.statement(alternative)
@@ -521,6 +751,7 @@ class Analyzer:
                         for k in consequence.keys() | other.keys()}
             self.bindings = {k: v for k, v in consequence_bindings.items() if self.bindings.get(k) == v}
             self.dom_tags = {k: v for k, v in consequence_tags.items() if self.dom_tags.get(k) == v}
+            self.functions = {k: v for k, v in consequence_functions.items() if self.functions.get(k) == v}
         elif kind == "else_clause":
             for child in node.named_children:
                 self.statement(child)
@@ -542,6 +773,14 @@ class Analyzer:
                 self.dom_tags.clear()
                 return
             variable, initial, limit = header.group(1), int(header.group(2)), int(header.group(3))
+            def counter_mutated(n):
+                if n.type in {"assignment_expression", "augmented_assignment_expression", "update_expression"}:
+                    target=self.field(n,"left") or self.field(n,"argument")
+                    if self.path(target) == variable:return True
+                return any(counter_mutated(c) for c in n.named_children)
+            if counter_mutated(body):
+                self.limitation(node,"loop counter is mutated in body; iteration bound unresolved")
+                self.invalidate();return
             iterations = max(0, limit - initial)
             if iterations > 8:
                 self.limitation(node, "loop exceeds conservative eight-iteration bound")
@@ -553,7 +792,10 @@ class Analyzer:
             self.env[variable] = Value()  # The header is a numeric local.
             for _ in range(iterations):
                 self.statement(body)
-            if old is None:
+            if re.match(r"for\s*\(\s*var\b",code):
+                self.env[variable] = Value(unknown=True)
+                self.bindings.pop(variable,None);self.dom_tags.pop(variable,None);self.functions.pop(variable,None)
+            elif old is None:
                 self.env.pop(variable, None)
             else:
                 self.env[variable] = old

@@ -45,6 +45,7 @@ jobs:
           tests/test_xss_flow_callbacks_loops_urls_v5.py
           tests/test_xss_v5_frozen_audit_manifest.py
           tests/test_xss_async_timer_text_v6.py
+          tests/test_xss_scope_url_v7.py
       - name: Score new diagnostic XSS cases (audit partition remains unscored)
         run: uv run python -m evaluation.fresh_static_xss_suite --partition diagnostic
       - name: Audit conservative XSS evidence gate on exposed regression
@@ -64,3 +65,27 @@ jobs:
         run: |
           kaggle kernels push --help | grep -F -- '--no-run'
           kaggle kernels push --help | grep -F -- '--accelerator'
+
+  xss-v7-browser-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install bounded oracle and browser dependencies
+        run: python -m pip install tree-sitter==0.25.2 tree-sitter-javascript==0.25.0 playwright==1.55.0
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Verify exposed synthetic browser regression
+        run: >
+          python -m evaluation.xss_scope_url_v7_evaluate
+          --cases evaluation/fixtures/xss_scope_url_v7_regression.jsonl
+          --output results/xss-v7-browser-regression.json
+          --regression-gate
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xss-v7-browser-regression
+          path: results/xss-v7-browser-regression.json

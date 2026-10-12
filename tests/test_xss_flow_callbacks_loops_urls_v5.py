@@ -94,12 +94,19 @@ def test_bounded_fixed_relative_url_encoding_is_safe(snippet):
 
 @pytest.mark.parametrize("snippet",[
     "const x=location.search;const a=document.createElement('a');a.href='javascript:'+encodeURIComponent(x);",
-    "const x=location.search;const a=document.createElement('a');a.href='/safe?x='+x;",
     "const x=location.search;const a=document.createElement('a');a.href='//evil.invalid/'+encodeURIComponent(x);",
     "const x=location.hash;document.querySelector('script').src=encodeURIComponent(x);",
 ])
 def test_url_html_encoding_is_not_universal_url_safety(snippet):
     assert assess(snippet)["decision"]["status"]=="CANDIDATE"
+
+
+def test_root_relative_navigation_is_safe_even_with_raw_query_value():
+    # The browser's navigation URL retains its fixed scheme. This does not
+    # assert safety of a server which later decodes/re-renders the query.
+    result=assess("const x=location.search;const a=document.createElement('a');a.href='/safe?x='+x;")
+    assert result["decision"]["status"] == "SAFE"
+    assert result["paths"][0]["defense"]["status"] == "VERIFIED_NAVIGATION_URL_PREFIX"
 
 
 @pytest.mark.parametrize("snippet",[

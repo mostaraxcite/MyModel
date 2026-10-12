@@ -143,7 +143,9 @@ class Analyzer:
             # Composition invalidates sanitizer guarantees (including sanitized fragments).
             value = join(left, right)
             operator = self.text(self.field(node, "operator"))
-            if operator != "+":
+            # Nullish coalescing with a known-safe literal does not erase
+            # the possibility of tainted data taking the left branch.
+            if operator not in ("+", "??"):
                 self.limitation(node, "non-concatenation operator/control effects are not resolved")
                 self.env = {k: join(v, Value(unknown=True)) for k, v in self.env.items()}
                 return join(value, Value(unknown=True))
@@ -204,7 +206,7 @@ class Analyzer:
                         receiver = self.expression(obj)
                         return Value(receiver.sources, receiver.trace + (prop,),
                                      unknown=receiver.unknown)
-                if prop in ("get", "getAll") and obj.type in ("new_expression", "member_expression"):
+                if prop in ("get", "getAll") and obj.type in ("new_expression", "member_expression", "call_expression"):
                     receiver = self.expression(obj)
                     return Value(receiver.sources, receiver.trace + (prop,),
                                  unknown=receiver.unknown)

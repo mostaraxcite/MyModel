@@ -136,20 +136,30 @@ def grounded_review(code: str, *, model_focus: Any = None,
     """
     packet = build_oracle_packet(code, trusted_modules=trusted_modules)
     accepted = None if model_focus is None else validate_model_focus(model_focus, packet)
+    # A focus suggestion must never push a suspected or unresolved security
+    # path out of the visible priority list. Those are mandatory, even if
+    # the model names only a safe sink or provides an empty selection.
+    mandatory = [
+        item["path_id"] for item in packet["paths"]
+        if item["decision"]["status"] in ("CANDIDATE", "INCONCLUSIVE")
+    ]
     if accepted and accepted["accepted"]:
-        focus_ids = accepted["focus_path_ids"]
+        desired = mandatory + accepted["focus_path_ids"]
+        focus_ids = list(dict.fromkeys(desired))
+        source = "validated_model_selection_with_mandatory_paths"
     else:
         focus_ids = [
             item["path_id"] for item in sorted(
                 packet["paths"],
                 key=lambda p: (_RULE_PRIORITY[p["decision"]["status"]], p["path_id"]),
             )
-        ][:MAX_MODEL_FOCUS]
+        ]
+        source = "deterministic_priority"
     packet["presentation"] = {
         "focus_path_ids": focus_ids,
-        "focus_source": "validated_model_selection" if accepted and accepted["accepted"]
-                        else "deterministic_priority",
+        "focus_source": source,
         "explanations_from_model": False,
+        "mandatory_security_path_ids": mandatory,
     }
     if accepted is not None:
         packet["model_advisory"] = accepted

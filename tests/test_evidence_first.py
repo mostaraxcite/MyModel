@@ -84,7 +84,7 @@ def test_unsupported_flow_abstains_instead_of_inventing_proof(code):
 def test_model_cannot_override_grounded_evidence():
     code="output.textContent = location.hash;"
     actual=review_evidence(code)
-    fake={k:actual[k] for k in ("source", "flow", "sink", "defense", "decision")}
+    fake={k:actual[k] for k in ("source", "flow", "sink", "defense", "decision", "limitations")}
     fake["snippet_sha256"]=actual["snippet_sha256"]
     assert validate_advisory(fake,actual)["accepted"] is True
     fake["decision"]={**fake["decision"],"status":"CANDIDATE"}

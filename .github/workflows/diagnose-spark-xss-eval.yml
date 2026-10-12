@@ -1,4 +1,4 @@
-name: Diagnose Spark XSS Kaggle Evaluation Failure
+name: Diagnose Spark XSS Kaggle Evaluation Status
 
 on:
   push:
@@ -11,14 +11,14 @@ permissions:
 jobs:
   diagnose:
     if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[diagnose-xss-eval]')
-    name: Fetch Kaggle error details without GPU rerun
+    name: Fetch Kaggle status, logs and results without GPU rerun
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Download failed kernel logs and any outputs without rerunning
+      - name: Query Kaggle kernel status and download finished results only
         env:
           KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
         run: |
@@ -31,7 +31,13 @@ jobs:
           kernel="dody2004/spark-xss-independent-evaluation"
           kaggle kernels status "$kernel" > diagnostics/kaggle-status.txt 2>&1 || true
           kaggle kernels logs "$kernel" > diagnostics/kaggle-logs.txt 2>&1 || true
-          kaggle kernels output "$kernel" -p diagnostics/output -o > diagnostics/download.txt 2>&1 || true
+          echo "=== Latest Kaggle status ==="
+          cat diagnostics/kaggle-status.txt
+          if grep -Eqi 'KernelWorkerStatus.RUNNING|KernelWorkerStatus.QUEUED' diagnostics/kaggle-status.txt; then
+            echo "::notice::Kaggle still active; skipping output download. No new GPU job was started."
+          else
+            timeout 420 kaggle kernels output "$kernel" -p diagnostics/output -o > diagnostics/download.txt 2>&1 || true
+          fi
           python - <<'PY'
           import json
           from pathlib import Path
@@ -51,10 +57,12 @@ jobs:
           print("\n".join(highlights[-50:])[-12000:] or "No exception lines detected")
           print("=== Tail ===")
           print("\n".join(logs.splitlines()[-45:])[-10000:])
-          print("=== Output files ===")
-          for path in sorted((root/"output").rglob("*")):
-              if path.is_file():
-                  print(path, path.stat().st_size)
+          print("=== Evaluation artifacts ===")
+          for name in ("report.json", "status.json"):
+              matches=list((root/"output").rglob(name))
+              print(name, [(str(path),path.stat().st_size) for path in matches if path.is_file()])
+          if (root/"download.txt").is_file():
+              print("Download diagnostics:", (root/"download.txt").read_text(errors="replace")[-2500:])
           for path in (root/"output").rglob("status.json"):
               try:
                   obj=json.loads(path.read_text())

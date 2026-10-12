@@ -45,7 +45,7 @@ jobs:
           out.mkdir(exist_ok=True)
           (out / "spark_xss_train_v2.py").write_text(script)
           metadata = {
-              "id": "dody2004/spark-xss-balanced-v2",
+              "id": "dody2004/spark-xss-balanced-v2-candidate",
               "title": "Spark XSS Balanced V2 Candidate",
               "code_file": "spark_xss_train_v2.py",
               "language": "python",
@@ -82,5 +82,5 @@ jobs:
           python -m pip install -q "git+https://github.com/Kaggle/kaggle-cli.git@9c57dd74c29904c40ff7879eed33644be89d2e2f"
           kaggle kernels push -p kaggle-v2-dist --accelerator NvidiaTeslaT4 --timeout 18000
           echo "::notice::Balanced-v2 version uploaded. This is NOT evidence training ran."
-          echo "https://www.kaggle.com/code/dody2004/spark-xss-balanced-v2"
-          kaggle kernels status dody2004/spark-xss-balanced-v2 || true
+          echo "https://www.kaggle.com/code/dody2004/spark-xss-balanced-v2-candidate"
+          kaggle kernels status dody2004/spark-xss-balanced-v2-candidate || true

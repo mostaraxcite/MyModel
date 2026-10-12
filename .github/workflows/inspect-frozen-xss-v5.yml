@@ -1,0 +1,51 @@
+name: Inspect Frozen XSS V5 Audit Artifact
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  inspect:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[inspect-frozen-xss-v5]')
+    name: Read prior GitHub audit report, do not rerun scanner
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download existing historical audit report only
+        uses: actions/download-artifact@v4
+        with:
+          name: xss-v5-frozen-flow-audit-38315457687
+          run-id: 38315457687
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: frozen-evidence
+      - name: Display exact unresolved case identifiers and reasons
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          f=Path("frozen-evidence/report.json")
+          r=json.loads(f.read_text())
+          assert r["total"] == 24
+          assert r["manifest"]["source_revision"] == "683356c6acf974b7ae0c72e39121cc06052cb69a"
+          assert r["runtime_xss_confirmed"] == 0
+          assert r["production_approval"] is False
+          print("=== FROZEN AUDIT SUMMARY ===")
+          print(json.dumps({"metrics":r["metrics"],"confusion":r["confusion"]}, indent=2))
+          print("=== EVERY NONMATCHING OR ABSTAINED CASE ===")
+          for c in r["cases"]:
+              label=c["expected_static_class"]
+              observed=c["oracle"]
+              expected={"unsafe":"CANDIDATE","safe":"SAFE","needs_review":"INCONCLUSIVE"}[label]
+              if observed != expected:
+                  print(json.dumps({
+                      "case_id":c["id"], "family":c["family"],
+                      "reviewed_static_class":label, "actual_oracle":observed,
+                      "limitations":c["limitations"],
+                  },ensure_ascii=False))
+          print("Source is the archived evaluation output; nothing was re-executed.")
+          PY

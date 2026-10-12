@@ -42,6 +42,7 @@ jobs:
           tests/test_grounded_advisor.py
           tests/test_fresh_static_xss_suite.py
           tests/test_fresh_html_context_fixes.py
+          tests/test_xss_flow_callbacks_loops_urls_v5.py
       - name: Score new diagnostic XSS cases (audit partition remains unscored)
         run: uv run python -m evaluation.fresh_static_xss_suite --partition diagnostic
       - name: Audit conservative XSS evidence gate on exposed regression

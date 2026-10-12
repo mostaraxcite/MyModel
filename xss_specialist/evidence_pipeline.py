@@ -13,6 +13,8 @@ from xss_specialist.taint import analyze as analyze_taint
 SINK_KINDS = {
     "html": "HTML_PARSER",
     "javascript": "SCRIPT_EXECUTION",
+    "url": "POTENTIAL_SCRIPT_URL",
+    "remote_script": "REMOTE_SCRIPT_URL",
     "text": "TEXT_ONLY",
 }
 REQUIRED_FIELDS = (
@@ -40,7 +42,12 @@ def _sink_evidence(item: dict) -> dict:
     elif (item.get("sanitizer_compatible") and
           item.get("sanitizer") == "dompurify:default-html"):
         protection = "VERIFIED_CONTEXTUAL_SANITIZATION"
-    elif relation == "CONNECTED" and kind in ("HTML_PARSER", "SCRIPT_EXECUTION"):
+    elif (item.get("sanitizer_compatible") and
+          item.get("sanitizer") == "fixed-relative-url"):
+        protection = "VERIFIED_RELATIVE_URL_PREFIX"
+    elif relation == "CONNECTED" and kind in (
+        "HTML_PARSER", "SCRIPT_EXECUTION", "POTENTIAL_SCRIPT_URL", "REMOTE_SCRIPT_URL"
+    ):
         protection = "NONE"
     elif relation == "UNKNOWN":
         protection = "UNKNOWN"
@@ -49,6 +56,7 @@ def _sink_evidence(item: dict) -> dict:
     rule = ("SAFE_TEXT_OUTPUT" if kind == "TEXT_ONLY" else
             "ENCODED_HTML_MARKUP" if protection == "CONTEXTUAL_HTML_ENCODING" else
             "SANITIZED_HTML" if protection == "VERIFIED_CONTEXTUAL_SANITIZATION" else
+            "SAFE_RELATIVE_URL" if protection == "VERIFIED_RELATIVE_URL_PREFIX" else
             "UNPROTECTED_CONNECTED_SINK" if relation == "CONNECTED" and protection == "NONE" else
             "DISCONNECTED" if relation == "DISCONNECTED" else
             "UNRESOLVED")

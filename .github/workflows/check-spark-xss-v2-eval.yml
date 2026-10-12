@@ -1,0 +1,91 @@
+name: Check Spark XSS V2 Kaggle Regression Results
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[check-spark-v2-eval]')
+    name: Read existing Kaggle evaluation without resubmitting
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Read status and only download finished outputs
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KAGGLE_API_TOKEN" ]; then
+            echo "::error::Missing KAGGLE_API_TOKEN"; exit 1
+          fi
+          python -m pip install -q "git+https://github.com/Kaggle/kaggle-cli.git@9c57dd74c29904c40ff7879eed33644be89d2e2f"
+          mkdir -p evidence
+          kernel="dody2004/spark-xss-v2-regression-evaluation"
+          kaggle kernels status "$kernel" > evidence/status-cli.txt 2>&1 || true
+          echo "=== KAGGLE V2 REGRESSION STATUS ==="
+          cat evidence/status-cli.txt
+          if grep -Eq 'KernelWorkerStatus.(QUEUED|RUNNING)' evidence/status-cli.txt; then
+            echo "::notice::Still queued/running on Kaggle. GitHub timeout is NOT a kernel failure; no job is resubmitted."
+            exit 0
+          fi
+          echo "=== Fetch existing logs ==="
+          timeout 100 kaggle kernels logs "$kernel" > evidence/logs.txt 2>&1 || true
+          python - <<'PY'
+          from pathlib import Path
+          log = Path("evidence/logs.txt").read_text(errors="replace")
+          print("Kaggle log tail:", log[-11000:])
+          PY
+          if ! grep -q 'KernelWorkerStatus.COMPLETE' evidence/status-cli.txt; then
+            echo "::error::Kaggle did not finish successfully. Existing logs archived."
+            exit 1
+          fi
+          mkdir -p evidence/output
+          timeout 480 kaggle kernels output "$kernel" -p evidence/output --file-pattern '(report|status)[.]json$' -o > evidence/download.txt 2>&1 || true
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("evidence/output")
+          statuses=[p for p in root.rglob("status.json") if "spark-xss-v2-regression-evaluation" in str(p)]
+          reports=[p for p in root.rglob("report.json") if "spark-xss-v2-regression-evaluation" in str(p)]
+          print("Candidate report/status files:",len(reports),len(statuses))
+          if len(statuses)!=1 or len(reports)!=1:
+              raise SystemExit("Could not verify paired evaluator artifacts; inspect logs/download evidence")
+          status=json.loads(statuses[0].read_text())
+          report=json.loads(reports[0].read_text())
+          print("=== EVALUATOR STATUS ===")
+          print(json.dumps(status,indent=2))
+          if status.get("status")!="success" or status.get("evaluated") is not True:
+              raise SystemExit("Evaluator did not complete")
+          if report.get("training_variant")!="balanced_v2_hard_negatives":
+              raise SystemExit("Invalid LoRA candidate")
+          if report.get("trained",{}).get("n")!=48:
+              raise SystemExit("Incomplete 48-case regression")
+          summary={
+              "base":report["baseline"],
+              "v2":report["trained"],
+              "paired_contrast_accuracy":report.get("paired_contrast_accuracy"),
+              "free_generation_base":report.get("free_generation",{}).get("baseline"),
+              "free_generation_v2":report.get("free_generation",{}).get("trained"),
+              "promotion_recommendation":report.get("promotion_recommendation"),
+              "regression_scope":"Previously exposed 48 synthetic cases, NOT a fresh generalization test",
+          }
+          print("=== VERIFIED XSS V2 REGRESSION RESULTS ===")
+          print(json.dumps(summary,indent=2))
+          Path("evidence/verified-summary.json").write_text(json.dumps(summary,indent=2)+"\n")
+          PY
+      - name: Archive existing Kaggle report and status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spark-xss-v2-regression-status-${{ github.run_id }}
+          path: evidence
+          retention-days: 30
+          if-no-files-found: warn

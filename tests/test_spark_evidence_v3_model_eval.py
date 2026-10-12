@@ -65,3 +65,20 @@ def test_prompt_never_primes_binary_label():
     prompt=spark_prompt(select_internal_dev()[0]["messages"][0]["content"])
     assert prompt.endswith("<|Bot|></think>")
     assert not prompt.endswith("Classification:")
+
+
+def test_kaggle_field_eval_uses_verified_training_and_fp16():
+    from pathlib import Path
+    root=Path(__file__).resolve().parents[1]
+    src=(root/"kaggle/spark_evidence_v3_eval.py").read_text()
+    workflow=(root/".github/workflows/spark-evidence-v3-field-eval.yml").read_text()
+    assert 'EXPECTED_TRAINING_SHA = "131bbeb6600537a0635047bd62dca688da72a7fe"' in src
+    assert 'run_state.get("model_has_final_authority") is False' in src
+    assert 'training_rows") == 220' in src
+    assert 'tree-sitter-javascript' in src
+    assert 'evaluation.spark_evidence_v3_model_eval' in src
+    assert "KernelWorkerStatus.COMPLETE" in workflow
+    assert '"model_promoted"] is False' in workflow
+    assert 'spark-xss-evidence-v3' in workflow
+    assert 'spark-evidence-v3-field-evaluation' in workflow
+    assert 'DO_NOT_PROMOTE' in workflow

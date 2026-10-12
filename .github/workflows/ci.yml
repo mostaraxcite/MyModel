@@ -33,6 +33,8 @@ jobs:
           tests/test_spark_xss_independent_eval.py
           tests/test_spark_xss_v2_data.py
           tests/test_spark_xss_v2_evaluator.py
+          tests/test_evidence_first.py
+          tests/test_spark_evidence_v3.py
 
   kaggle-cli-smoke:
     name: Verify pinned Kaggle CLI publish-without-run support

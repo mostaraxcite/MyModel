@@ -1,0 +1,83 @@
+name: Inspect Completed Spark V3 Field Evaluation
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[inspect-spark-v3-eval]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Collect existing Kaggle logs and field-evaluation artifacts (no GPU rerun)
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KAGGLE_API_TOKEN" ]; then
+            echo "::error::Missing Kaggle API token"; exit 1
+          fi
+          python -m pip install -q "git+https://github.com/Kaggle/kaggle-cli.git@9c57dd74c29904c40ff7879eed33644be89d2e2f"
+          kernel="dody2004/spark-evidence-v3-field-evaluation"
+          mkdir -p evidence/reports
+          kaggle kernels status "$kernel" > evidence/kaggle-status.txt 2>&1 || true
+          echo "=== Actual existing kernel status ==="
+          cat evidence/kaggle-status.txt
+          # Read-only operations. Never push, execute, or reset any Kaggle version.
+          timeout 130 kaggle kernels logs "$kernel" > evidence/full-log.txt 2>&1 || true
+          timeout 220 kaggle kernels output "$kernel" -p evidence/reports --file-pattern '(report|status)[.]json$' -o > evidence/download.txt 2>&1 || true
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("evidence")
+          log=(root/"full-log.txt").read_text(errors="replace")
+          lines=log.splitlines()
+          print("=== Kaggle log: recent 100 lines ===")
+          print("\n".join(lines[-100:])[-24000:])
+          print("=== Error lines ===")
+          hits=[l for l in lines if any(t in l.lower() for t in (
+             "traceback", "error", "exception", "runtimeerror", "indexerror",
+             "file not found", "gpu:", "result_summary", "base_evidence",
+             "tuned_evidence", "status.json", "report.json"))]
+          print("\n".join(hits[-90:])[-18000:])
+          print("=== Download CLI message ===")
+          print((root/"download.txt").read_text(errors="replace")[-3000:])
+          print("=== Files downloaded ===")
+          for p in sorted((root/"reports").rglob("*")):
+              if p.is_file():
+                  print(str(p),p.stat().st_size)
+          for name in ("status.json","report.json"):
+              found=[p for p in (root/"reports").rglob(name)]
+              print(name,"count",len(found))
+              for p in found:
+                  try:
+                      obj=json.loads(p.read_text())
+                      if name=="status.json":
+                          print(json.dumps(obj,indent=2)[:4000])
+                      else:
+                          summary={
+                              "benchmark":obj.get("benchmark"),
+                              "promotion":obj.get("promotion"),
+                              "base":{k:v for k,v in obj.get("base",{}).items() if k!="details"},
+                              "evidence_v3":{k:v for k,v in obj.get("evidence_v3",{}).items() if k!="details"}
+                          }
+                          print(json.dumps(summary,indent=2)[:8500])
+                  except Exception as exc:
+                      print("Malformed artifact:",type(exc).__name__,str(exc))
+          PY
+      - name: Save evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spark-v3-field-eval-recovery-${{ github.run_id }}
+          path: evidence/
+          retention-days: 30
+          if-no-files-found: warn

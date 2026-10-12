@@ -72,6 +72,7 @@ jobs:
                           print(json.dumps(summary,indent=2)[:8500])
                   except Exception as exc:
                       print("Malformed artifact:",type(exc).__name__,str(exc))
+          PY
           # The previous failure was a 2nd unrelated report.json nested in the
           # source repo. Select ONLY the evaluator output rather than rglob count.
           python - <<'PY'

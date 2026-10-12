@@ -39,6 +39,7 @@ class Analyzer:
         self.bindings: dict[str, str] = {}
         self.trusted_modules = trusted_modules
         self.sinks: list[dict] = []
+        self.observed_sources: set[str] = set()
         self.limitations: list[str] = []
 
     def text(self, node) -> str:
@@ -73,7 +74,10 @@ class Analyzer:
     def sink(self, node, value: Value, context: str):
         # Exact imported identity AND an explicit audited-module policy are required.
         compatible = value.sanitizer is not None and context == "html"
+        # A text-only DOM output API is never an HTML execution sink.
+        # Preserve the input provenance even when the output is safe.
         verdict = "INCONCLUSIVE" if value.unknown else (
+            "SAFE" if context == "text" else
             "CANDIDATE" if value.sources and not compatible else "SAFE"
         )
         self.sinks.append({
@@ -90,6 +94,7 @@ class Analyzer:
         kind = node.type
         path = self.path(node)
         if self.source(path) and path.split('.')[0] not in self.env:
+            self.observed_sources.add(path)
             return Value((path,), (path,))
         if kind in ("string", "number", "true", "false", "null", "undefined"):
             return Value()
@@ -136,7 +141,7 @@ class Analyzer:
             if suffix in ("innerHTML", "outerHTML", "srcdoc"):
                 self.sink(left, value, "html")
             elif suffix in ("textContent", "innerText"):
-                self.sink(left, Value(), "text")
+                self.sink(left, value, "text")
             elif left.type == "identifier":
                 self.bindings.pop(name, None)
                 self.env[name] = Value(value.sources, value.trace + (name,), value.sanitizer, value.unknown)
@@ -156,6 +161,22 @@ class Analyzer:
                 return Value(unknown=True)
             if call.endswith(".insertAdjacentHTML") and len(values) == 2:
                 self.sink(function, values[1], "html")
+                return Value(unknown=True)
+            if call.endswith(".insertAdjacentText") and len(values) == 2:
+                self.sink(function, values[1], "text")
+                return Value(unknown=True)
+            if call.endswith(".setAttribute") and len(args) == 2:
+                attr = self.text(args[0]).strip()
+                if len(attr) >= 2 and attr[0] in ("'", '"') and attr[-1] == attr[0]:
+                    key = attr[1:-1].lower()
+                    if key.startswith("on") and len(key) > 2:
+                        self.sink(function, values[1], "javascript")
+                        return Value(unknown=True)
+                    if key in {"title", "alt", "class", "id", "role"} or key.startswith("aria-"):
+                        self.sink(function, values[1], "text")
+                        return Value(unknown=True)
+                # Dynamic attributes/URLs require context-aware review.
+                self.limitation(node, "attribute name/context not safely resolved")
                 return Value(unknown=True)
             if call in ("eval", "window.eval", "setTimeout", "setInterval"):
                 self.sink(function, values[0] if values else Value(unknown=True), "javascript")
@@ -241,6 +262,7 @@ class Analyzer:
                 "requires_oracle": verdict != "SAFE", "sinks": self.sinks,
                 "limitations": list(dict.fromkeys(self.limitations)),
                 "scope": "bounded intraprocedural JavaScript sink review",
+                "observed_sources": sorted(self.observed_sources),
                 "trusted_modules": list(self.trusted_modules)}
 
 

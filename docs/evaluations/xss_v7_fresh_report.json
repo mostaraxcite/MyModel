@@ -1,0 +1,3149 @@
+{
+  "cases_sha256": "3bc0be5619d87e90f61e7b3b199715f054ee751220b57c007f1f3681259a00e3",
+  "manifest": {
+    "suite": "xss-scope-url-v7-fresh-2026-10-13",
+    "cases_sha256": "3bc0be5619d87e90f61e7b3b199715f054ee751220b57c007f1f3681259a00e3",
+    "n": 24,
+    "unsafe": 12,
+    "safe": 12,
+    "frozen_before_first_score": true,
+    "base_commit": "2def9b1446721d9d30fddfe9e06c95641e490ef6",
+    "engine_sha256": {
+      "xss_specialist/taint.py": "dc1510eeb6bef2dd119972e7e5451483c415379a3d78e90f8debd42be796e99d",
+      "xss_specialist/evidence_pipeline.py": "c6093b9d6f91f3b064a369b7311ae3e17c331ae673bf78a147452b08c9cd8f1e",
+      "xss_specialist/grounded_advisor.py": "137ea6d6d377a5e0b343be0b7d273a12d4831b915518c507e53ae21083894898"
+    },
+    "provenance": "New manually authored synthetic fixtures, not used to edit this engine. Author knows prior development patterns; not an external blind benchmark.",
+    "gate": {
+      "unsafe_candidate_recall_min": 0.9,
+      "safe_false_positive_rate_max": 0.05,
+      "unsafe_static_safe_max": 0,
+      "browser_label_mismatches_max": 0
+    },
+    "no_live_targets": true,
+    "model_evaluated": false,
+    "harness_retry": "Initial run aborted when a javascript URL replaced the document before DOM capture. Engine and all case snippets/labels stayed unchanged; rerun fixes only synchronous marker capture."
+  },
+  "confusion": {
+    "unsafe": {
+      "CANDIDATE": 9,
+      "INCONCLUSIVE": 3
+    },
+    "safe": {
+      "SAFE": 10,
+      "INCONCLUSIVE": 2
+    }
+  },
+  "metrics": {
+    "unsafe_candidate_recall": 0.75,
+    "safe_false_positive_rate": 0.0,
+    "unsafe_static_safe": 0,
+    "decision_coverage": 0.7916666666666666,
+    "browser_executed_unsafe": 12,
+    "browser_executed_safe": 0,
+    "browser_label_mismatches": []
+  },
+  "chromium": "140.0.7339.16",
+  "model_evaluated": false,
+  "promotion": "DO_NOT_PROMOTE",
+  "scope": "synthetic browser fixture execution only; no live targets",
+  "results": [
+    {
+      "code": "let msg=window.name;{const msg=\"unused\";}panel.insertAdjacentHTML(\"beforeend\",msg);",
+      "family": "nested-block",
+      "id": "N-U01",
+      "label": "unsafe",
+      "payload_kind": "html",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "none",
+      "static_status": "CANDIDATE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "81798c46fcd13a540998c3c4d19434019b04a8a5fd38414c6e1bd6a72061ac5d",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "window.name"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "msg",
+                "panel.insertAdjacentHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "panel.insertAdjacentHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "NONE",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "OBSERVED",
+              "expressions": [
+                "window.name"
+              ]
+            },
+            "flow": {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "msg",
+                "panel.insertAdjacentHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "panel.insertAdjacentHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            },
+            "defense": {
+              "status": "NONE",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            },
+            "decision": {
+              "rule": "UNPROTECTED_CONNECTED_SINK",
+              "status": "CANDIDATE",
+              "confirmed": false
+            },
+            "explanation": "Potential XSS: a tracked untrusted source (window.name) reaches panel.insertAdjacentHTML through a connected local data flow. The destination can interpret content (HTML_PARSER), and the analyzer found no compatible protection on this path. Browser execution has not been demonstrated."
+          }
+        ],
+        "decision": {
+          "status": "CANDIDATE",
+          "rule": "TRACKED_UNPROTECTED_SOURCE_TO_SINK",
+          "confirmed": false,
+          "requires_browser_confirmation": true,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": [
+            "p1"
+          ]
+        }
+      },
+      "browser": {
+        "executed": true,
+        "expected_execution": true,
+        "label_agrees": true,
+        "proof_nonce": "6219ed241c2c1f9192b5aec8",
+        "observed_marker": "6219ed241c2c1f9192b5aec8",
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "<img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='6219ed241c2c1f9192b5aec8'\">",
+        "trigger": "none",
+        "synchronous_marker_observations": [
+          "__XSS_AUDIT_MARKER__6219ed241c2c1f9192b5aec8"
+        ],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "function unwrap(x){return x;}const record={value:window.name};panel.innerHTML=unwrap(record).value;",
+      "family": "object-through-function",
+      "id": "N-U02",
+      "label": "unsafe",
+      "payload_kind": "html",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "none",
+      "static_status": "CANDIDATE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "96e4e6a6aa5ea82a20ce0336b766c10d61d405dc73b3ab1ce46d967195db08ef",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "window.name"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                ".value",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "NONE",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "OBSERVED",
+              "expressions": [
+                "window.name"
+              ]
+            },
+            "flow": {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                ".value",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            },
+            "defense": {
+              "status": "NONE",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            },
+            "decision": {
+              "rule": "UNPROTECTED_CONNECTED_SINK",
+              "status": "CANDIDATE",
+              "confirmed": false
+            },
+            "explanation": "Potential XSS: a tracked untrusted source (window.name) reaches panel.innerHTML through a connected local data flow. The destination can interpret content (HTML_PARSER), and the analyzer found no compatible protection on this path. Browser execution has not been demonstrated."
+          }
+        ],
+        "decision": {
+          "status": "CANDIDATE",
+          "rule": "TRACKED_UNPROTECTED_SOURCE_TO_SINK",
+          "confirmed": false,
+          "requires_browser_confirmation": true,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": [
+            "p1"
+          ]
+        }
+      },
+      "browser": {
+        "executed": true,
+        "expected_execution": true,
+        "label_agrees": true,
+        "proof_nonce": "b87b64eabbb84bda5431e2a9",
+        "observed_marker": "b87b64eabbb84bda5431e2a9",
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "<img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='b87b64eabbb84bda5431e2a9'\">",
+        "trigger": "none",
+        "synchronous_marker_observations": [
+          "__XSS_AUDIT_MARKER__b87b64eabbb84bda5431e2a9"
+        ],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "function decode(x){return decodeURIComponent(x);}const encoded=encodeURIComponent(window.name);panel.innerHTML=decode(encoded);",
+      "family": "helper-decode",
+      "id": "N-U03",
+      "label": "unsafe",
+      "payload_kind": "html",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "none",
+      "static_status": "CANDIDATE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "3ffcc0dab8e2d3208e76ed75e4838151db9bbfde12964b6f5302b50b12bb08c6",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "window.name"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "encodeURIComponent",
+                "encoded",
+                "x",
+                "decodeURIComponent",
+                "decode return",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "NONE",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "OBSERVED",
+              "expressions": [
+                "window.name"
+              ]
+            },
+            "flow": {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "encodeURIComponent",
+                "encoded",
+                "x",
+                "decodeURIComponent",
+                "decode return",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            },
+            "defense": {
+              "status": "NONE",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            },
+            "decision": {
+              "rule": "UNPROTECTED_CONNECTED_SINK",
+              "status": "CANDIDATE",
+              "confirmed": false
+            },
+            "explanation": "Potential XSS: a tracked untrusted source (window.name) reaches panel.innerHTML through a connected local data flow. The destination can interpret content (HTML_PARSER), and the analyzer found no compatible protection on this path. Browser execution has not been demonstrated."
+          }
+        ],
+        "decision": {
+          "status": "CANDIDATE",
+          "rule": "TRACKED_UNPROTECTED_SOURCE_TO_SINK",
+          "confirmed": false,
+          "requires_browser_confirmation": true,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": [
+            "p1"
+          ]
+        }
+      },
+      "browser": {
+        "executed": true,
+        "expected_execution": true,
+        "label_agrees": true,
+        "proof_nonce": "f861e19a2a46ca95e495fa40",
+        "observed_marker": "f861e19a2a46ca95e495fa40",
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "<img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='f861e19a2a46ca95e495fa40'\">",
+        "trigger": "none",
+        "synchronous_marker_observations": [
+          "__XSS_AUDIT_MARKER__f861e19a2a46ca95e495fa40"
+        ],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "window.addEventListener(\"message\",({data: message})=>{let markup=\"\";if(message){markup=message;}panel.innerHTML=markup;},true);",
+      "family": "message-branch",
+      "id": "N-U04",
+      "label": "unsafe",
+      "payload_kind": "html",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "message",
+      "static_status": "CANDIDATE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "8c0d710080a597252561474fe6ef0e2c01a4401a7ca4b861dcf73dbb507ee59c",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "message-event.data"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "CONNECTED",
+              "trace": [
+                "message-event.data",
+                "message",
+                "markup",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "NONE",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "OBSERVED",
+              "expressions": [
+                "message-event.data"
+              ]
+            },
+            "flow": {
+              "relation": "CONNECTED",
+              "trace": [
+                "message-event.data",
+                "message",
+                "markup",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            },
+            "defense": {
+              "status": "NONE",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            },
+            "decision": {
+              "rule": "UNPROTECTED_CONNECTED_SINK",
+              "status": "CANDIDATE",
+              "confirmed": false
+            },
+            "explanation": "Potential XSS: a tracked untrusted source (message-event.data) reaches panel.innerHTML through a connected local data flow. The destination can interpret content (HTML_PARSER), and the analyzer found no compatible protection on this path. Browser execution has not been demonstrated."
+          }
+        ],
+        "decision": {
+          "status": "CANDIDATE",
+          "rule": "TRACKED_UNPROTECTED_SOURCE_TO_SINK",
+          "confirmed": false,
+          "requires_browser_confirmation": true,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": [
+            "p1"
+          ]
+        }
+      },
+      "browser": {
+        "executed": true,
+        "expected_execution": true,
+        "label_agrees": true,
+        "proof_nonce": "9d78aa81c56f328b2b0adff6",
+        "observed_marker": "9d78aa81c56f328b2b0adff6",
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          },
+          {
+            "url": "http://sender.local/message",
+            "resource_type": "document",
+            "method": "GET"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "<img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='9d78aa81c56f328b2b0adff6'\">",
+        "trigger": "message",
+        "synchronous_marker_observations": [
+          "__XSS_AUDIT_MARKER__9d78aa81c56f328b2b0adff6"
+        ],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "let markup=\"\";for(let i=0;i<3;i++){markup=window.name;i+=1;}panel.innerHTML=markup;",
+      "family": "counter-mutated",
+      "id": "N-U05",
+      "label": "unsafe",
+      "payload_kind": "html",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "none",
+      "static_status": "INCONCLUSIVE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "db1529fd62f5c24fa731487e5d1554c01c2ad7fe27a202013d2db7c8f5bf2add",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [],
+          "status": "UNKNOWN"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "UNKNOWN",
+              "trace": [
+                "markup",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "UNKNOWN",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "UNKNOWN",
+              "expressions": []
+            },
+            "flow": {
+              "relation": "UNKNOWN",
+              "trace": [
+                "markup",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            },
+            "defense": {
+              "status": "UNKNOWN",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            },
+            "decision": {
+              "rule": "UNRESOLVED",
+              "status": "INCONCLUSIVE",
+              "confirmed": false
+            },
+            "explanation": "Inconclusive: the analyzer cannot establish this complete data flow or its protection status for panel.innerHTML. It must not be treated as either proven safe or confirmed XSS."
+          }
+        ],
+        "decision": {
+          "status": "INCONCLUSIVE",
+          "rule": "MISSING_OR_UNRESOLVED_EVIDENCE",
+          "confirmed": false,
+          "requires_browser_confirmation": true,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [
+          "line 1: loop counter is mutated in body; iteration bound unresolved"
+        ],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": [
+            "p1"
+          ]
+        }
+      },
+      "browser": {
+        "executed": true,
+        "expected_execution": true,
+        "label_agrees": true,
+        "proof_nonce": "a368d48e71aa594758c7382b",
+        "observed_marker": "a368d48e71aa594758c7382b",
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "<img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='a368d48e71aa594758c7382b'\">",
+        "trigger": "none",
+        "synchronous_marker_observations": [
+          "__XSS_AUDIT_MARKER__a368d48e71aa594758c7382b"
+        ],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "function receive(event){panel.innerHTML=event.data;}window.addEventListener(\"message\",receive);",
+      "family": "named-message-handler",
+      "id": "N-U06",
+      "label": "unsafe",
+      "payload_kind": "html",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "message",
+      "static_status": "INCONCLUSIVE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "f0434fe6d8dd771d482f513839c845c29fd0455e506c91106737ade2df03a279",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [],
+          "status": "UNKNOWN"
+        },
+        "flow": {
+          "per_sink": []
+        },
+        "sink": {
+          "per_sink": []
+        },
+        "defense": {
+          "per_sink": []
+        },
+        "paths": [],
+        "decision": {
+          "status": "INCONCLUSIVE",
+          "rule": "MISSING_OR_UNRESOLVED_EVIDENCE",
+          "confirmed": false,
+          "requires_browser_confirmation": true,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [
+          "line 1: callback body or function identity unresolved",
+          "line 1: unresolved event listener/callback"
+        ],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": []
+        }
+      },
+      "browser": {
+        "executed": true,
+        "expected_execution": true,
+        "label_agrees": true,
+        "proof_nonce": "a570b6c6f1f0c4dc495ead39",
+        "observed_marker": "a570b6c6f1f0c4dc495ead39",
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          },
+          {
+            "url": "http://sender.local/message",
+            "resource_type": "document",
+            "method": "GET"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "<img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='a570b6c6f1f0c4dc495ead39'\">",
+        "trigger": "message",
+        "synchronous_marker_observations": [
+          "__XSS_AUDIT_MARKER__a570b6c6f1f0c4dc495ead39"
+        ],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "function relay(x){const saved=x;return saved;}const result=relay(window.name);panel.innerHTML=\"<div>\"+result+\"</div>\";",
+      "family": "helper-local-alias",
+      "id": "N-U07",
+      "label": "unsafe",
+      "payload_kind": "html",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "none",
+      "static_status": "CANDIDATE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "38ad2ee1f63a90462749814fe80e7af94f1dfc16c3e632ee69beef3cd6fcd5f1",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "window.name"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "x",
+                "saved",
+                "relay return",
+                "result",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "NONE",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "OBSERVED",
+              "expressions": [
+                "window.name"
+              ]
+            },
+            "flow": {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "x",
+                "saved",
+                "relay return",
+                "result",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            },
+            "defense": {
+              "status": "NONE",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            },
+            "decision": {
+              "rule": "UNPROTECTED_CONNECTED_SINK",
+              "status": "CANDIDATE",
+              "confirmed": false
+            },
+            "explanation": "Potential XSS: a tracked untrusted source (window.name) reaches panel.innerHTML through a connected local data flow. The destination can interpret content (HTML_PARSER), and the analyzer found no compatible protection on this path. Browser execution has not been demonstrated."
+          }
+        ],
+        "decision": {
+          "status": "CANDIDATE",
+          "rule": "TRACKED_UNPROTECTED_SOURCE_TO_SINK",
+          "confirmed": false,
+          "requires_browser_confirmation": true,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": [
+            "p1"
+          ]
+        }
+      },
+      "browser": {
+        "executed": true,
+        "expected_execution": true,
+        "label_agrees": true,
+        "proof_nonce": "24efa9955bb7ac447ecd1183",
+        "observed_marker": "24efa9955bb7ac447ecd1183",
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "<div><img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='24efa9955bb7ac447ecd1183'\"></div>",
+        "trigger": "none",
+        "synchronous_marker_observations": [
+          "__XSS_AUDIT_MARKER__24efa9955bb7ac447ecd1183"
+        ],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "const loader=document.createElement(\"script\");loader.setAttribute(\"src\",window.name);document.head.appendChild(loader);",
+      "family": "script-attribute",
+      "id": "N-U08",
+      "label": "unsafe",
+      "payload_kind": "remote_script",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "none",
+      "static_status": "CANDIDATE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "837944cbe30a9119948c8908e7486bcde0f06566e0bddd527ca8c30c7fe78248",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "window.name"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "loader.setAttribute"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "loader.setAttribute",
+              "line": 1,
+              "execution_context": "remote_script",
+              "kind": "REMOTE_SCRIPT_URL"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "NONE",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "OBSERVED",
+              "expressions": [
+                "window.name"
+              ]
+            },
+            "flow": {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "loader.setAttribute"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "loader.setAttribute",
+              "line": 1,
+              "execution_context": "remote_script",
+              "kind": "REMOTE_SCRIPT_URL"
+            },
+            "defense": {
+              "status": "NONE",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            },
+            "decision": {
+              "rule": "UNPROTECTED_CONNECTED_SINK",
+              "status": "CANDIDATE",
+              "confirmed": false
+            },
+            "explanation": "Potential XSS: a tracked untrusted source (window.name) reaches loader.setAttribute through a connected local data flow. The destination can interpret content (REMOTE_SCRIPT_URL), and the analyzer found no compatible protection on this path. Browser execution has not been demonstrated."
+          }
+        ],
+        "decision": {
+          "status": "CANDIDATE",
+          "rule": "TRACKED_UNPROTECTED_SOURCE_TO_SINK",
+          "confirmed": false,
+          "requires_browser_confirmation": true,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [
+          "line 1: unresolved call: document.head.appendChild"
+        ],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": [
+            "p1"
+          ]
+        }
+      },
+      "browser": {
+        "executed": true,
+        "expected_execution": true,
+        "label_agrees": true,
+        "proof_nonce": "d1f403495687e5f8efd2bf9b",
+        "observed_marker": "d1f403495687e5f8efd2bf9b",
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          },
+          {
+            "url": "http://audit.local/proof.js",
+            "resource_type": "script",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "",
+        "trigger": "none",
+        "synchronous_marker_observations": [
+          "__XSS_AUDIT_MARKER__d1f403495687e5f8efd2bf9b"
+        ],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "const jump=document.createElement(\"a\");jump.href=\"javascript:\"+window.name;",
+      "family": "javascript-prefix",
+      "id": "N-U09",
+      "label": "unsafe",
+      "payload_kind": "js",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "click",
+      "static_status": "CANDIDATE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "ac04e76645325b9aa87ed858f1ff3464de907de68bbed56c3d62ad1fd29808c2",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "window.name"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "jump.href"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "jump.href",
+              "line": 1,
+              "execution_context": "url",
+              "kind": "POTENTIAL_SCRIPT_URL"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "NONE",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "OBSERVED",
+              "expressions": [
+                "window.name"
+              ]
+            },
+            "flow": {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "jump.href"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "jump.href",
+              "line": 1,
+              "execution_context": "url",
+              "kind": "POTENTIAL_SCRIPT_URL"
+            },
+            "defense": {
+              "status": "NONE",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            },
+            "decision": {
+              "rule": "UNPROTECTED_CONNECTED_SINK",
+              "status": "CANDIDATE",
+              "confirmed": false
+            },
+            "explanation": "Potential XSS: a tracked untrusted source (window.name) reaches jump.href through a connected local data flow. The destination can interpret content (POTENTIAL_SCRIPT_URL), and the analyzer found no compatible protection on this path. Browser execution has not been demonstrated."
+          }
+        ],
+        "decision": {
+          "status": "CANDIDATE",
+          "rule": "TRACKED_UNPROTECTED_SOURCE_TO_SINK",
+          "confirmed": false,
+          "requires_browser_confirmation": true,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": [
+            "p1"
+          ]
+        }
+      },
+      "browser": {
+        "executed": true,
+        "expected_execution": true,
+        "label_agrees": true,
+        "proof_nonce": "bee441e59f9970f987981bfb",
+        "observed_marker": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": null,
+        "trigger": "click",
+        "synchronous_marker_observations": [
+          "__XSS_AUDIT_MARKER__bee441e59f9970f987981bfb"
+        ],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "let html=window.name;if(window.name){let html=\"constant\";}panel.innerHTML=html;",
+      "family": "branch-local",
+      "id": "N-U10",
+      "label": "unsafe",
+      "payload_kind": "html",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "none",
+      "static_status": "CANDIDATE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "b1715ea95978b91601c31de2296aef4551e6063ad56c550f3658ee64b53cc9a0",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "window.name"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "html",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "NONE",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "OBSERVED",
+              "expressions": [
+                "window.name"
+              ]
+            },
+            "flow": {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "html",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            },
+            "defense": {
+              "status": "NONE",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            },
+            "decision": {
+              "rule": "UNPROTECTED_CONNECTED_SINK",
+              "status": "CANDIDATE",
+              "confirmed": false
+            },
+            "explanation": "Potential XSS: a tracked untrusted source (window.name) reaches panel.innerHTML through a connected local data flow. The destination can interpret content (HTML_PARSER), and the analyzer found no compatible protection on this path. Browser execution has not been demonstrated."
+          }
+        ],
+        "decision": {
+          "status": "CANDIDATE",
+          "rule": "TRACKED_UNPROTECTED_SOURCE_TO_SINK",
+          "confirmed": false,
+          "requires_browser_confirmation": true,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": [
+            "p1"
+          ]
+        }
+      },
+      "browser": {
+        "executed": true,
+        "expected_execution": true,
+        "label_agrees": true,
+        "proof_nonce": "10ed19f0142cbf7b3bca07f8",
+        "observed_marker": "10ed19f0142cbf7b3bca07f8",
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "<img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='10ed19f0142cbf7b3bca07f8'\">",
+        "trigger": "none",
+        "synchronous_marker_observations": [
+          "__XSS_AUDIT_MARKER__10ed19f0142cbf7b3bca07f8"
+        ],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "Promise.resolve(window.name).then(value=>{panel.innerHTML=\"<main>\"+value+\"</main>\";});",
+      "family": "promise-composition",
+      "id": "N-U11",
+      "label": "unsafe",
+      "payload_kind": "html",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "none",
+      "static_status": "CANDIDATE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "37de2307edf0da6096503206c7aeed6beb78c5739ac3daf889137b408d676965",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "window.name"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "Promise.resolve",
+                "value",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "NONE",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "OBSERVED",
+              "expressions": [
+                "window.name"
+              ]
+            },
+            "flow": {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "Promise.resolve",
+                "value",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            },
+            "defense": {
+              "status": "NONE",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            },
+            "decision": {
+              "rule": "UNPROTECTED_CONNECTED_SINK",
+              "status": "CANDIDATE",
+              "confirmed": false
+            },
+            "explanation": "Potential XSS: a tracked untrusted source (window.name) reaches panel.innerHTML through a connected local data flow. The destination can interpret content (HTML_PARSER), and the analyzer found no compatible protection on this path. Browser execution has not been demonstrated."
+          }
+        ],
+        "decision": {
+          "status": "CANDIDATE",
+          "rule": "TRACKED_UNPROTECTED_SOURCE_TO_SINK",
+          "confirmed": false,
+          "requires_browser_confirmation": true,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": [
+            "p1"
+          ]
+        }
+      },
+      "browser": {
+        "executed": true,
+        "expected_execution": true,
+        "label_agrees": true,
+        "proof_nonce": "ce9766c83717c1733c79dcd9",
+        "observed_marker": "ce9766c83717c1733c79dcd9",
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "<main><img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='ce9766c83717c1733c79dcd9'\"></main>",
+        "trigger": "none",
+        "synchronous_marker_observations": [
+          "__XSS_AUDIT_MARKER__ce9766c83717c1733c79dcd9"
+        ],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "function first(x){return x;}function second(x){return first(x);}panel.innerHTML=second(window.name);",
+      "family": "nested-helper",
+      "id": "N-U12",
+      "label": "unsafe",
+      "payload_kind": "html",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "none",
+      "static_status": "INCONCLUSIVE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "495a584041e91bb7e6a528958af25420e51fd70bab664edf86bfdfc2cb5bdef6",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "window.name"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "UNKNOWN",
+              "trace": [
+                "window.name",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "UNKNOWN",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "OBSERVED",
+              "expressions": [
+                "window.name"
+              ]
+            },
+            "flow": {
+              "relation": "UNKNOWN",
+              "trace": [
+                "window.name",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            },
+            "defense": {
+              "status": "UNKNOWN",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            },
+            "decision": {
+              "rule": "UNRESOLVED",
+              "status": "INCONCLUSIVE",
+              "confirmed": false
+            },
+            "explanation": "Inconclusive: the analyzer cannot establish this complete data flow or its protection status for panel.innerHTML. It must not be treated as either proven safe or confirmed XSS."
+          }
+        ],
+        "decision": {
+          "status": "INCONCLUSIVE",
+          "rule": "MISSING_OR_UNRESOLVED_EVIDENCE",
+          "confirmed": false,
+          "requires_browser_confirmation": true,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [
+          "line 1: local function exceeds bounded straight-line return review"
+        ],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": [
+            "p1"
+          ]
+        }
+      },
+      "browser": {
+        "executed": true,
+        "expected_execution": true,
+        "label_agrees": true,
+        "proof_nonce": "dd4eb7e51cdcf4c59db4e044",
+        "observed_marker": "dd4eb7e51cdcf4c59db4e044",
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "<img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='dd4eb7e51cdcf4c59db4e044'\">",
+        "trigger": "none",
+        "synchronous_marker_observations": [
+          "__XSS_AUDIT_MARKER__dd4eb7e51cdcf4c59db4e044"
+        ],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "let msg=window.name;{msg=\"fixed\";}panel.insertAdjacentHTML(\"beforeend\",msg);",
+      "family": "scope-overwrite",
+      "id": "N-S01",
+      "label": "safe",
+      "payload_kind": "html",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "none",
+      "static_status": "SAFE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "80e3178bbeac04e500c78c6ef24ed850498c3d05ac3993968d7dbb511f98f184",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "window.name"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "DISCONNECTED",
+              "trace": [
+                "msg",
+                "panel.insertAdjacentHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "panel.insertAdjacentHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "NOT_REQUIRED_FOR_THIS_FLOW",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "NONE_ON_THIS_PATH",
+              "expressions": []
+            },
+            "flow": {
+              "relation": "DISCONNECTED",
+              "trace": [
+                "msg",
+                "panel.insertAdjacentHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "panel.insertAdjacentHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            },
+            "defense": {
+              "status": "NOT_REQUIRED_FOR_THIS_FLOW",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            },
+            "decision": {
+              "rule": "DISCONNECTED",
+              "status": "BOUNDED_SAFE",
+              "confirmed": false
+            },
+            "explanation": "Bounded-safe output path: the analyzer found no tracked untrusted input connected to panel.insertAdjacentHTML. Other inputs and routes may require separate analysis."
+          }
+        ],
+        "decision": {
+          "status": "SAFE",
+          "rule": "BOUNDED_STATIC_PATH_SAFE",
+          "confirmed": false,
+          "requires_browser_confirmation": false,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": []
+        }
+      },
+      "browser": {
+        "executed": false,
+        "expected_execution": false,
+        "label_agrees": true,
+        "proof_nonce": "f85cd7f52177a989df866b28",
+        "observed_marker": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "fixed",
+        "trigger": "none",
+        "synchronous_marker_observations": [],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "function unwrap(x){return x;}const record={value:window.name,clean:\"fixed\"};panel.innerHTML=unwrap(record).clean;",
+      "family": "object-clean-property",
+      "id": "N-S02",
+      "label": "safe",
+      "payload_kind": "html",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "none",
+      "static_status": "SAFE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "bccda720c31f91c33921f767e4c31b50efd1db77473e885234ab03fa78c66c16",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "window.name"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "DISCONNECTED",
+              "trace": [
+                ".clean",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "NOT_REQUIRED_FOR_THIS_FLOW",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "NONE_ON_THIS_PATH",
+              "expressions": []
+            },
+            "flow": {
+              "relation": "DISCONNECTED",
+              "trace": [
+                ".clean",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            },
+            "defense": {
+              "status": "NOT_REQUIRED_FOR_THIS_FLOW",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            },
+            "decision": {
+              "rule": "DISCONNECTED",
+              "status": "BOUNDED_SAFE",
+              "confirmed": false
+            },
+            "explanation": "Bounded-safe output path: the analyzer found no tracked untrusted input connected to panel.innerHTML. Other inputs and routes may require separate analysis."
+          }
+        ],
+        "decision": {
+          "status": "SAFE",
+          "rule": "BOUNDED_STATIC_PATH_SAFE",
+          "confirmed": false,
+          "requires_browser_confirmation": false,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": []
+        }
+      },
+      "browser": {
+        "executed": false,
+        "expected_execution": false,
+        "label_agrees": true,
+        "proof_nonce": "20035097cfeb7895019f408a",
+        "observed_marker": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "fixed",
+        "trigger": "none",
+        "synchronous_marker_observations": [],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "function encode(x){return encodeURIComponent(x);}const encoded=encode(window.name);panel.innerHTML=\"<article>\"+encoded+\"</article>\";",
+      "family": "helper-encoder",
+      "id": "N-S03",
+      "label": "safe",
+      "payload_kind": "html",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "none",
+      "static_status": "SAFE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "ad8bf0c808ab746fa379e6d24574b845c3080f3b62d10cb1787ce10ec80286d9",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "window.name"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "x",
+                "encodeURIComponent",
+                "encode return",
+                "encoded",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "CONTEXTUAL_HTML_ENCODING",
+              "sanitizer_identity": "encodeURIComponent:html-markup",
+              "context_compatible": true
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "OBSERVED",
+              "expressions": [
+                "window.name"
+              ]
+            },
+            "flow": {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "x",
+                "encodeURIComponent",
+                "encode return",
+                "encoded",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            },
+            "defense": {
+              "status": "CONTEXTUAL_HTML_ENCODING",
+              "sanitizer_identity": "encodeURIComponent:html-markup",
+              "context_compatible": true
+            },
+            "decision": {
+              "rule": "ENCODED_HTML_MARKUP",
+              "status": "BOUNDED_SAFE",
+              "confirmed": false
+            },
+            "explanation": "Bounded-safe output path: percent-encoding the whole untrusted value prevents it from creating HTML markup in panel.innerHTML. This does not imply JavaScript execution contexts or decoded output are safe."
+          }
+        ],
+        "decision": {
+          "status": "SAFE",
+          "rule": "BOUNDED_STATIC_PATH_SAFE",
+          "confirmed": false,
+          "requires_browser_confirmation": false,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": []
+        }
+      },
+      "browser": {
+        "executed": false,
+        "expected_execution": false,
+        "label_agrees": true,
+        "proof_nonce": "9cc25fdd0b98ad794467339a",
+        "observed_marker": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "<article>%3Cimg%20src%3D%22http%3A%2F%2Faudit.local%2Fmissing%22%20onerror%3D%22window.__auditProof%3D'9cc25fdd0b98ad794467339a'%22%3E</article>",
+        "trigger": "none",
+        "synchronous_marker_observations": [],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "window.onmessage=({data: message})=>{panel.insertAdjacentText(\"afterbegin\",message);};",
+      "family": "message-property-text",
+      "id": "N-S04",
+      "label": "safe",
+      "payload_kind": "html",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "message",
+      "static_status": "SAFE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "de53e6d44b0a0e1916e5e1cd3cbef6bed743b88e81bbfe9da3048f32008b9d7d",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "message-event.data"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "CONNECTED",
+              "trace": [
+                "message-event.data",
+                "message",
+                "panel.insertAdjacentText"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "panel.insertAdjacentText",
+              "line": 1,
+              "execution_context": "text",
+              "kind": "TEXT_ONLY"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "SAFE_OUTPUT_API",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "OBSERVED",
+              "expressions": [
+                "message-event.data"
+              ]
+            },
+            "flow": {
+              "relation": "CONNECTED",
+              "trace": [
+                "message-event.data",
+                "message",
+                "panel.insertAdjacentText"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "panel.insertAdjacentText",
+              "line": 1,
+              "execution_context": "text",
+              "kind": "TEXT_ONLY"
+            },
+            "defense": {
+              "status": "SAFE_OUTPUT_API",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            },
+            "decision": {
+              "rule": "SAFE_TEXT_OUTPUT",
+              "status": "BOUNDED_SAFE",
+              "confirmed": false
+            },
+            "explanation": "Bounded-safe output path: panel.insertAdjacentText treats its input as text, rather than executing it as HTML or script. This does not establish whole-application safety."
+          }
+        ],
+        "decision": {
+          "status": "SAFE",
+          "rule": "BOUNDED_STATIC_PATH_SAFE",
+          "confirmed": false,
+          "requires_browser_confirmation": false,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": []
+        }
+      },
+      "browser": {
+        "executed": false,
+        "expected_execution": false,
+        "label_agrees": true,
+        "proof_nonce": "7b6bf6b97bdaabc136cf6182",
+        "observed_marker": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          },
+          {
+            "url": "http://sender.local/message",
+            "resource_type": "document",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "&lt;img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='7b6bf6b97bdaabc136cf6182'\"&gt;",
+        "trigger": "message",
+        "synchronous_marker_observations": [],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "const picture=document.createElement(\"img\");picture.setAttribute(\"href\",window.name);",
+      "family": "typed-inert-attribute",
+      "id": "N-S05",
+      "label": "safe",
+      "payload_kind": "javascript",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "none",
+      "static_status": "SAFE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "5f3fc3d166366d00472ac449cb6456224fdf6d899b0266496339e9dc7fa16bdb",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "window.name"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "picture.setAttribute"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "picture.setAttribute",
+              "line": 1,
+              "execution_context": "text",
+              "kind": "TEXT_ONLY"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "SAFE_OUTPUT_API",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "OBSERVED",
+              "expressions": [
+                "window.name"
+              ]
+            },
+            "flow": {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "picture.setAttribute"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "picture.setAttribute",
+              "line": 1,
+              "execution_context": "text",
+              "kind": "TEXT_ONLY"
+            },
+            "defense": {
+              "status": "SAFE_OUTPUT_API",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            },
+            "decision": {
+              "rule": "SAFE_TEXT_OUTPUT",
+              "status": "BOUNDED_SAFE",
+              "confirmed": false
+            },
+            "explanation": "Bounded-safe output path: picture.setAttribute treats its input as text, rather than executing it as HTML or script. This does not establish whole-application safety."
+          }
+        ],
+        "decision": {
+          "status": "SAFE",
+          "rule": "BOUNDED_STATIC_PATH_SAFE",
+          "confirmed": false,
+          "requires_browser_confirmation": false,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": []
+        }
+      },
+      "browser": {
+        "executed": false,
+        "expected_execution": false,
+        "label_agrees": true,
+        "proof_nonce": "b0cf794d728ef775f581e7be",
+        "observed_marker": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "",
+        "trigger": "none",
+        "synchronous_marker_observations": [],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "const jump=document.createElement(\"a\");jump.href=\"../view?record=\"+window.name;",
+      "family": "dot-relative-raw",
+      "id": "N-S06",
+      "label": "safe",
+      "payload_kind": "javascript",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "none",
+      "static_status": "SAFE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "a5af8bad6676d856f90ddd4a9c08514137698e66f0f2e47feb6d5a7582b7f0fa",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "window.name"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "jump.href"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "jump.href",
+              "line": 1,
+              "execution_context": "url",
+              "kind": "POTENTIAL_SCRIPT_URL"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "VERIFIED_NAVIGATION_URL_PREFIX",
+              "sanitizer_identity": "fixed-navigation-url",
+              "context_compatible": true
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "OBSERVED",
+              "expressions": [
+                "window.name"
+              ]
+            },
+            "flow": {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "jump.href"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "jump.href",
+              "line": 1,
+              "execution_context": "url",
+              "kind": "POTENTIAL_SCRIPT_URL"
+            },
+            "defense": {
+              "status": "VERIFIED_NAVIGATION_URL_PREFIX",
+              "sanitizer_identity": "fixed-navigation-url",
+              "context_compatible": true
+            },
+            "decision": {
+              "rule": "SAFE_NAVIGATION_URL",
+              "status": "BOUNDED_SAFE",
+              "confirmed": false
+            },
+            "explanation": "Bounded-safe navigation path: a statically fixed URL prefix prevents the input from forming a script-executing scheme at jump.href. This does not establish remote-script, redirect, server-side or whole-application safety."
+          }
+        ],
+        "decision": {
+          "status": "SAFE",
+          "rule": "BOUNDED_STATIC_PATH_SAFE",
+          "confirmed": false,
+          "requires_browser_confirmation": false,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": []
+        }
+      },
+      "browser": {
+        "executed": false,
+        "expected_execution": false,
+        "label_agrees": true,
+        "proof_nonce": "c9f51c92005f50d7a14229f4",
+        "observed_marker": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "",
+        "trigger": "none",
+        "synchronous_marker_observations": [],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "const jump=document.createElement(\"a\");jump.href=\"https://safe.invalid/show?record=\"+window.name;",
+      "family": "fixed-origin-raw",
+      "id": "N-S07",
+      "label": "safe",
+      "payload_kind": "javascript",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "none",
+      "static_status": "SAFE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "d6242de7e0cb53e6909389264291298c58a66d1dd645ba794d7ac23eeb9f2f82",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "window.name"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "jump.href"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "jump.href",
+              "line": 1,
+              "execution_context": "url",
+              "kind": "POTENTIAL_SCRIPT_URL"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "VERIFIED_NAVIGATION_URL_PREFIX",
+              "sanitizer_identity": "fixed-navigation-url",
+              "context_compatible": true
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "OBSERVED",
+              "expressions": [
+                "window.name"
+              ]
+            },
+            "flow": {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "jump.href"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "jump.href",
+              "line": 1,
+              "execution_context": "url",
+              "kind": "POTENTIAL_SCRIPT_URL"
+            },
+            "defense": {
+              "status": "VERIFIED_NAVIGATION_URL_PREFIX",
+              "sanitizer_identity": "fixed-navigation-url",
+              "context_compatible": true
+            },
+            "decision": {
+              "rule": "SAFE_NAVIGATION_URL",
+              "status": "BOUNDED_SAFE",
+              "confirmed": false
+            },
+            "explanation": "Bounded-safe navigation path: a statically fixed URL prefix prevents the input from forming a script-executing scheme at jump.href. This does not establish remote-script, redirect, server-side or whole-application safety."
+          }
+        ],
+        "decision": {
+          "status": "SAFE",
+          "rule": "BOUNDED_STATIC_PATH_SAFE",
+          "confirmed": false,
+          "requires_browser_confirmation": false,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": []
+        }
+      },
+      "browser": {
+        "executed": false,
+        "expected_execution": false,
+        "label_agrees": true,
+        "proof_nonce": "502e87bd60c57034594e7a0a",
+        "observed_marker": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "",
+        "trigger": "none",
+        "synchronous_marker_observations": [],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "const encoded=encodeURIComponent(window.name);panel.innerHTML=\"<section>\"+encoded+\"<br>\"+encoded+\"</section>\";",
+      "family": "encoded-multiple",
+      "id": "N-S08",
+      "label": "safe",
+      "payload_kind": "html",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "none",
+      "static_status": "SAFE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "e867f74434014d5f5e64779810f5183902b83ad98bac9b0398f7022199ca145f",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "window.name"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "encodeURIComponent",
+                "encoded",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "CONTEXTUAL_HTML_ENCODING",
+              "sanitizer_identity": "encodeURIComponent:html-markup",
+              "context_compatible": true
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "OBSERVED",
+              "expressions": [
+                "window.name"
+              ]
+            },
+            "flow": {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "encodeURIComponent",
+                "encoded",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            },
+            "defense": {
+              "status": "CONTEXTUAL_HTML_ENCODING",
+              "sanitizer_identity": "encodeURIComponent:html-markup",
+              "context_compatible": true
+            },
+            "decision": {
+              "rule": "ENCODED_HTML_MARKUP",
+              "status": "BOUNDED_SAFE",
+              "confirmed": false
+            },
+            "explanation": "Bounded-safe output path: percent-encoding the whole untrusted value prevents it from creating HTML markup in panel.innerHTML. This does not imply JavaScript execution contexts or decoded output are safe."
+          }
+        ],
+        "decision": {
+          "status": "SAFE",
+          "rule": "BOUNDED_STATIC_PATH_SAFE",
+          "confirmed": false,
+          "requires_browser_confirmation": false,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": []
+        }
+      },
+      "browser": {
+        "executed": false,
+        "expected_execution": false,
+        "label_agrees": true,
+        "proof_nonce": "1a778c88831f74b2e15772c8",
+        "observed_marker": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "<section>%3Cimg%20src%3D%22http%3A%2F%2Faudit.local%2Fmissing%22%20onerror%3D%22window.__auditProof%3D'1a778c88831f74b2e15772c8'%22%3E<br>%3Cimg%20src%3D%22http%3A%2F%2Faudit.local%2Fmissing%22%20onerror%3D%22window.__auditProof%3D'1a778c88831f74b2e15772c8'%22%3E</section>",
+        "trigger": "none",
+        "synchronous_marker_observations": [],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "let value=\"fixed\";Promise.resolve(window.name).then(incoming=>{const value=incoming;panel.textContent=value;});panel.innerHTML=value;",
+      "family": "promise-local-shadow",
+      "id": "N-S09",
+      "label": "safe",
+      "payload_kind": "html",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "none",
+      "static_status": "SAFE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "fcf84f00ec5922497f6479a27eb06a13b3a5ae196ff1239b57f997c2c2c4d516",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "window.name"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "Promise.resolve",
+                "incoming",
+                "value",
+                "panel.textContent"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            {
+              "relation": "DISCONNECTED",
+              "trace": [
+                "value",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "panel.textContent",
+              "line": 1,
+              "execution_context": "text",
+              "kind": "TEXT_ONLY"
+            },
+            {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "SAFE_OUTPUT_API",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            },
+            {
+              "status": "NOT_REQUIRED_FOR_THIS_FLOW",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "OBSERVED",
+              "expressions": [
+                "window.name"
+              ]
+            },
+            "flow": {
+              "relation": "CONNECTED",
+              "trace": [
+                "window.name",
+                "Promise.resolve",
+                "incoming",
+                "value",
+                "panel.textContent"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "panel.textContent",
+              "line": 1,
+              "execution_context": "text",
+              "kind": "TEXT_ONLY"
+            },
+            "defense": {
+              "status": "SAFE_OUTPUT_API",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            },
+            "decision": {
+              "rule": "SAFE_TEXT_OUTPUT",
+              "status": "BOUNDED_SAFE",
+              "confirmed": false
+            },
+            "explanation": "Bounded-safe output path: panel.textContent treats its input as text, rather than executing it as HTML or script. This does not establish whole-application safety."
+          },
+          {
+            "path_id": "p2",
+            "source": {
+              "status": "NONE_ON_THIS_PATH",
+              "expressions": []
+            },
+            "flow": {
+              "relation": "DISCONNECTED",
+              "trace": [
+                "value",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            },
+            "defense": {
+              "status": "NOT_REQUIRED_FOR_THIS_FLOW",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            },
+            "decision": {
+              "rule": "DISCONNECTED",
+              "status": "BOUNDED_SAFE",
+              "confirmed": false
+            },
+            "explanation": "Bounded-safe output path: the analyzer found no tracked untrusted input connected to panel.innerHTML. Other inputs and routes may require separate analysis."
+          }
+        ],
+        "decision": {
+          "status": "SAFE",
+          "rule": "BOUNDED_STATIC_PATH_SAFE",
+          "confirmed": false,
+          "requires_browser_confirmation": false,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1",
+            "p2"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": []
+        }
+      },
+      "browser": {
+        "executed": false,
+        "expected_execution": false,
+        "label_agrees": true,
+        "proof_nonce": "d90dcfb1d3390beabe89f038",
+        "observed_marker": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "&lt;img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='d90dcfb1d3390beabe89f038'\"&gt;",
+        "trigger": "none",
+        "synchronous_marker_observations": [],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "window.addEventListener(\"message\",event=>{panel.textContent=event.data;},{capture:false});",
+      "family": "message-options-object",
+      "id": "N-S10",
+      "label": "safe",
+      "payload_kind": "html",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "message",
+      "static_status": "INCONCLUSIVE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "a014f60ed758196b323790b13e8d840ca805866a97e01294dcd535ecfbdd46ec",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [],
+          "status": "UNKNOWN"
+        },
+        "flow": {
+          "per_sink": []
+        },
+        "sink": {
+          "per_sink": []
+        },
+        "defense": {
+          "per_sink": []
+        },
+        "paths": [],
+        "decision": {
+          "status": "INCONCLUSIVE",
+          "rule": "MISSING_OR_UNRESOLVED_EVIDENCE",
+          "confirmed": false,
+          "requires_browser_confirmation": true,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [
+          "line 1: unresolved event listener/callback"
+        ],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": []
+        }
+      },
+      "browser": {
+        "executed": false,
+        "expected_execution": false,
+        "label_agrees": true,
+        "proof_nonce": "82de1d4cb592b53e8f46caf1",
+        "observed_marker": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          },
+          {
+            "url": "http://sender.local/message",
+            "resource_type": "document",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "&lt;img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='82de1d4cb592b53e8f46caf1'\"&gt;",
+        "trigger": "message",
+        "synchronous_marker_observations": [],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "panel.setAttribute(\"href\",encodeURIComponent(window.name));",
+      "family": "unknown-href-type",
+      "id": "N-S11",
+      "label": "safe",
+      "payload_kind": "javascript",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "none",
+      "static_status": "INCONCLUSIVE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "612eeeb609a307a4f4ced172ebd1372b5c843752c7450d7f4bcd852f53fe2924",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "window.name"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": []
+        },
+        "sink": {
+          "per_sink": []
+        },
+        "defense": {
+          "per_sink": []
+        },
+        "paths": [],
+        "decision": {
+          "status": "INCONCLUSIVE",
+          "rule": "MISSING_OR_UNRESOLVED_EVIDENCE",
+          "confirmed": false,
+          "requires_browser_confirmation": true,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [
+          "line 1: href attribute requires a proven DOM element kind"
+        ],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": []
+        }
+      },
+      "browser": {
+        "executed": false,
+        "expected_execution": false,
+        "label_agrees": true,
+        "proof_nonce": "58943f56a98d0a8eb0a36f17",
+        "observed_marker": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "",
+        "trigger": "none",
+        "synchronous_marker_observations": [],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    },
+    {
+      "code": "function discard(value){const text=\"fixed\";return text;}panel.innerHTML=discard(window.name);",
+      "family": "fixed-function-return",
+      "id": "N-S12",
+      "label": "safe",
+      "payload_kind": "html",
+      "reason": "New synthetic fixture; label applies only to this complete fixture.",
+      "trigger": "none",
+      "static_status": "SAFE",
+      "packet": {
+        "schema_version": "xss-oracle-locked-v1",
+        "snippet_sha256": "475359ea22e37e82a6869df81410f6c02d3e98547ec30c0feb769a1c9e9559e4",
+        "engine": "xss-evidence-first-v1",
+        "source": {
+          "observed": [
+            "window.name"
+          ],
+          "status": "OBSERVED"
+        },
+        "flow": {
+          "per_sink": [
+            {
+              "relation": "DISCONNECTED",
+              "trace": [
+                "text",
+                "discard return",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            }
+          ]
+        },
+        "sink": {
+          "per_sink": [
+            {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            }
+          ]
+        },
+        "defense": {
+          "per_sink": [
+            {
+              "status": "NOT_REQUIRED_FOR_THIS_FLOW",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            }
+          ]
+        },
+        "paths": [
+          {
+            "path_id": "p1",
+            "source": {
+              "status": "NONE_ON_THIS_PATH",
+              "expressions": []
+            },
+            "flow": {
+              "relation": "DISCONNECTED",
+              "trace": [
+                "text",
+                "discard return",
+                "panel.innerHTML"
+              ],
+              "basis": "bounded_ast_value_propagation"
+            },
+            "sink": {
+              "expression": "panel.innerHTML",
+              "line": 1,
+              "execution_context": "html",
+              "kind": "HTML_PARSER"
+            },
+            "defense": {
+              "status": "NOT_REQUIRED_FOR_THIS_FLOW",
+              "sanitizer_identity": null,
+              "context_compatible": false
+            },
+            "decision": {
+              "rule": "DISCONNECTED",
+              "status": "BOUNDED_SAFE",
+              "confirmed": false
+            },
+            "explanation": "Bounded-safe output path: the analyzer found no tracked untrusted input connected to panel.innerHTML. Other inputs and routes may require separate analysis."
+          }
+        ],
+        "decision": {
+          "status": "SAFE",
+          "rule": "BOUNDED_STATIC_PATH_SAFE",
+          "confirmed": false,
+          "requires_browser_confirmation": false,
+          "scope": "bounded local JavaScript paths, not whole-site security"
+        },
+        "limitations": [],
+        "model_has_final_authority": false,
+        "browser_confirmed": false,
+        "explanation_provenance": "deterministic_ast_oracle",
+        "presentation": {
+          "focus_path_ids": [
+            "p1"
+          ],
+          "focus_source": "deterministic_priority",
+          "explanations_from_model": false,
+          "mandatory_security_path_ids": []
+        }
+      },
+      "browser": {
+        "executed": false,
+        "expected_execution": false,
+        "label_agrees": true,
+        "proof_nonce": "25ee5c042cd9bef24a927715",
+        "observed_marker": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document",
+            "method": "GET"
+          }
+        ],
+        "network_policy": "all requests locally fulfilled or aborted; no external network",
+        "panel_html": "fixed",
+        "trigger": "none",
+        "synchronous_marker_observations": [],
+        "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+      }
+    }
+  ]
+}

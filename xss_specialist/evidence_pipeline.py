@@ -45,6 +45,9 @@ def _sink_evidence(item: dict) -> dict:
     elif (item.get("sanitizer_compatible") and
           item.get("sanitizer") == "fixed-relative-url"):
         protection = "VERIFIED_RELATIVE_URL_PREFIX"
+    elif (item.get("sanitizer_compatible") and
+          item.get("sanitizer") == "fixed-navigation-url"):
+        protection = "VERIFIED_NAVIGATION_URL_PREFIX"
     elif relation == "CONNECTED" and kind in (
         "HTML_PARSER", "SCRIPT_EXECUTION", "POTENTIAL_SCRIPT_URL", "REMOTE_SCRIPT_URL"
     ):
@@ -57,6 +60,7 @@ def _sink_evidence(item: dict) -> dict:
             "ENCODED_HTML_MARKUP" if protection == "CONTEXTUAL_HTML_ENCODING" else
             "SANITIZED_HTML" if protection == "VERIFIED_CONTEXTUAL_SANITIZATION" else
             "SAFE_RELATIVE_URL" if protection == "VERIFIED_RELATIVE_URL_PREFIX" else
+            "SAFE_NAVIGATION_URL" if protection == "VERIFIED_NAVIGATION_URL_PREFIX" else
             "UNPROTECTED_CONNECTED_SINK" if relation == "CONNECTED" and protection == "NONE" else
             "DISCONNECTED" if relation == "DISCONNECTED" else
             "UNRESOLVED")

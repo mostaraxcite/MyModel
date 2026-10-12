@@ -1,0 +1,24 @@
+{
+  "suite": "xss-scope-url-v7-fresh-2026-10-13",
+  "cases_sha256": "3bc0be5619d87e90f61e7b3b199715f054ee751220b57c007f1f3681259a00e3",
+  "n": 24,
+  "unsafe": 12,
+  "safe": 12,
+  "frozen_before_first_score": true,
+  "base_commit": "2def9b1446721d9d30fddfe9e06c95641e490ef6",
+  "engine_sha256": {
+    "xss_specialist/taint.py": "dc1510eeb6bef2dd119972e7e5451483c415379a3d78e90f8debd42be796e99d",
+    "xss_specialist/evidence_pipeline.py": "c6093b9d6f91f3b064a369b7311ae3e17c331ae673bf78a147452b08c9cd8f1e",
+    "xss_specialist/grounded_advisor.py": "137ea6d6d377a5e0b343be0b7d273a12d4831b915518c507e53ae21083894898"
+  },
+  "provenance": "New manually authored synthetic fixtures, not used to edit this engine. Author knows prior development patterns; not an external blind benchmark.",
+  "gate": {
+    "unsafe_candidate_recall_min": 0.9,
+    "safe_false_positive_rate_max": 0.05,
+    "unsafe_static_safe_max": 0,
+    "browser_label_mismatches_max": 0
+  },
+  "no_live_targets": true,
+  "model_evaluated": false,
+  "harness_retry": "Initial run aborted when a javascript URL replaced the document before DOM capture. Engine and all case snippets/labels stayed unchanged; rerun fixes only synchronous marker capture."
+}

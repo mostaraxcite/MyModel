@@ -66,6 +66,12 @@ def _grounded_explanation(path: dict) -> str:
             "compatible with this local HTML sink (" + name +
             "). Other paths and runtime conditions were not assessed."
         )
+    if defense["status"] in {"VERIFIED_RELATIVE_URL_PREFIX", "VERIFIED_NAVIGATION_URL_PREFIX"}:
+        return (
+            "Bounded-safe navigation path: a statically fixed URL prefix prevents "
+            "the input from forming a script-executing scheme at " + name +
+            ". This does not establish remote-script, redirect, server-side or whole-application safety."
+        )
     if relation == "DISCONNECTED":
         return (
             "Bounded-safe output path: the analyzer found no tracked "

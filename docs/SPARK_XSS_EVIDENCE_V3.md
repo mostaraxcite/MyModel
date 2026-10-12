@@ -99,3 +99,28 @@ Before considering production:
 No automatic promotion, credential usage, target scanning or MyHunt/PentesterFlow
 deployment is performed by this pipeline. A successfully trained LoRA is a
 candidate for evaluation only.
+
+
+## GPU evidence extraction smoke test
+
+Workflow: Spark Evidence V3 Field Evaluation.
+
+The GPU run is conditional on Kaggle training status COMPLETE and a validated
+run_status.json from the **separate private V3 adapter**. Its source SHA,
+candidate identity, 220/120 SFT/dev split, Spark base revision, and
+model_promoted=false are all verified before a new GPU job can be submitted.
+
+The field evaluator loads Spark base and V3 adapter with the same FP16 weights
+(not direct 4-bit inference, which previously broke Spark attention with Byte
+weight dtype), and generates JSON on 12 stratified group-held-out synthetic
+dev examples. It reports:
+
+- strict JSON validity rate (exact six-key object, no binary verdict fields);
+- per-field exact match for source, flow, sink, defense and limitations;
+- total rate of evidence proposals grounded in the local deterministic AST;
+- separate baseline Spark versus trained evidence V3 scores;
+- zero browser confirmations and DO_NOT_PROMOTE.
+
+This is a **small synthetic dev smoke test**, not a substitute for independent
+real-code evaluation or proof of XSS vulnerabilities. Both versions are scored
+on the same inputs and evaluated without giving either model final authority.

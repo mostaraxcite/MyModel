@@ -1,0 +1,159 @@
+name: Spark Evidence V3 Field Evaluation
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spark-evidence-v3-field-eval
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[launch-spark-evidence-v3-eval]')
+    name: Verify adapter and evaluate evidence quality against Spark base
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Preflight scoring and preservation of evidence-only authority
+        run: |
+          python -m pip install -q pytest pyyaml tree-sitter tree-sitter-javascript
+          python -m pytest -q tests/test_spark_evidence_v3_model_eval.py tests/test_evidence_first.py
+          python -m compileall -q evaluation/spark_evidence_v3_model_eval.py kaggle/spark_evidence_v3_eval.py
+      - name: Verify Kaggle candidate was really trained and saved
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KAGGLE_API_TOKEN" ]; then
+            echo "::error::Missing Kaggle API token."
+            exit 1
+          fi
+          python -m pip install -q "git+https://github.com/Kaggle/kaggle-cli.git@9c57dd74c29904c40ff7879eed33644be89d2e2f"
+          kernel="dody2004/spark-xss-evidence-v3"
+          status="$(kaggle kernels status "$kernel" 2>&1 || true)"
+          echo "Training candidate: $status"
+          if ! echo "$status" | grep -q 'KernelWorkerStatus.COMPLETE'; then
+            echo "::error::Evidence V3 GPU training is NOT completed; refusing additional evaluation GPU."
+            exit 1
+          fi
+          mkdir -p candidate-status
+          kaggle kernels output "$kernel" -p candidate-status --file-pattern 'run_status[.]json$' -o
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          files=list(Path("candidate-status").rglob("run_status.json"))
+          if len(files)!=1: raise SystemExit("Run status missing or ambiguous")
+          state=json.loads(files[0].read_text())
+          assert state["status"]=="candidate_saved_not_evaluated",state
+          assert state["my_model_sha"]=="131bbeb6600537a0635047bd62dca688da72a7fe",state
+          assert state["training_variant"]=="evidence_fields_v3",state
+          assert state["training_rows"]==220 and state["eval_rows"]==120,state
+          assert state["model_has_final_authority"] is False,state
+          assert state["model_promoted"] is False,state
+          assert state["model_revision"]=="0bcb35678590218655dff3765b9e61c83b35e9c4",state
+          print("Valid v3 evidence adapter. Ready for 12-case internal field extraction smoke.")
+          PY
+      - name: Package immutable GPU field evaluation notebook
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import hashlib,json,os,pathlib,re
+          src=pathlib.Path("kaggle/spark_evidence_v3_eval.py").read_text()
+          sha=os.environ["SOURCE_SHA"]
+          if not re.fullmatch(r"[0-9a-f]{40}",sha):raise SystemExit("Source SHA unpinned")
+          assert src.count("__MYMODEL_EVAL_SHA__")==1
+          src=src.replace('REPO_SHA = "__MYMODEL_EVAL_SHA__"',f'REPO_SHA = "{sha}"')
+          out=pathlib.Path("kaggle-v3-eval-dist")
+          out.mkdir(exist_ok=True)
+          (out/"spark_evidence_v3_eval.py").write_text(src)
+          meta={
+            "id":"dody2004/spark-evidence-v3-field-evaluation",
+            "title":"Spark Evidence V3 Field Evaluation",
+            "code_file":"spark_evidence_v3_eval.py",
+            "language":"python","kernel_type":"script","is_private":True,
+            "enable_gpu":True,"enable_internet":True,
+            "machine_shape":"NvidiaTeslaT4",
+            "kernel_sources":["dody2004/spark-xss-evidence-v3"],
+            "dataset_sources":[],"competition_sources":[],"model_sources":[]
+          }
+          (out/"kernel-metadata.json").write_text(json.dumps(meta,indent=2)+"\n")
+          print("Pinned code sha256:",hashlib.sha256(src.encode()).hexdigest())
+          print("Attached trained kernel:",meta["kernel_sources"])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: spark-v3-evidence-eval-kernel-${{ github.run_id }}
+          path: kaggle-v3-eval-dist
+          retention-days: 14
+      - name: Submit one GPU field comparison, without training
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          kaggle kernels push -p kaggle-v3-eval-dist --accelerator NvidiaTeslaT4 --timeout 18000
+          echo "https://www.kaggle.com/code/dody2004/spark-evidence-v3-field-evaluation"
+          echo "::notice::Submitted; GPU execution and model quality are not yet verified."
+      - name: Poll and archive GPU evidence extraction report
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p field-results
+          kernel="dody2004/spark-evidence-v3-field-evaluation"
+          complete=0
+          for i in $(seq 1 48); do
+            status="$(kaggle kernels status "$kernel" 2>&1 || true)"
+            echo "Field evaluation $i/48: $status"
+            echo "$status" > field-results/kaggle-status.txt
+            if echo "$status" | grep -q 'KernelWorkerStatus.COMPLETE';then
+              complete=1;break
+            fi
+            if echo "$status" | grep -Eq 'KernelWorkerStatus.ERROR|KernelWorkerStatus.CANCELLED';then
+              echo "::error::Kaggle evaluation failed; inspect remote logs."
+              break
+            fi
+            sleep 60
+          done
+          kaggle kernels logs "$kernel" > field-results/kaggle-logs.txt 2>&1 || true
+          if [ "$complete" != 1 ];then
+            echo "::error::No verified complete evidence evaluation report."
+            exit 1
+          fi
+          kaggle kernels output "$kernel" -p field-results/output --file-pattern '(report|status)[.]json$' -o > field-results/download.txt 2>&1 || true
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("field-results/output")
+          states=list(root.rglob("status.json"))
+          reports=list(root.rglob("report.json"))
+          if len(states)!=1 or len(reports)!=1:
+              raise SystemExit("Missing exact evidence evaluation report or status")
+          status=json.loads(states[0].read_text())
+          report=json.loads(reports[0].read_text())
+          assert status["evaluated"] and status["status"]=="success",status
+          assert status["training_variant"]=="evidence_fields_v3",status
+          assert report["base"]["n"]==12 and report["evidence_v3"]["n"]==12,report
+          assert report["promotion"]=="DO_NOT_PROMOTE",report
+          print("=== Spark base ===")
+          print(json.dumps({k:v for k,v in report["base"].items() if k!="details"},indent=2))
+          print("=== Evidence v3 advisor ===")
+          print(json.dumps({k:v for k,v in report["evidence_v3"].items() if k!="details"},indent=2))
+          print("Model never authorized to issue final XSS verdict.")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spark-evidence-v3-field-results-${{ github.run_id }}
+          path: field-results
+          retention-days: 30
+          if-no-files-found: warn

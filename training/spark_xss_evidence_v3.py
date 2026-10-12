@@ -206,5 +206,27 @@ def build(output_dir: Path = OUT) -> dict:
     return manifest
 
 
+def main():
+    import argparse
+    import shutil
+    import subprocess
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output-dir", type=Path, default=OUT)
+    parser.add_argument("--launch-training", action="store_true",
+                        help="GPU-required training; no model promotion")
+    args = parser.parse_args()
+    if args.launch_training and not shutil.which("llamafactory-cli"):
+        parser.error("LLaMA-Factory model-author fork must be installed")
+    manifest = build(args.output_dir)
+    print(json.dumps(manifest, indent=2), flush=True)
+    if args.launch_training:
+        if __import__("os").environ.get("CUDA_VISIBLE_DEVICES") == "-1":
+            parser.error("Explicitly disabled GPU; refusing SFT")
+        subprocess.run(
+            ["llamafactory-cli", "train", str(args.output_dir.resolve() / "train.yaml")],
+            check=True,
+        )
+
+
 if __name__ == "__main__":
-    print(json.dumps(build(), indent=2))
+    main()

@@ -82,3 +82,41 @@ Score audit after freezing the code:
 All model checkpoints V1, V2, V3 are preserved. This change evaluates
 **the deterministic oracle**, not Spark fine-tuning or browser detection.
 It never promotes an adapter to MyHunt/PentesterFlow.
+
+
+## Locked audit outcomes — first and only audit scoring
+
+The reserved audit was run once **after merging the context-specific fixes**.
+The job did not train a model, test browser exploitation, or call any remote
+target. This report is the definitive pre-next-development audit snapshot.
+
+- GitHub Actions run: https://github.com/mostaraxcite/MyModel/actions/runs/38311578941
+- Raw case-by-case artifact: https://github.com/mostaraxcite/MyModel/actions/runs/38311578941/artifacts/11775221270
+- Audited source revision: 44998e30d0ee7be83287c5978cd3d492b73f15a6
+
+| Metric | Diagnostic (tuned) | Audit (never tuned) |
+|---|---:|---:|
+| Potentially unsafe CANDIDATE | 10/10 | **0/5** |
+| Potentially unsafe SAFE | 0/10 | 0/5 |
+| Potentially unsafe INCONCLUSIVE | 0/10 | **5/5** |
+| Safe CANDIDATE (false alerts) | 0/9 | **0/6** |
+| Safe correctly classified | 9/9 | **2/6** |
+| Safe INCONCLUSIVE | 0/9 | **4/6** |
+| Needs-review INCONCLUSIVE | 7/7 | **5/5** |
+| Decision coverage | 73.08% | **12.5%** |
+
+The audit result does NOT mean 100% real-world XSS false negatives;
+these examples are static and all five potentially unsafe paths
+abstained instead of being mislabeled SAFE. But **0/5 candidate recall**
+is a serious capability/coverage failure. The apparently perfect
+diagnostic score was not predictive of new pattern families.
+
+Observed next coverage work includes callback/cross-window flow,
+loop effects, URL attributes/schemes, dynamic script destinations,
+safe Node.append/replaceChildren, and side-effect-free logging.
+These are **suggestions for future rule development, not validated fixes**.
+Further engineering must use a newly authored diagnostic set and a
+new held-out audit, rather than reusing this now-exposed audit for
+model selection or reporting it as independent accuracy.
+
+The production/promotion decision remains DO_NOT_PROMOTE.

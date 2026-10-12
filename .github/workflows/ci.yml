@@ -41,6 +41,7 @@ jobs:
           tests/test_spark_evidence_v3_model_eval.py
           tests/test_grounded_advisor.py
           tests/test_fresh_static_xss_suite.py
+          tests/test_fresh_html_context_fixes.py
       - name: Score new diagnostic XSS cases (audit partition remains unscored)
         run: uv run python -m evaluation.fresh_static_xss_suite --partition diagnostic
       - name: Audit conservative XSS evidence gate on exposed regression

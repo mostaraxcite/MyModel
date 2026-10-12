@@ -34,7 +34,11 @@ def _sink_evidence(item: dict) -> dict:
         relation = "DISCONNECTED"
     if kind == "TEXT_ONLY":
         protection = "SAFE_OUTPUT_API"
-    elif item.get("sanitizer_compatible") and item.get("sanitizer"):
+    elif (item.get("sanitizer_compatible") and
+          item.get("sanitizer") == "encodeURIComponent:html-markup"):
+        protection = "CONTEXTUAL_HTML_ENCODING"
+    elif (item.get("sanitizer_compatible") and
+          item.get("sanitizer") == "dompurify:default-html"):
         protection = "VERIFIED_CONTEXTUAL_SANITIZATION"
     elif relation == "CONNECTED" and kind in ("HTML_PARSER", "SCRIPT_EXECUTION"):
         protection = "NONE"
@@ -43,6 +47,7 @@ def _sink_evidence(item: dict) -> dict:
     else:
         protection = "NOT_REQUIRED_FOR_THIS_FLOW"
     rule = ("SAFE_TEXT_OUTPUT" if kind == "TEXT_ONLY" else
+            "ENCODED_HTML_MARKUP" if protection == "CONTEXTUAL_HTML_ENCODING" else
             "SANITIZED_HTML" if protection == "VERIFIED_CONTEXTUAL_SANITIZATION" else
             "UNPROTECTED_CONNECTED_SINK" if relation == "CONNECTED" and protection == "NONE" else
             "DISCONNECTED" if relation == "DISCONNECTED" else

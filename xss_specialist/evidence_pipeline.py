@@ -161,3 +161,30 @@ def validate_advisory(candidate: dict, evidence: dict) -> dict:
         "accepted": True, "reason": "evidence_match_only",
         "decision": evidence["decision"], "confirmed": False,
     }
+
+
+def main() -> None:
+    """Local-only evidence CLI; model predictions are never final authority."""
+    import argparse
+    import json
+    from pathlib import Path
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("file", type=Path, help="Local JavaScript file, never a URL")
+    parser.add_argument("--trusted-module", action="append", default=[],
+                        help="Externally audited import identity (not source-code guessed)")
+    parser.add_argument("--advisory-json", type=Path,
+                        help="Optional model-generated evidence JSON to verify, not execute")
+    args = parser.parse_args()
+    report = review_evidence(
+        args.file.read_text(encoding="utf-8"),
+        trusted_modules=tuple(args.trusted_module),
+    )
+    if args.advisory_json:
+        advisor = json.loads(args.advisory_json.read_text(encoding="utf-8"))
+        report["model_advisory"] = validate_advisory(advisor, report)
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

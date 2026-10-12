@@ -130,7 +130,7 @@ class Analyzer:
                 return Value(unknown=True)
             self.limitation(node, "unresolved constructor: " + (ctor or self.text(node)))
             self.env = {k: join(v, Value(unknown=True)) for k, v in self.env.items()}
-            return join(*values, Value(unknown=True)
+            return join(*values, Value(unknown=True))
         if kind == "parenthesized_expression":
             return self.expression(node.named_children[0])
         if kind == "template_string":

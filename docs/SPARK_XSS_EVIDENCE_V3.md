@@ -124,3 +124,20 @@ dev examples. It reports:
 This is a **small synthetic dev smoke test**, not a substitute for independent
 real-code evaluation or proof of XSS vulnerabilities. Both versions are scored
 on the same inputs and evaluated without giving either model final authority.
+
+
+## Completed candidate checkpoint and scheduled field comparison
+
+The isolated Kaggle training workflow run
+https://github.com/mostaraxcite/MyModel/actions/runs/38300184934
+completed successfully. Its final monitor output reports Kaggle
+KernelWorkerStatus.COMPLETE and verifies candidate_saved_not_evaluated,
+220 training / 120 dev records, model_has_final_authority=false and
+model_promoted=false. This confirms checkpoint creation, **not** field
+prediction quality or independent real-world generalization.
+
+The separate v3 field-evaluation workflow uses the already-saved adapter
+and checks exact JSON output plus source/flow/sink/defense/limitation fields
+against AST-grounded evidence on 12 held-out synthetic dev cases. Its
+merge trigger is [launch-spark-evidence-v3-eval]. It does NOT retrain the
+model, approve a security finding or deploy it to production.

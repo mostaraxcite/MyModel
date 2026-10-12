@@ -1,6 +1,8 @@
 name: Evaluate Spark XSS Balanced V2 Regression
 
 on:
+  push:
+    branches: [main]
   workflow_run:
     workflows: ["Monitor Spark XSS Balanced V2 Kaggle"]
     types: [completed]
@@ -15,7 +17,7 @@ concurrency:
 
 jobs:
   evaluate:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[launch-spark-v2-eval]')) || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 50
     steps:

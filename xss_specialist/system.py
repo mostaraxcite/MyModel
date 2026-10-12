@@ -80,10 +80,10 @@ def review(
         raise ValueError("live_candidate requires an explicit authorized Enforcer")
 
     static = analyze(code, trusted_modules=trusted_modules)
-    evidence = review_evidence(code, trusted_modules=trusted_modules)
+    static_evidence = review_evidence(code, trusted_modules=trusted_modules)
     structural = _structural_review(fields, structural_advisor)
 
-    if evidence["decision"]["status"] == "SAFE":
+    if static_evidence["decision"]["status"] == "SAFE":
         return SpecialistDecision(
             verdict="SAFE",
             confirmed=False,
@@ -93,21 +93,22 @@ def review(
             confirmation_status="BOUNDED_STATIC_SAFE",
             structural=structural,
             browser_evidence=None,
-                limitations=list(static.get("limitations", [])),
-            evidence=evidence,
+            limitations=list(static.get("limitations", [])),
+            evidence=static_evidence,
         )
 
     if live_candidate is None:
         return SpecialistDecision(
             verdict="POSSIBLE_XSS",
             confirmed=False,
-            confidence=0.5 if evidence["decision"]["status"] == "CANDIDATE" else 0.25,
+            confidence=0.5 if static_evidence["decision"]["status"] == "CANDIDATE" else 0.25,
             static_verdict=static["verdict"],
             requires_browser=True,
             confirmation_status="BROWSER_NOT_RUN",
             structural=structural,
             browser_evidence=None,
             limitations=list(static.get("limitations", [])),
+            evidence=static_evidence,
         )
 
     from live.pipeline import assess_candidate
@@ -156,6 +157,7 @@ def review(
             structural=structural,
             browser_evidence=evidence,
             limitations=list(static.get("limitations", [])),
+            evidence=static_evidence,
         )
 
     return SpecialistDecision(
@@ -168,4 +170,5 @@ def review(
         structural=structural,
         browser_evidence=evidence,
         limitations=list(static.get("limitations", [])),
+        evidence=static_evidence,
     )

@@ -145,11 +145,16 @@ def validate_advisory(candidate: dict, evidence: dict) -> dict:
     if candidate.get("snippet_sha256") != evidence.get("snippet_sha256"):
         return {"accepted": False, "reason": "snippet_hash_mismatch",
                 "decision": evidence["decision"]}
-    for key in ("source", "flow", "sink", "defense"):
+    if candidate.get("confirmed") is True or candidate.get("verdict") in {"XSS", "CONFIRMED"}:
+        return {"accepted": False, "reason": "unverified_confirmation",
+                "decision": evidence["decision"]}
+    for key in ("source", "flow", "sink", "defense", "limitations"):
         if candidate.get(key) != evidence.get(key):
             return {"accepted": False, "reason": "unsupported_" + key,
                     "decision": evidence["decision"]}
-    if candidate.get("decision") != evidence.get("decision"):
+    # Evidence-only LoRA does not predict a verdict. Legacy proposals with
+    # a verdict are accepted only when they exactly match the deterministic gate.
+    if "decision" in candidate and candidate["decision"] != evidence["decision"]:
         return {"accepted": False, "reason": "model_decision_disagrees",
                 "decision": evidence["decision"]}
     return {

@@ -148,6 +148,13 @@ def validate_advisory(candidate: dict, evidence: dict) -> dict:
     if candidate.get("confirmed") is True or candidate.get("verdict") in {"XSS", "CONFIRMED"}:
         return {"accepted": False, "reason": "unverified_confirmation",
                 "decision": evidence["decision"]}
+    # Reject even benign-looking extra assertions. The old validator checked
+    # only selected fields and silently accepted arbitrary model prose.
+    allowed = {"snippet_sha256", "source", "flow", "sink", "defense",
+               "limitations", "decision"}
+    if set(candidate) - allowed:
+        return {"accepted": False, "reason": "unsupported_model_fields",
+                "decision": evidence["decision"]}
     for key in ("source", "flow", "sink", "defense", "limitations"):
         if candidate.get(key) != evidence.get(key):
             return {"accepted": False, "reason": "unsupported_" + key,

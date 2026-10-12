@@ -12,6 +12,7 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 from xss_specialist.evidence_pipeline import review_evidence
+from xss_specialist.grounded_advisor import grounded_review
 from xss_specialist.flow_relations import deterministic_relation
 from xss_specialist.semantic_oracle import classify_defense, classify_sink, classify_source
 from xss_specialist.taint import analyze
@@ -29,6 +30,7 @@ class SpecialistDecision:
     browser_evidence: dict | None
     limitations: list[str]
     evidence: dict | None = None
+    model_assistance: dict | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -74,6 +76,7 @@ def review(
     finding_id: str = "XSS-REVIEW",
     trusted_modules: tuple[str, ...] = (),
     browser_timeout_ms: int = 4000,
+    model_focus: dict | None = None,
 ) -> SpecialistDecision:
     """Review a code path and optionally confirm it against an explicitly scoped live target."""
     if live_candidate is not None and enforcer is None:
@@ -81,6 +84,12 @@ def review(
 
     static = analyze(code, trusted_modules=trusted_modules)
     static_evidence = review_evidence(code, trusted_modules=trusted_modules)
+    # Model focus affects presentation ONLY. All security facts and the final
+    # verdict remain independent of its suggestions.
+    model_assistance = (
+        grounded_review(code, model_focus=model_focus, trusted_modules=trusted_modules)
+        if model_focus is not None else None
+    )
     structural = _structural_review(fields, structural_advisor)
 
     if static_evidence["decision"]["status"] == "SAFE":
@@ -95,6 +104,7 @@ def review(
             browser_evidence=None,
             limitations=list(static.get("limitations", [])),
             evidence=static_evidence,
+            model_assistance=model_assistance,
         )
 
     if live_candidate is None:
@@ -109,6 +119,7 @@ def review(
             browser_evidence=None,
             limitations=list(static.get("limitations", [])),
             evidence=static_evidence,
+            model_assistance=model_assistance,
         )
 
     from live.pipeline import assess_candidate
@@ -158,6 +169,7 @@ def review(
             browser_evidence=evidence,
             limitations=list(static.get("limitations", [])),
             evidence=static_evidence,
+            model_assistance=model_assistance,
         )
 
     return SpecialistDecision(
@@ -171,4 +183,5 @@ def review(
         browser_evidence=evidence,
         limitations=list(static.get("limitations", [])),
         evidence=static_evidence,
+        model_assistance=model_assistance,
     )

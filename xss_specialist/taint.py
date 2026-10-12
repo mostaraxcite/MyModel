@@ -39,6 +39,7 @@ class Analyzer:
         self.bindings: dict[str, str] = {}
         self.trusted_modules = trusted_modules
         self.sinks: list[dict] = []
+        self.observed_sources: set[str] = set()
         self.limitations: list[str] = []
 
     def text(self, node) -> str:
@@ -68,12 +69,17 @@ class Analyzer:
             "location.hash", "location.search", "location.href",
             "window.location.hash", "window.location.search", "window.location.href",
             "document.URL", "document.documentURI", "document.referrer", "document.cookie",
+            "document.location.hash", "document.location.search", "document.location.href",
+            "window.name",
         } or any(path == p or path.startswith(p + ".") for p in ("req.query", "req.body", "req.params"))
 
     def sink(self, node, value: Value, context: str):
         # Exact imported identity AND an explicit audited-module policy are required.
         compatible = value.sanitizer is not None and context == "html"
+        # A text-only DOM output API is never an HTML execution sink.
+        # Preserve the input provenance even when the output is safe.
         verdict = "INCONCLUSIVE" if value.unknown else (
+            "SAFE" if context == "text" else
             "CANDIDATE" if value.sources and not compatible else "SAFE"
         )
         self.sinks.append({
@@ -90,6 +96,7 @@ class Analyzer:
         kind = node.type
         path = self.path(node)
         if self.source(path) and path.split('.')[0] not in self.env:
+            self.observed_sources.add(path)
             return Value((path,), (path,))
         if kind in ("string", "number", "true", "false", "null", "undefined"):
             return Value()
@@ -99,7 +106,31 @@ class Analyzer:
             if path in self.env:
                 return self.env[path]
             base = self.expression(self.field(node, "object"))
+            # A field of a tainted JSON object, URL wrapper, or similar
+            # explicitly propagated container remains attacker-influenced.
+            # We do not assert fields of untainted/unknown objects are safe.
+            if base.sources and not base.unknown:
+                return Value(base.sources, base.trace + (path or self.text(node),),
+                             unknown=False)
             return join(base, Value(unknown=True))
+        if kind in ("array", "array_expression"):
+            value = join(*(self.expression(child) for child in node.named_children))
+            return Value(value.sources, value.trace + ("array_literal",),
+                         unknown=value.unknown)
+        if kind == "new_expression":
+            ctor = self.path(self.field(node, "constructor"))
+            params = self.field(node, "arguments")
+            values = [self.expression(arg) for arg in params.named_children] if params else []
+            if ctor in ("URL", "URLSearchParams") and len(values) == 1:
+                value = values[0]
+                return Value(value.sources, value.trace + ("new " + ctor,),
+                             unknown=value.unknown)
+            if ctor == "Function":
+                self.sink(node, values[0] if values else Value(unknown=True), "javascript")
+                return Value(unknown=True)
+            self.limitation(node, "unresolved constructor: " + (ctor or self.text(node)))
+            self.env = {k: join(v, Value(unknown=True)) for k, v in self.env.items()}
+            return join(*values, Value(unknown=True))
         if kind == "parenthesized_expression":
             return self.expression(node.named_children[0])
         if kind == "template_string":
@@ -112,7 +143,9 @@ class Analyzer:
             # Composition invalidates sanitizer guarantees (including sanitized fragments).
             value = join(left, right)
             operator = self.text(self.field(node, "operator"))
-            if operator != "+":
+            # Nullish coalescing with a known-safe literal does not erase
+            # the possibility of tainted data taking the left branch.
+            if operator not in ("+", "??"):
                 self.limitation(node, "non-concatenation operator/control effects are not resolved")
                 self.env = {k: join(v, Value(unknown=True)) for k, v in self.env.items()}
                 return join(value, Value(unknown=True))
@@ -136,7 +169,7 @@ class Analyzer:
             if suffix in ("innerHTML", "outerHTML", "srcdoc"):
                 self.sink(left, value, "html")
             elif suffix in ("textContent", "innerText"):
-                self.sink(left, Value(), "text")
+                self.sink(left, value, "text")
             elif left.type == "identifier":
                 self.bindings.pop(name, None)
                 self.env[name] = Value(value.sources, value.trace + (name,), value.sanitizer, value.unknown)
@@ -151,11 +184,58 @@ class Analyzer:
             args_node = self.field(node, "arguments")
             args = args_node.named_children if args_node else []
             values = [self.expression(a) for a in args]
+            # Narrow, audited taint-preserving operations. These are NOT
+            # sanitizers and never prove a dangerous sink safe.
+            if call in ("decodeURIComponent", "decodeURI", "encodeURIComponent",
+                        "encodeURI", "String", "JSON.stringify", "JSON.parse",
+                        "URLSearchParams") and len(values) == 1:
+                value = values[0]
+                return Value(value.sources, value.trace + (call,),
+                             unknown=value.unknown)
+            if function.type == "member_expression":
+                obj = self.field(function, "object")
+                prop = self.path(self.field(function, "property"))
+                if prop in ("slice", "substring", "trim", "toString", "split") and not values:
+                    # trim/toString may be argument-free; slice/substring
+                    # also accept numeric position arguments, checked below.
+                    receiver = self.expression(obj)
+                    return Value(receiver.sources, receiver.trace + (prop,),
+                                 unknown=receiver.unknown)
+                if prop in ("slice", "substring", "trim", "toString", "split"):
+                    if all(a.type in ("number", "string") for a in args):
+                        receiver = self.expression(obj)
+                        return Value(receiver.sources, receiver.trace + (prop,),
+                                     unknown=receiver.unknown)
+                if prop in ("get", "getAll") and obj.type in ("new_expression", "member_expression", "call_expression"):
+                    receiver = self.expression(obj)
+                    return Value(receiver.sources, receiver.trace + (prop,),
+                                 unknown=receiver.unknown)
+                if prop == "join" and obj.type in ("identifier", "array", "array_expression"):
+                    receiver = self.expression(obj)
+                    if all(a.type == "string" for a in args):
+                        return Value(receiver.sources, receiver.trace + ("join",),
+                                     unknown=receiver.unknown)
             if call in ("document.write", "document.writeln", "res.send"):
                 self.sink(function, join(*values), "html")
                 return Value(unknown=True)
             if call.endswith(".insertAdjacentHTML") and len(values) == 2:
                 self.sink(function, values[1], "html")
+                return Value(unknown=True)
+            if call.endswith(".insertAdjacentText") and len(values) == 2:
+                self.sink(function, values[1], "text")
+                return Value(unknown=True)
+            if call.endswith(".setAttribute") and len(args) == 2:
+                attr = self.text(args[0]).strip()
+                if len(attr) >= 2 and attr[0] in ("'", '"') and attr[-1] == attr[0]:
+                    key = attr[1:-1].lower()
+                    if key.startswith("on") and len(key) > 2:
+                        self.sink(function, values[1], "javascript")
+                        return Value(unknown=True)
+                    if key in {"title", "alt", "class", "id", "role"} or key.startswith("aria-"):
+                        self.sink(function, values[1], "text")
+                        return Value(unknown=True)
+                # Dynamic attributes/URLs require context-aware review.
+                self.limitation(node, "attribute name/context not safely resolved")
                 return Value(unknown=True)
             if call in ("eval", "window.eval", "setTimeout", "setInterval"):
                 self.sink(function, values[0] if values else Value(unknown=True), "javascript")
@@ -241,6 +321,7 @@ class Analyzer:
                 "requires_oracle": verdict != "SAFE", "sinks": self.sinks,
                 "limitations": list(dict.fromkeys(self.limitations)),
                 "scope": "bounded intraprocedural JavaScript sink review",
+                "observed_sources": sorted(self.observed_sources),
                 "trusted_modules": list(self.trusted_modules)}
 
 

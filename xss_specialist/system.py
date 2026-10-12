@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from xss_specialist.evidence_pipeline import review_evidence
 from xss_specialist.flow_relations import deterministic_relation
 from xss_specialist.semantic_oracle import classify_defense, classify_sink, classify_source
 from xss_specialist.taint import analyze
@@ -27,6 +28,7 @@ class SpecialistDecision:
     structural: dict | None
     browser_evidence: dict | None
     limitations: list[str]
+    evidence: dict | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -78,9 +80,10 @@ def review(
         raise ValueError("live_candidate requires an explicit authorized Enforcer")
 
     static = analyze(code, trusted_modules=trusted_modules)
+    static_evidence = review_evidence(code, trusted_modules=trusted_modules)
     structural = _structural_review(fields, structural_advisor)
 
-    if static["verdict"] == "SAFE":
+    if static_evidence["decision"]["status"] == "SAFE":
         return SpecialistDecision(
             verdict="SAFE",
             confirmed=False,
@@ -91,19 +94,21 @@ def review(
             structural=structural,
             browser_evidence=None,
             limitations=list(static.get("limitations", [])),
+            evidence=static_evidence,
         )
 
     if live_candidate is None:
         return SpecialistDecision(
             verdict="POSSIBLE_XSS",
             confirmed=False,
-            confidence=0.5 if static["verdict"] == "CANDIDATE" else 0.25,
+            confidence=0.5 if static_evidence["decision"]["status"] == "CANDIDATE" else 0.25,
             static_verdict=static["verdict"],
             requires_browser=True,
             confirmation_status="BROWSER_NOT_RUN",
             structural=structural,
             browser_evidence=None,
             limitations=list(static.get("limitations", [])),
+            evidence=static_evidence,
         )
 
     from live.pipeline import assess_candidate
@@ -152,6 +157,7 @@ def review(
             structural=structural,
             browser_evidence=evidence,
             limitations=list(static.get("limitations", [])),
+            evidence=static_evidence,
         )
 
     return SpecialistDecision(
@@ -164,4 +170,5 @@ def review(
         structural=structural,
         browser_evidence=evidence,
         limitations=list(static.get("limitations", [])),
+        evidence=static_evidence,
     )

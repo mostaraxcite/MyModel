@@ -96,3 +96,12 @@ def test_url_constructor_with_unproven_anchor_stays_inconclusive():
 ])
 def test_url_constructor_with_unprotected_value_never_approves(code):
     assert review(code)["decision"]["status"]!="SAFE"
+
+
+
+@pytest.mark.parametrize("code",[
+    "const window=otherWindow;const x=location.hash;window.setTimeout(x,10);",
+    "const window=library;const x=location.search;window.eval(x);",
+])
+def test_shadowed_window_execution_api_never_assumed_global(code):
+    assert review(code)["decision"]["status"]=="INCONCLUSIVE"

@@ -120,3 +120,13 @@ def test_console_call_no_longer_discards_safe_constant_sink():
 def test_untrusted_shadowed_console_still_abstains():
     r=assess("const console=unsafeProxy;const q=location.hash;console.info(q);pane.innerHTML='fixed';")
     assert r["decision"]["status"]=="INCONCLUSIVE"
+
+
+
+@pytest.mark.parametrize("snippet", [
+    "const s=document.createElement('script');opaqueChange(s);s.src=location.search;",
+    "let s=document.createElement('script');if(flag){s=other;}s.src=location.hash;",
+    "const s=document.createElement('script');while(flag){mutate(s);}s.src=location.hash;",
+])
+def test_untrusted_mutation_or_branch_invalidates_script_tag_identity(snippet):
+    assert assess(snippet)["decision"]["status"]=="INCONCLUSIVE"

@@ -311,6 +311,9 @@ class Analyzer:
             call = self.path(function)
             args_node = self.field(node, "arguments")
             args = args_node.named_children if args_node else []
+            if call in ("window.eval", "window.setTimeout", "window.setInterval") and "window" in self.env:
+                self.limitation(node, "shadowed window API; execution semantics unknown")
+                return Value(unknown=True)
             # Don't evaluate a callback lambda as an ordinary expression:
             # doing that incorrectly poisons the environment before the
             # handler can be inspected.

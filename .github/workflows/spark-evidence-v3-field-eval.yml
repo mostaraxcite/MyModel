@@ -133,13 +133,13 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-          root=Path("field-results/output")
-          states=list(root.rglob("status.json"))
-          reports=list(root.rglob("report.json"))
-          if len(states)!=1 or len(reports)!=1:
-              raise SystemExit("Missing exact evidence evaluation report or status")
-          status=json.loads(states[0].read_text())
-          report=json.loads(reports[0].read_text())
+          root=Path("field-results/output/spark-evidence-v3-field-evaluation")
+          state_file=root/"status.json"
+          report_file=root/"report.json"
+          if not state_file.is_file() or not report_file.is_file():
+              raise SystemExit("Missing evaluator-owned report.json or status.json")
+          status=json.loads(state_file.read_text())
+          report=json.loads(report_file.read_text())
           assert status["evaluated"] and status["status"]=="success",status
           assert status["training_variant"]=="evidence_fields_v3",status
           assert report["base"]["n"]==12 and report["evidence_v3"]["n"]==12,report

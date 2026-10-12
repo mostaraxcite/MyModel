@@ -208,7 +208,7 @@ def convert(source: Path, output_dir: Path, *, seed: int = 1337,
         recipe["learning_rate"] = 2.0e-5
         recipe["logging_steps"] = 5
         recipe["warmup_ratio"] = 0.1
-        (output_dir / "train.yaml").write_text(
+    (output_dir / "train.yaml").write_text(
         yaml.safe_dump(recipe, sort_keys=False, allow_unicode=True), encoding="utf-8"
     )
 

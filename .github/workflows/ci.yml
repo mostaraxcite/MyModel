@@ -18,7 +18,7 @@ jobs:
       - name: Sync dependencies
         run: uv sync --group dev
       - name: Compile Python sources
-        run: uv run python -m compileall -q xss_specialist training evaluation kaggle/spark_xss_eval.py kaggle/spark_xss_train_v2.py kaggle/spark_xss_eval_v2.py security-models/xss
+        run: uv run python -m compileall -q xss_specialist training evaluation kaggle/spark_xss_eval.py kaggle/spark_xss_train_v2.py kaggle/spark_xss_eval_v2.py kaggle/spark_xss_evidence_v3_train.py security-models/xss
       - name: Run core regression tests
         run: >
           uv run pytest -q
@@ -35,6 +35,7 @@ jobs:
           tests/test_spark_xss_v2_evaluator.py
           tests/test_evidence_first.py
           tests/test_spark_evidence_v3.py
+          tests/test_spark_evidence_v3_kernel.py
 
   kaggle-cli-smoke:
     name: Verify pinned Kaggle CLI publish-without-run support

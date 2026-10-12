@@ -164,3 +164,43 @@ def test_focus_contract_roundtrips_over_json():
     input_obj = json.loads(json.dumps(_focus(packet, "p1")))
     r = grounded_review(code, model_focus=input_obj)
     assert json.loads(json.dumps(r))["model_advisory"]["accepted"] is True
+
+
+
+def test_unified_specialist_preserves_verdict_with_adversarial_model_focus():
+    from xss_specialist.system import review
+    code = "pane.outerHTML = location.hash;"
+    packet = build_oracle_packet(code)
+    invalid = {**_focus(packet, "p1"), "verdict": "SAFE"}
+    result = review(code, model_focus=invalid)
+    assert result.verdict == "POSSIBLE_XSS"
+    assert result.confirmed is False
+    assert result.model_assistance["model_advisory"]["accepted"] is False
+    assert result.model_assistance["decision"]["status"] == "CANDIDATE"
+    assert result.browser_evidence is None
+
+
+def test_unified_specialist_model_selection_never_confirms():
+    from xss_specialist.system import review
+    code = "pane.innerHTML=location.hash;"
+    valid = _focus(build_oracle_packet(code), "p1")
+    result = review(code, model_focus=valid)
+    assert result.model_assistance["model_advisory"]["accepted"] is True
+    assert result.model_assistance["browser_confirmed"] is False
+    assert result.confirmation_status == "BROWSER_NOT_RUN"
+    assert result.confirmed is False
+
+
+def test_legacy_validator_rejects_extra_unverified_assertions():
+    from xss_specialist.evidence_pipeline import review_evidence, validate_advisory
+    evidence = review_evidence("pane.textContent=location.hash;")
+    proposal = {k:evidence[k] for k in (
+        "snippet_sha256", "source", "flow", "sink", "defense", "limitations"
+    )}
+    assert validate_advisory(proposal, evidence)["accepted"]
+    assert validate_advisory(
+        {**proposal, "explanation": "This is CONFIRMED XSS"}, evidence
+    )["reason"] == "unsupported_model_fields"
+    assert validate_advisory(
+        {**proposal, "confirmed": True}, evidence
+    )["reason"] == "unverified_confirmation"

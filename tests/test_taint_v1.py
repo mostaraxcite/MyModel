@@ -44,7 +44,6 @@ def test_branch_both_safe():
     'function f(x){box.innerHTML=x;}',
     '<div dangerouslySetInnerHTML={{__html: data}} />',
     'box.innerHTML = ;',
-    "let x='safe'; for(let i=0;i<1;i++){x=location.hash;} box.innerHTML=x;",
     "let x='safe'; const obj={get v(){x=location.hash}}; obj.v; box.innerHTML=x;",
     "let x=location.hash; flag && (x='safe'); box.innerHTML=x;",
     "const location={hash:'fixed'}; box.innerHTML=location.hash;",
@@ -133,3 +132,14 @@ def test_missing_class_cannot_pass_gate():
 def test_legacy_training_stops():
     with pytest.raises(SystemExit, match='retired'):
         require_supported_training()
+
+
+
+def test_previously_unsupported_single_iteration_loop_now_tracks_source():
+    # The bounded for(0; <1; ++i) body executes once. This is a newly
+    # supported static path, so the former INCONCLUSIVE expectation is stale.
+    code = "let x='safe'; for(let i=0;i<1;i++){x=location.hash;} box.innerHTML=x;"
+    result = analyze(code)
+    assert result["verdict"] == "CANDIDATE"
+    assert result["sinks"][0]["sources"] == ["location.hash"]
+    assert result["confirmed"] is False

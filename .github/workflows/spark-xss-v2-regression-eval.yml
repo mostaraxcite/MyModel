@@ -1,0 +1,142 @@
+name: Evaluate Spark XSS Balanced V2 Regression
+
+on:
+  workflow_run:
+    workflows: ["Monitor Spark XSS Balanced V2 Kaggle"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spark-xss-v2-regression
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify eligible balanced v2 adapter, no unvalidated GPU jobs
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KAGGLE_API_TOKEN" ]; then
+            echo "::error::Missing Kaggle token"; exit 1
+          fi
+          python -m pip install -q "git+https://github.com/Kaggle/kaggle-cli.git@9c57dd74c29904c40ff7879eed33644be89d2e2f"
+          kernel="dody2004/spark-xss-balanced-v2-candidate"
+          kaggle kernels status "$kernel" > candidate-status.txt 2>&1
+          cat candidate-status.txt
+          if ! grep -q 'KernelWorkerStatus.COMPLETE' candidate-status.txt; then
+            echo "::error::V2 training not complete; refusing GPU evaluation."
+            exit 1
+          fi
+          mkdir -p candidate
+          kaggle kernels output "$kernel" -p candidate --file-pattern 'run_status[.]json$' -o
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          outputs=list(Path("candidate").rglob("run_status.json"))
+          if len(outputs)!=1: raise SystemExit("Could not find candidate run_status")
+          s=json.loads(outputs[0].read_text())
+          assert s["status"] == "candidate_saved_not_evaluated", s
+          assert s["training_variant"] == "balanced_v2_hard_negatives", s
+          assert s["my_model_sha"] == "06069340505e535573230a81eb88c45560084df3", s
+          assert s["dataset_records"] >= 480, s
+          assert s["model_promoted"] is False, s
+          print("Balanced v2 provenance verified; candidate NOT promoted.")
+          PY
+      - name: Build immutable Kaggle regression evaluation kernel
+        env:
+          MYMODEL_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import json, pathlib, re, os
+          src=pathlib.Path("kaggle/spark_xss_eval_v2.py").read_text()
+          sha=os.environ["MYMODEL_SHA"]
+          if not re.fullmatch("[0-9a-f]{40}", sha): raise SystemExit("Git commit must be pinned")
+          assert src.count("__MYMODEL_EVAL_SHA__") == 1
+          script=src.replace('"__MYMODEL_EVAL_SHA__"', '"' + sha + '"')
+          out=pathlib.Path("kaggle-eval-v2-dist")
+          out.mkdir(exist_ok=True)
+          (out/"spark_xss_eval_v2.py").write_text(script)
+          meta={
+            "id": "dody2004/spark-xss-v2-regression-evaluation",
+            "title": "Spark XSS V2 Regression Evaluation",
+            "code_file": "spark_xss_eval_v2.py", "language":"python",
+            "kernel_type":"script","is_private":True,"enable_gpu":True,
+            "enable_internet":True,"machine_shape":"NvidiaTeslaT4",
+            "kernel_sources": ["dody2004/spark-xss-balanced-v2-candidate"],
+            "dataset_sources":[],"competition_sources":[],"model_sources":[]
+          }
+          (out/"kernel-metadata.json").write_text(json.dumps(meta,indent=2)+"\n")
+          print("Regression suite was previously exposed, NOT a new untouched acceptance test.")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: spark-xss-v2-regression-kernel-${{ github.run_id }}
+          path: kaggle-eval-v2-dist
+          retention-days: 14
+      - name: Submit regression evaluation
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+        run: |
+          kaggle kernels push -p kaggle-eval-v2-dist --accelerator NvidiaTeslaT4 --timeout 18000
+          echo "https://www.kaggle.com/code/dody2004/spark-xss-v2-regression-evaluation"
+      - name: Poll and archive verified metrics
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          kernel="dody2004/spark-xss-v2-regression-evaluation"
+          mkdir -p evidence
+          finished=0
+          for i in $(seq 1 37); do
+            status="$(kaggle kernels status "$kernel" 2>&1 || true)"
+            echo "Kaggle check $i/37: $status"
+            echo "$status" > evidence/last-status.txt
+            if echo "$status" | grep -Eqi 'KernelWorkerStatus.COMPLETE'; then
+              finished=1
+              break
+            fi
+            if echo "$status" | grep -Eqi 'KernelWorkerStatus.ERROR|KernelWorkerStatus.CANCELLED'; then
+              echo "::error::Kaggle regression kernel error"; break
+            fi
+            sleep 60
+          done
+          kaggle kernels logs "$kernel" > evidence/remote-logs.txt 2>&1 || true
+          if [ "$finished" != 1 ]; then
+            echo "::error::No verified v2 regression report; inspect saved logs"; exit 1
+          fi
+          kaggle kernels output "$kernel" -p evidence/output --file-pattern '(report|status)[.]json$' -o > evidence/download.txt 2>&1 || true
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("evidence/output/spark-xss-v2-regression-evaluation")
+          status=json.loads((root/"status.json").read_text())
+          report=json.loads((root/"report.json").read_text())
+          assert status["status"]=="success" and status["evaluated"], status
+          assert report["trained"]["n"]==48, report
+          assert report["training_variant"]=="balanced_v2_hard_negatives", report
+          print("REGRESSION BASELINE:", json.dumps(report["baseline"]))
+          print("REGRESSION V2:", json.dumps(report["trained"]))
+          print("PAIR ACCURACY:", report["paired_contrast_accuracy"])
+          print("FREE GENERATION:", json.dumps(report["free_generation"]["trained"]))
+          print("PROMOTION:", report["promotion_recommendation"])
+          PY
+      - name: Archive logs and benchmark report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spark-xss-v2-regression-results-${{ github.run_id }}
+          path: evidence
+          retention-days: 30
+          if-no-files-found: warn

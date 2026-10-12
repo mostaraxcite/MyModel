@@ -100,6 +100,16 @@ def build(base=BASE, output=OUTPUT):
             continue
         seen.add(key)
         stable.append(row)
+    # Legacy corpus reused 70 case IDs for distinct prompts. Preserve the
+    # genuinely distinct teaching examples, but disambiguate their provenance.
+    stable_ids = set()
+    fixed_legacy_ids = 0
+    for row in stable:
+        case_id = row["case_id"]
+        if case_id in stable_ids:
+            fixed_legacy_ids += 1
+            row["case_id"] = f"{case_id}__stable_copy_{fixed_legacy_ids:03d}"
+        stable_ids.add(row["case_id"])
     fence = FENCE + "javascript\n"
     sample = next(r for r in stable if fence in r["messages"][0]["content"])
     skeleton = sample["messages"][0]["content"]
@@ -146,6 +156,7 @@ def build(base=BASE, output=OUTPUT):
         "base_sha256": sha256(base.read_bytes()).hexdigest(),
         "dataset_sha256": sha256(output.read_bytes()).hexdigest(),
         "retained_v3": len(stable),
+        "legacy_case_ids_disambiguated": fixed_legacy_ids,
         "excluded_speculative_or_nearmiss": len(rows) - len(originals),
         "new_pairs": len(generated) // 2,
         "new_records": len(generated), "total_records": len(combined),

@@ -1,0 +1,86 @@
+name: Train Spark XSS Balanced V2 on Kaggle
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spark-xss-balanced-v2
+  cancel-in-progress: false
+
+jobs:
+  submit:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[launch-spark-v2]')
+    name: Validate and submit dedicated balanced-v2 GPU candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate v2 corpus, source isolation and recipe
+        run: |
+          set -euo pipefail
+          python -m pip install -q pytest pyyaml
+          python -m pytest -q tests/test_spark_xss_v2_data.py tests/test_spark_xss_training.py
+          python -m compileall -q training/spark_xss_v2_data.py kaggle/spark_xss_train_v2.py
+      - name: Build immutable private balanced-v2 Kaggle kernel
+        env:
+          MYMODEL_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, pathlib, re
+          sha = os.environ["MYMODEL_SHA"]
+          if not re.fullmatch(r"[0-9a-f]{40}", sha):
+              raise ValueError("Source commit must be pinned")
+          script = pathlib.Path("kaggle/spark_xss_train_v2.py").read_text()
+          assert script.count("__MYMODEL_SHA__") == 1
+          script = script.replace('REPO_SHA = "__MYMODEL_SHA__"', f'REPO_SHA = "{sha}"')
+          out = pathlib.Path("kaggle-v2-dist")
+          out.mkdir(exist_ok=True)
+          (out / "spark_xss_train_v2.py").write_text(script)
+          metadata = {
+              "id": "dody2004/spark-xss-balanced-v2",
+              "title": "Spark XSS Balanced V2 Candidate",
+              "code_file": "spark_xss_train_v2.py",
+              "language": "python",
+              "kernel_type": "script",
+              "is_private": True,
+              "enable_gpu": True,
+              "enable_internet": True,
+              "machine_shape": "NvidiaTeslaT4",
+              "dataset_sources": [],
+              "competition_sources": [],
+              "kernel_sources": [],
+              "model_sources": [],
+          }
+          (out / "kernel-metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
+          print("Source SHA:", sha)
+          print("Candidate kernel:", metadata["id"])
+          print("Script hash:", hashlib.sha256(script.encode()).hexdigest())
+          PY
+      - name: Store v2 package for reproducibility
+        uses: actions/upload-artifact@v4
+        with:
+          name: spark-xss-balanced-v2-${{ github.run_id }}
+          path: kaggle-v2-dist/
+          retention-days: 14
+      - name: Submit new version without replacing the successful v1 adapter
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KAGGLE_API_TOKEN" ]; then
+            echo "::error::KAGGLE_API_TOKEN missing; training NOT submitted."
+            exit 1
+          fi
+          python -m pip install -q "git+https://github.com/Kaggle/kaggle-cli.git@9c57dd74c29904c40ff7879eed33644be89d2e2f"
+          kaggle kernels push -p kaggle-v2-dist --accelerator NvidiaTeslaT4 --timeout 18000
+          echo "::notice::Balanced-v2 version uploaded. This is NOT evidence training ran."
+          echo "https://www.kaggle.com/code/dody2004/spark-xss-balanced-v2"
+          kaggle kernels status dody2004/spark-xss-balanced-v2 || true

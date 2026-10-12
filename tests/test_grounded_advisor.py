@@ -86,8 +86,8 @@ def test_model_can_reorder_only_known_paths():
     proposed = _focus(packet, "p1", "p2")
     report = grounded_review(code, model_focus=proposed)
     assert report["model_advisory"]["accepted"]
-    assert report["presentation"]["focus_path_ids"] == ["p1", "p2"]
-    assert report["presentation"]["focus_source"] == "validated_model_selection"
+    assert report["presentation"]["focus_path_ids"] == ["p2", "p1"]
+    assert report["presentation"]["focus_source"] == "validated_model_selection_with_mandatory_paths"
     assert report["decision"] == packet["decision"]
     assert report["paths"] == packet["paths"]
     assert report["presentation"]["explanations_from_model"] is False
@@ -142,7 +142,7 @@ def test_model_focusing_on_safe_sink_cannot_hide_candidate():
     code = "pane.textContent=location.hash; pane.innerHTML=location.search;"
     packet = build_oracle_packet(code)
     report = grounded_review(code, model_focus=_focus(packet, "p1"))
-    assert report["presentation"]["focus_path_ids"] == ["p1"]
+    assert report["presentation"]["focus_path_ids"] == ["p2", "p1"]
     assert len(report["paths"]) == 2
     assert report["decision"]["status"] == "CANDIDATE"
     assert report["paths"][1]["decision"]["status"] == "CANDIDATE"
@@ -204,3 +204,20 @@ def test_legacy_validator_rejects_extra_unverified_assertions():
     assert validate_advisory(
         {**proposal, "confirmed": True}, evidence
     )["reason"] == "unverified_confirmation"
+
+
+
+def test_model_empty_focus_cannot_hide_candidate_or_unknown():
+    code = (
+        "pane.innerHTML=location.search;"
+        "const v = opaque(location.hash); pane.outerHTML=v;"
+        "pane.textContent=location.hash;"
+    )
+    packet = build_oracle_packet(code)
+    assert packet["decision"]["status"] == "CANDIDATE"
+    report = grounded_review(code, model_focus=_focus(packet))
+    assert report["model_advisory"]["accepted"] is True
+    forced = report["presentation"]["mandatory_security_path_ids"]
+    assert forced
+    assert set(forced).issubset(report["presentation"]["focus_path_ids"])
+    assert all(p["decision"]["confirmed"] is False for p in report["paths"])

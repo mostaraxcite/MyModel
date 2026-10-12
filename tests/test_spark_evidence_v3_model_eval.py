@@ -82,3 +82,13 @@ def test_kaggle_field_eval_uses_verified_training_and_fp16():
     assert 'spark-xss-evidence-v3' in workflow
     assert 'spark-evidence-v3-field-evaluation' in workflow
     assert 'DO_NOT_PROMOTE' in workflow
+
+
+def test_completed_v3_diagnostic_has_balanced_python_heredocs():
+    from pathlib import Path
+    path=Path(__file__).resolve().parents[1]/".github/workflows/inspect-spark-v3-eval.yml"
+    text=path.read_text()
+    assert text.count("python - <<'PY'")==2
+    assert sum(line.strip()=="PY" for line in text.splitlines())==2
+    assert 'evidence/reports/spark-evidence-v3-field-evaluation' in text
+    assert "kaggle kernels push" not in text

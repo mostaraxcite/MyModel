@@ -98,7 +98,8 @@ def main():
         run(sys.executable, "-m", "pip", "install", "-q", "-e", fork)
         run(sys.executable, "-m", "pip", "install", "-q",
             "transformers==4.57.1", "huggingface_hub>=0.34,<1",
-            "bitsandbytes>=0.45", "peft>=0.18.0,<=0.18.1", "pyyaml>=6")
+            "bitsandbytes>=0.45", "peft>=0.18.0,<=0.18.1", "pyyaml>=6",
+            "tree-sitter>=0.24,<1", "tree-sitter-javascript>=0.23,<1")
         import transformers
         if transformers.__version__ != "4.57.1":
             raise RuntimeError("Transformers version mismatch")

@@ -1,0 +1,98 @@
+name: Monitor Spark XSS Balanced V2 Kaggle
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  status:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[monitor-spark-v2]')
+    name: Read v2 training progress and validated final status
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Poll training and save evidence without modifying Kaggle
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KAGGLE_API_TOKEN" ]; then
+            echo "::error::Missing Kaggle credentials."
+            exit 1
+          fi
+          python -m pip install -q "git+https://github.com/Kaggle/kaggle-cli.git@9c57dd74c29904c40ff7879eed33644be89d2e2f"
+          kernel="dody2004/spark-xss-balanced-v2-candidate"
+          mkdir -p evidence
+          state="unknown"
+          for i in $(seq 1 28); do
+            status="$(kaggle kernels status "$kernel" 2>&1 || true)"
+            echo "Check $i/28: $status"
+            printf '%s\n' "$status" > evidence/last-status.txt
+            if echo "$status" | grep -Eqi 'KernelWorkerStatus.COMPLETE'; then
+              state="complete"
+              break
+            fi
+            if echo "$status" | grep -Eqi 'KernelWorkerStatus.ERROR|KernelWorkerStatus.CANCELLED'; then
+              state="failed"
+              break
+            fi
+            if echo "$status" | grep -Eqi "Permission .* denied|Cannot access kernel"; then
+              state="unavailable"
+              break
+            fi
+            sleep 60
+          done
+          echo "=== Kaggle log tail ==="
+          kaggle kernels logs "$kernel" > evidence/kaggle-logs.json 2>&1 || true
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("evidence/kaggle-logs.json")
+          log=p.read_text(errors="replace")
+          lines=log.splitlines()
+          important=[s for s in lines if any(k in s for k in
+            ("GPU:", "dataset_records", "***** Running training *****",
+             "RuntimeError", "CUDA", "Error", "Traceback", "loss", "candidate_saved_not_evaluated"))]
+          print("\n".join(important[-50:])[-13000:])
+          print("TOTAL log lines:", len(lines))
+          PY
+          if [ "$state" != "complete" ]; then
+            echo "::warning::Kaggle state is $state. Do not assume training completed."
+            if [ "$state" = "failed" ] || [ "$state" = "unavailable" ]; then exit 1; fi
+            exit 0
+          fi
+          echo "=== Fetch only run status, not model weights or entire repo ==="
+          kaggle kernels output "$kernel" -p evidence/output --file-pattern 'run_status[.]json$' -o > evidence/download.txt 2>&1 || true
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          files=list(Path("evidence/output").rglob("run_status.json"))
+          if len(files) != 1:
+              raise SystemExit("Kaggle complete but no single run_status.json; inspect Kaggle logs")
+          v=json.loads(files[0].read_text())
+          print("=== BALANCED V2 STATUS ===")
+          print(json.dumps(v, indent=2))
+          if v.get("status") != "candidate_saved_not_evaluated":
+              raise SystemExit("Training did not save an adapter candidate.")
+          if v.get("training_variant") != "balanced_v2_hard_negatives":
+              raise SystemExit("Unexpected training variant.")
+          if v.get("dataset_records", 0) < 480:
+              raise SystemExit("Balanced dataset was not used.")
+          if v.get("model_promoted") is not False:
+              raise SystemExit("A model was unexpectedly promoted.")
+          print("Saved balanced-v2 adapter confirmed. NOT approved for production.")
+          PY
+      - name: Archive status and log evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spark-xss-balanced-v2-status-${{ github.run_id }}
+          path: evidence/
+          retention-days: 30
+          if-no-files-found: warn

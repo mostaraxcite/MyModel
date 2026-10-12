@@ -53,6 +53,13 @@ def _grounded_explanation(path: dict) -> str:
             " treats its input as text, rather than executing it as HTML "
             "or script. This does not establish whole-application safety."
         )
+    if defense["status"] == "CONTEXTUAL_HTML_ENCODING":
+        return (
+            "Bounded-safe output path: percent-encoding the whole untrusted "
+            "value prevents it from creating HTML markup in " + name +
+            ". This does not imply JavaScript execution contexts or decoded "
+            "output are safe."
+        )
     if defense["status"] == "VERIFIED_CONTEXTUAL_SANITIZATION":
         return (
             "Bounded-safe output path: a trusted, audited sanitizer is "

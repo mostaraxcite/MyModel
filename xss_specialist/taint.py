@@ -75,7 +75,14 @@ class Analyzer:
 
     def sink(self, node, value: Value, context: str):
         # Exact imported identity AND an explicit audited-module policy are required.
-        compatible = value.sanitizer is not None and context == "html"
+        # Sanitizer/encoding identity is meaningful ONLY for compatible
+        # output contexts. A text node is not a sanitizer and an encoded URL
+        # component does not make JavaScript source safe.
+        compatible = (
+            context == "html" and
+            value.sanitizer in {"dompurify:default-html",
+                                "encodeURIComponent:html-markup"}
+        )
         # A text-only DOM output API is never an HTML execution sink.
         # Preserve the input provenance even when the output is safe.
         verdict = "INCONCLUSIVE" if value.unknown else (
@@ -190,8 +197,22 @@ class Analyzer:
                         "encodeURI", "String", "JSON.stringify", "JSON.parse",
                         "URLSearchParams") and len(values) == 1:
                 value = values[0]
+                # Percent-encoding an entire untrusted value prevents forming
+                # HTML delimiters in direct HTML parser text insertion. This
+                # is NOT suitable for JS/URL schemes, and loses its protection
+                # if later decoded or combined with raw untrusted data.
+                encoder = (
+                    "encodeURIComponent:html-markup"
+                    if call == "encodeURIComponent" and not value.unknown
+                    else None
+                )
                 return Value(value.sources, value.trace + (call,),
-                             unknown=value.unknown)
+                             encoder, value.unknown)
+            if call == "document.createTextNode" and len(values) == 1:
+                value = values[0]
+                return Value(value.sources, value.trace + (call,),
+                             "dom-text-node" if not value.unknown else None,
+                             value.unknown)
             if function.type == "member_expression":
                 obj = self.field(function, "object")
                 prop = self.path(self.field(function, "property"))
@@ -224,6 +245,13 @@ class Analyzer:
             if call.endswith(".insertAdjacentText") and len(values) == 2:
                 self.sink(function, values[1], "text")
                 return Value(unknown=True)
+            if (call.endswith(".appendChild") and len(values) == 1 and
+                    values[0].sanitizer == "dom-text-node" and
+                    not values[0].unknown):
+                # Only an explicitly tracked Text node is proven inert;
+                # arbitrary appendChild nodes can execute as scripts.
+                self.sink(function, values[0], "text")
+                return Value(unknown=True)
             if call.endswith(".setAttribute") and len(args) == 2:
                 attr = self.text(args[0]).strip()
                 if len(attr) >= 2 and attr[0] in ("'", '"') and attr[-1] == attr[0]:
@@ -231,7 +259,9 @@ class Analyzer:
                     if key.startswith("on") and len(key) > 2:
                         self.sink(function, values[1], "javascript")
                         return Value(unknown=True)
-                    if key in {"title", "alt", "class", "id", "role"} or key.startswith("aria-"):
+                    if (key in {"title", "alt", "class", "id", "role"}
+                            or key.startswith("aria-") or
+                            (key.startswith("data-") and len(key) > 5)):
                         self.sink(function, values[1], "text")
                         return Value(unknown=True)
                 # Dynamic attributes/URLs require context-aware review.

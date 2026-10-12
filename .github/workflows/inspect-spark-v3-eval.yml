@@ -72,6 +72,33 @@ jobs:
                           print(json.dumps(summary,indent=2)[:8500])
                   except Exception as exc:
                       print("Malformed artifact:",type(exc).__name__,str(exc))
+          # The previous failure was a 2nd unrelated report.json nested in the
+          # source repo. Select ONLY the evaluator output rather than rglob count.
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          target=Path("evidence/reports/spark-evidence-v3-field-evaluation")
+          file=target/"report.json"
+          statefile=target/"status.json"
+          assert file.is_file() and statefile.is_file(), "Verified evaluator output absent"
+          data=json.loads(file.read_text())
+          status=json.loads(statefile.read_text())
+          assert status.get("status")=="success" and status.get("evaluated") is True
+          assert data["promotion"]=="DO_NOT_PROMOTE"
+          for variant in ("base","evidence_v3"):
+              print(f"=== {variant}: sample raw outputs (3/12) ===")
+              for row in data[variant]["details"][:3]:
+                  print("CASE",row["case_id"],"STATUS",row["expected_static_status"])
+                  print("MATCH",row["per_field_exact"],"REASON",row["refusal_reason"])
+                  raw=row.get("raw","")
+                  print("RAW",str(raw)[:1300])
+                  try:
+                      j=json.loads(raw)
+                      print("VALUE_TYPES",{k:type(v).__name__ for k,v in j.items()})
+                      print("SOURCE_PREVIEW",str(j.get("source"))[:350])
+                      print("FLOW_PREVIEW",str(j.get("flow"))[:350])
+                  except (ValueError,TypeError,AttributeError) as exc:
+                      print("PARSE_ERROR",str(exc))
           PY
       - name: Save evidence
         if: always()

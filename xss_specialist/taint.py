@@ -405,10 +405,12 @@ class Analyzer:
                 return Value(value.sources, value.trace + (call,), self.bindings[owner], value.unknown)
             self.limitation(node, f"unresolved call: {call or self.text(function)}")
             # Unknown calls can mutate objects or overwrite bindings through closures.
+            self.dom_tags.clear()
             self.bindings.clear()
             self.env = {k: join(v, Value(unknown=True)) for k, v in self.env.items()}
             return join(*values, Value(unknown=True))
         self.limitation(node, f"unsupported expression: {kind}")
+        self.dom_tags.clear()
         self.bindings.clear()
         self.env = {k: join(v, Value(unknown=True)) for k, v in self.env.items()}
         return Value(unknown=True)
@@ -451,9 +453,13 @@ class Analyzer:
             self.expression(self.field(node, "condition"))
             initial = dict(self.env)
             initial_bindings = dict(self.bindings)
+            initial_tags = dict(self.dom_tags)
             self.statement(self.field(node, "consequence"))
             consequence, consequence_bindings = dict(self.env), dict(self.bindings)
-            self.env, self.bindings = dict(initial), dict(initial_bindings)
+            consequence_tags = dict(self.dom_tags)
+            self.env, self.bindings, self.dom_tags = (
+                dict(initial), dict(initial_bindings), dict(initial_tags)
+            )
             alternative = self.field(node, "alternative")
             if alternative:
                 self.statement(alternative)
@@ -461,6 +467,7 @@ class Analyzer:
             self.env = {k: join(consequence.get(k, Value(unknown=True)), other.get(k, Value(unknown=True)))
                         for k in consequence.keys() | other.keys()}
             self.bindings = {k: v for k, v in consequence_bindings.items() if self.bindings.get(k) == v}
+            self.dom_tags = {k: v for k, v in consequence_tags.items() if self.dom_tags.get(k) == v}
         elif kind == "else_clause":
             for child in node.named_children:
                 self.statement(child)
@@ -500,6 +507,7 @@ class Analyzer:
         else:
             self.limitation(node, f"unsupported statement: {kind}")
             # Never carry a SAFE value through unanalysed side effects/control flow.
+            self.dom_tags.clear()
             self.bindings.clear()
             self.env = {k: join(v, Value(unknown=True)) for k, v in self.env.items()}
 

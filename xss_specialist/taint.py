@@ -69,6 +69,8 @@ class Analyzer:
             "location.hash", "location.search", "location.href",
             "window.location.hash", "window.location.search", "window.location.href",
             "document.URL", "document.documentURI", "document.referrer", "document.cookie",
+            "document.location.hash", "document.location.search", "document.location.href",
+            "window.name",
         } or any(path == p or path.startswith(p + ".") for p in ("req.query", "req.body", "req.params"))
 
     def sink(self, node, value: Value, context: str):
@@ -104,7 +106,31 @@ class Analyzer:
             if path in self.env:
                 return self.env[path]
             base = self.expression(self.field(node, "object"))
+            # A field of a tainted JSON object, URL wrapper, or similar
+            # explicitly propagated container remains attacker-influenced.
+            # We do not assert fields of untainted/unknown objects are safe.
+            if base.sources and not base.unknown:
+                return Value(base.sources, base.trace + (path or self.text(node),),
+                             unknown=False)
             return join(base, Value(unknown=True))
+        if kind in ("array", "array_expression"):
+            value = join(*(self.expression(child) for child in node.named_children))
+            return Value(value.sources, value.trace + ("array_literal",),
+                         unknown=value.unknown)
+        if kind == "new_expression":
+            ctor = self.path(self.field(node, "constructor"))
+            params = self.field(node, "arguments")
+            values = [self.expression(arg) for arg in params.named_children] if params else []
+            if ctor in ("URL", "URLSearchParams") and len(values) == 1:
+                value = values[0]
+                return Value(value.sources, value.trace + ("new " + ctor,),
+                             unknown=value.unknown)
+            if ctor == "Function":
+                self.sink(node, values[0] if values else Value(unknown=True), "javascript")
+                return Value(unknown=True)
+            self.limitation(node, "unresolved constructor: " + (ctor or self.text(node)))
+            self.env = {k: join(v, Value(unknown=True)) for k, v in self.env.items()}
+            return join(*values, Value(unknown=True)
         if kind == "parenthesized_expression":
             return self.expression(node.named_children[0])
         if kind == "template_string":
@@ -156,6 +182,37 @@ class Analyzer:
             args_node = self.field(node, "arguments")
             args = args_node.named_children if args_node else []
             values = [self.expression(a) for a in args]
+            # Narrow, audited taint-preserving operations. These are NOT
+            # sanitizers and never prove a dangerous sink safe.
+            if call in ("decodeURIComponent", "decodeURI", "encodeURIComponent",
+                        "encodeURI", "String", "JSON.stringify", "JSON.parse",
+                        "URLSearchParams") and len(values) == 1:
+                value = values[0]
+                return Value(value.sources, value.trace + (call,),
+                             unknown=value.unknown)
+            if function.type == "member_expression":
+                obj = self.field(function, "object")
+                prop = self.path(self.field(function, "property"))
+                if prop in ("slice", "substring", "trim", "toString", "split") and not values:
+                    # trim/toString may be argument-free; slice/substring
+                    # also accept numeric position arguments, checked below.
+                    receiver = self.expression(obj)
+                    return Value(receiver.sources, receiver.trace + (prop,),
+                                 unknown=receiver.unknown)
+                if prop in ("slice", "substring", "trim", "toString", "split"):
+                    if all(a.type in ("number", "string") for a in args):
+                        receiver = self.expression(obj)
+                        return Value(receiver.sources, receiver.trace + (prop,),
+                                     unknown=receiver.unknown)
+                if prop in ("get", "getAll") and obj.type in ("new_expression", "member_expression"):
+                    receiver = self.expression(obj)
+                    return Value(receiver.sources, receiver.trace + (prop,),
+                                 unknown=receiver.unknown)
+                if prop == "join" and obj.type in ("identifier", "array", "array_expression"):
+                    receiver = self.expression(obj)
+                    if all(a.type == "string" for a in args):
+                        return Value(receiver.sources, receiver.trace + ("join",),
+                                     unknown=receiver.unknown)
             if call in ("document.write", "document.writeln", "res.send"):
                 self.sink(function, join(*values), "html")
                 return Value(unknown=True)

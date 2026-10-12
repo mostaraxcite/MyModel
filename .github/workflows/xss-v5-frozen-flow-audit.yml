@@ -1,0 +1,64 @@
+name: Audit XSS V5 New Flow Cases Once
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xss-v5-frozen-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[audit-xss-flow-v5]')
+    name: New frozen 24-case static audit, read-only
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install local dependencies
+        run: |
+          python -m pip install -q uv
+          uv sync --group dev
+      - name: Evaluate reserved new cases only after merged code is frozen
+        run: |
+          set -euo pipefail
+          mkdir -p xss-v5-untouched-audit
+          uv run python -m evaluation.fresh_xss_v5_flow_audit --output xss-v5-untouched-audit/report.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          src=Path("xss-v5-untouched-audit/report.json")
+          report=json.loads(src.read_text())
+          assert report["total"] == 24
+          assert report["manifest"]["training_use"] == "FORBIDDEN"
+          assert report["manifest"]["browser_executions"] == 0
+          assert report["runtime_xss_confirmed"] == 0
+          assert report["production_approval"] is False
+          m=report["metrics"]
+          print("=== NEW FROZEN XSS V5 AUDIT ===")
+          print(json.dumps({"metrics":m,"confusion":report["confusion"]},indent=2))
+          if m["unsafe_incorrectly_safe"] > 0:
+              print("::warning::Unsafe cases falsely classified SAFE. Do not promote.")
+          if m["candidate_recall_on_unsafe"] < 0.8:
+              print("::warning::Static candidate recall below exploratory 80% threshold.")
+          Path("xss-v5-untouched-audit/summary.json").write_text(
+              json.dumps({"metrics":m,"confusion":report["confusion"],
+                         "not_real_world_or_browser_proof":True,
+                         "promotion":"DO_NOT_PROMOTE"},indent=2)+"\n")
+          PY
+      - name: Preserve raw per-case audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xss-v5-frozen-flow-audit-${{ github.run_id }}
+          path: xss-v5-untouched-audit/
+          retention-days: 30
+          if-no-files-found: warn

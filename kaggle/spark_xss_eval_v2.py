@@ -108,6 +108,9 @@ def main():
             OUTPUT / "report.json",
         )
         report["training_variant"] = "balanced_v2_hard_negatives"
+        report["expected_training_source_sha"] = EXPECTED_TRAINING_SHA
+        report["evaluation_status"] = "EXPOSED_V1_REGRESSION_NOT_FRESH_INDEPENDENT"
+        (OUTPUT / "report.json").write_text(json.dumps(report, indent=2) + "\n")
         print("RESULT_SUMMARY:", json.dumps({
             "n": report["trained"]["n"],
             "baseline": report["baseline"], "trained": report["trained"],

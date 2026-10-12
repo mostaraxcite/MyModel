@@ -74,22 +74,24 @@ def test_no_exact_eval_case_is_used_for_training(tmp_path):
 
 
 def test_v2_converter_preserves_group_disjointness(tmp_path):
-    out = tmp_path / "v4-balanced.jsonl"
-    build(ROOT / BASE, out)
-    prepared = tmp_path / "prepared"
-    manifest = convert(out, prepared, balanced_v2=True)
-    recipe = __import__("yaml").safe_load((prepared / "train.yaml").read_text())
-    assert recipe["learning_rate"] == 2e-5
-    assert recipe["num_train_epochs"] == 1.0
-    assert recipe["lora_rank"] == 8
-    assert recipe["logging_steps"] == 5
-    assert manifest["train_records"] + manifest["eval_records"] > 480
-    assert manifest["train_template_groups"] + manifest["eval_template_groups"] >= 20
-    split_tags = {}
-    for split in ("train", "eval"):
-        for sample in json.loads((prepared / (split + ".json")).read_text()):
-            assert "instruction" in sample
-            assert "output" in sample
+    import tempfile
+    import yaml
+    with tempfile.TemporaryDirectory(prefix="spark-v2-", dir=ROOT / "data/training") as directory:
+        out = Path(directory) / "sft_v4_balanced.jsonl"
+        build(ROOT / BASE, out)
+        prepared = tmp_path / "prepared"
+        manifest = convert(out, prepared, four_bit=True, balanced_v2=True)
+        recipe = yaml.safe_load((prepared / "train.yaml").read_text())
+        assert recipe["learning_rate"] == 2e-5
+        assert recipe["num_train_epochs"] == 1.0
+        assert recipe["lora_rank"] == 8
+        assert recipe["logging_steps"] == 5
+        assert manifest["train_records"] + manifest["eval_records"] > 480
+        assert manifest["train_template_groups"] + manifest["eval_template_groups"] >= 20
+        for split in ("train", "eval"):
+            for sample in json.loads((prepared / (split + ".json")).read_text()):
+                assert "instruction" in sample
+                assert "output" in sample
 
 
 def test_v2_deterministic_and_refuses_changed_v3(tmp_path):

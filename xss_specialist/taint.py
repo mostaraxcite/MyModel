@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 import json
+import re
 from pathlib import Path
 
 from tree_sitter import Language, Parser
@@ -41,6 +42,9 @@ class Analyzer:
         self.sinks: list[dict] = []
         self.observed_sources: set[str] = set()
         self.limitations: list[str] = []
+        # Only literal createElement/querySelector bindings are type-proven.
+        # Never infer an element's tag from a variable name like "script".
+        self.dom_tags: dict[str, str] = {}
 
     def text(self, node) -> str:
         return self.code[node.start_byte:node.end_byte].decode() if node else ""
@@ -72,6 +76,71 @@ class Analyzer:
             "document.location.hash", "document.location.search", "document.location.href",
             "window.name",
         } or any(path == p or path.startswith(p + ".") for p in ("req.query", "req.body", "req.params"))
+
+    def recognized_dom_tag(self, node) -> str | None:
+        """Literal DOM creator/selector only; dynamic selectors are unknown."""
+        if node is None or node.type != "call_expression":
+            return None
+        fn = self.path(self.field(node, "function"))
+        arguments = self.field(node, "arguments")
+        args = arguments.named_children if arguments else []
+        if len(args) != 1 or args[0].type != "string":
+            return None
+        literal = self.text(args[0])[1:-1].strip().lower()
+        if fn == "document.createElement" and literal in {"script", "a", "iframe"}:
+            return literal
+        if fn == "document.querySelector" and literal in {"script", "a", "iframe"}:
+            return literal
+        return None
+
+    def callback(self, call_node, cb, *, source: str) -> bool:
+        """Review a bounded callback body under a known untrusted event source.
+
+        The event could arrive later; this only establishes potential static
+        paths and is NEVER proof that browser execution occurred.
+        """
+        if cb is None or cb.type not in ("arrow_function", "function_expression"):
+            self.limitation(call_node, "callback body or function identity unresolved")
+            return False
+        param = self.field(cb, "parameter")
+        params = self.field(cb, "parameters")
+        if param is None and params is not None:
+            candidates = [c for c in params.named_children if c.type == "identifier"]
+            param = candidates[0] if len(candidates) == 1 else None
+        if param is None:
+            # Some tree-sitter versions expose the single arrow parameter
+            # without a field name; there must be exactly one identifier.
+            candidates = [c for c in cb.named_children if c.type == "identifier"]
+            param = candidates[0] if len(candidates) == 1 else None
+        body = self.field(cb, "body")
+        if param is None or param.type != "identifier" or body is None:
+            self.limitation(call_node, "callback parameter/body not resolvable")
+            return False
+        name = self.text(param)
+        previous_env = dict(self.env)
+        previous_bindings = dict(self.bindings)
+        previous_tags = dict(self.dom_tags)
+        self.observed_sources.add(source)
+        self.env[name] = Value((source,), (source, name))
+        if body.type == "statement_block":
+            self.statement(body)
+        else:
+            self.expression(body)
+        # A callback runs asynchronously: writes to surrounding bindings may
+        # happen before or after other statements, so they cannot be proven
+        # safe. Preserve only the pre-registration local state with a warning.
+        mutated = any(
+            k in previous_env and self.env.get(k) != previous_env[k]
+            for k in self.env if k != name
+        )
+        if mutated:
+            self.limitation(call_node, "callback writes to outer state; scheduling is unresolved")
+        self.env = previous_env
+        self.bindings = previous_bindings
+        self.dom_tags = previous_tags
+        if mutated:
+            self.env = {k: join(v, Value(unknown=True)) for k, v in self.env.items()}
+        return True
 
     def sink(self, node, value: Value, context: str):
         # Exact imported identity AND an explicit audited-module policy are required.
@@ -190,6 +259,19 @@ class Analyzer:
             call = self.path(function)
             args_node = self.field(node, "arguments")
             args = args_node.named_children if args_node else []
+            # Don't evaluate a callback lambda as an ordinary expression:
+            # doing that incorrectly poisons the environment before the
+            # handler can be inspected.
+            if call in ("addEventListener", "window.addEventListener"):
+                if (call == "addEventListener" and "addEventListener" in self.env) or (
+                        call == "window.addEventListener" and "window" in self.env):
+                    self.limitation(node, "event listener API is shadowed")
+                    return Value(unknown=True)
+                if (len(args) == 2 and self.text(args[0]) in ("'message'", '"message"')
+                        and self.callback(node, args[1], source="message-event.data")):
+                    return Value()
+                self.limitation(node, "unresolved event listener/callback")
+                return Value(unknown=True)
             values = [self.expression(a) for a in args]
             # Narrow, audited taint-preserving operations. These are NOT
             # sanitizers and never prove a dangerous sink safe.
@@ -310,6 +392,10 @@ class Analyzer:
                     continue
                 key = self.text(name)
                 self.bindings.pop(key, None)
+                tag = self.recognized_dom_tag(self.field(declaration, "value"))
+                self.dom_tags.pop(key, None)
+                if tag is not None:
+                    self.dom_tags[key] = tag
                 self.env[key] = Value(value.sources, value.trace + (key,), value.sanitizer, value.unknown)
         elif kind == "expression_statement":
             for child in node.named_children:
@@ -331,6 +417,39 @@ class Analyzer:
         elif kind == "else_clause":
             for child in node.named_children:
                 self.statement(child)
+        elif kind == "for_statement":
+            # Execute only literal, monotonically increasing numeric loops.
+            # This is a bounded AST walk, not arbitrary JavaScript execution.
+            code = self.text(node)
+            header = re.match(
+                r"for\s*\(\s*(?:let|var)\s+([A-Za-z_$][\w$]*)"
+                r"\s*=\s*(\d+)\s*;\s*\1\s*<\s*(\d+)\s*;"
+                r"\s*(?:\1\s*\+\+|\+\+\s*\1)\s*\)",
+                code,
+            )
+            body = self.field(node, "body")
+            if header is None or body is None:
+                self.limitation(node, "loop effects/iteration count not statically bounded")
+                self.env = {k: join(v, Value(unknown=True)) for k, v in self.env.items()}
+                self.bindings.clear()
+                self.dom_tags.clear()
+                return
+            variable, initial, limit = header.group(1), int(header.group(2)), int(header.group(3))
+            iterations = max(0, limit - initial)
+            if iterations > 8:
+                self.limitation(node, "loop exceeds conservative eight-iteration bound")
+                self.env = {k: join(v, Value(unknown=True)) for k, v in self.env.items()}
+                self.bindings.clear()
+                self.dom_tags.clear()
+                return
+            old = self.env.get(variable)
+            self.env[variable] = Value()  # The header is a numeric local.
+            for _ in range(iterations):
+                self.statement(body)
+            if old is None:
+                self.env.pop(variable, None)
+            else:
+                self.env[variable] = old
         else:
             self.limitation(node, f"unsupported statement: {kind}")
             # Never carry a SAFE value through unanalysed side effects/control flow.

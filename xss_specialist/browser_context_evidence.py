@@ -159,7 +159,7 @@ class BrowserContextSession:
         used=False
         def receive(source,token,serialized):
             nonlocal used
-            if token!=nonce or source['frame']!=page.main_frame or used:
+            if used or not isinstance(token,str) or not re.fullmatch(r'[0-9a-f]{64}',token) or not hmac.compare_digest(token,nonce) or source['frame']!=page.main_frame:
                 return {'accepted':False}
             used=True
             try:
@@ -180,7 +180,7 @@ class BrowserContextSession:
         data={k:v for k,v in record.items() if k!='signature'}
         expected=hmac.new(self._key,canonical(data),hashlib.sha256).hexdigest()
         signature=record.get('signature')
-        if not isinstance(signature,str) or not hmac.compare_digest(signature,expected):
+        if not isinstance(signature,str) or not re.fullmatch(r'[0-9a-f]{64}',signature) or not hmac.compare_digest(signature,expected):
             raise ContextEvidenceError('Evidence integrity/authentication failed')
         if data.get('schema')!=1 or data.get('session_id')!=self.session_id or data.get('vendor_sha256')!=self.vendor_sha256 or data.get('code_sha256')!=digest(code):
             raise ContextEvidenceError('Evidence belongs to a different code/session/vendor')

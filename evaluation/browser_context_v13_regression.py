@@ -18,11 +18,14 @@ def evaluate(output):
         try:
             for case in cases:
                 captures=[]
-                def collect(frame,fixture,marker):
-                    captures.append(session.capture(frame,fixture['code'],marker))
+                def collect(page,fixture,marker):
+                    slot=session.install(page,fixture['code'],marker)
+                    captures.append(slot)
+                    return slot['script']
                 runtime=run_browser(browser,case,VENDOR.read_text(),before_fixture=collect)
                 if len(captures)!=1:raise ContextEvidenceError('One pre-execution capture required')
-                receipt=captures[0]
+                receipt=captures[0]['receipt']
+                if receipt is None:raise ContextEvidenceError(captures[0]['error'] or 'Entry-state capture was not received')
                 review=session.review(case['code'],receipt)
                 rows.append(case|{'browser':runtime,'static_status':review['decision']['status'],
                                  'context_evidence':review['context_evidence'],'dom_context':review['dom_context'],
@@ -30,16 +33,19 @@ def evaluate(output):
             case=next(c for c in cases if c['id']=='SRC-2-L2-B16')
             for mode in ['changed_jquery_method','changed_native_getter','removed_input_marker']:
                 captures=[];denials=[]
-                def negative_collect(frame,fixture,marker):
-                    if mode=='changed_jquery_method':frame.evaluate('jQuery.fn.html=function(){return this;}')
-                    elif mode=='changed_native_getter':frame.evaluate("Object.defineProperty(HTMLInputElement.prototype,'value',{get(){return 'replacement';},configurable:true});")
-                    else:frame.evaluate("document.querySelector('textarea').value='fixed';")
-                    try:captures.append(session.capture(frame,fixture['code'],marker))
-                    except ContextEvidenceError as e:denials.append(str(e))
+                def negative_collect(page,fixture,marker):
+                    if mode=='changed_jquery_method':tamper='jQuery.fn.html=function(){return this;}'
+                    elif mode=='changed_native_getter':tamper="Object.defineProperty(HTMLInputElement.prototype,'value',{get(){return 'replacement';},configurable:true});"
+                    else:tamper="document.querySelector('textarea').value='fixed';"
+                    slot=session.install(page,fixture['code'],marker,pre_capture_js=tamper)
+                    captures.append(slot)
+                    return slot['script']
                 runtime=run_browser(browser,case,VENDOR.read_text(),before_fixture=negative_collect)
                 if mode=='removed_input_marker':
-                    result=session.review(case['code'],captures[0]);passed=result['decision']['status']=='INCONCLUSIVE'
-                else:passed=bool(denials) and not captures
+                    result=session.review(case['code'],captures[0]['receipt']);passed=result['decision']['status']=='INCONCLUSIVE'
+                else:
+                    denials=[captures[0]['error']] if captures[0]['error'] else []
+                    passed=bool(denials) and captures[0]['receipt'] is None
                 negative.append({'mode':mode,'passed':passed,'denials':denials,'browser':runtime})
         finally:browser.close()
     metrics=score_decisions(rows,{'evaluation_kind':'exposed_automatic_browser_context_regression'})

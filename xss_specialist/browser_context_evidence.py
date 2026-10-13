@@ -126,6 +126,10 @@ class BrowserContextSession:
     def capture(self,frame,code,marker):
         selectors,names=selectors_and_names(code)
         observations=frame.evaluate(COLLECT,{'selectors':selectors,'names':names,'marker':marker})
+        return self._record(code,marker,observations)
+
+    def _record(self,code,marker,observations):
+        if not isinstance(observations,dict):raise ContextEvidenceError('Invalid observation object')
         if observations.get('library_identity_verified') is not True or observations.get('native_identity_verified') is not True or observations.get('frame_url')!='http://audit.local/case':
             raise ContextEvidenceError('Known fixture library/frame identity was not verified')
         record={'schema':1,'session_id':self.session_id,'code_sha256':digest(code),
@@ -133,6 +137,38 @@ class BrowserContextSession:
                 'captured_at':time.monotonic(),'observations':observations}
         record['signature']=hmac.new(self._key,canonical(record),hashlib.sha256).hexdigest()
         return record
+
+    def install(self,page,code,marker,*,pre_capture_js=''):
+        """Install a one-shot capture at trusted setup's actual execution end.
+
+        The transport capability is not a MAC key. The first authenticated
+        message is accepted only from the original main frame. Serialized
+        immutable observations leave JS before the original fragment executes.
+        The containing script removes itself; harness navigation is delivered
+        once so untrusted fragments cannot fetch the nonce-bearing HTML again.
+        """
+        selectors,names=selectors_and_names(code)
+        channel='__dom_context_'+secrets.token_hex(16)
+        nonce=secrets.token_hex(32)
+        slot={'script':None,'receipt':None,'error':None}
+        used=False
+        def receive(source,token,serialized):
+            nonlocal used
+            if token!=nonce or source['frame']!=page.main_frame or used:
+                return {'accepted':False}
+            used=True
+            try:
+                if not isinstance(serialized,str) or len(serialized)>1_000_000:
+                    raise ContextEvidenceError('Invalid capture transport')
+                slot['receipt']=self._record(code,marker,json.loads(serialized))
+            except (ContextEvidenceError,ValueError,TypeError,KeyError) as e:
+                slot['error']=str(e)
+                return {'accepted':False}
+            return {'accepted':True}
+        page.expose_binding(channel,receive)
+        args=json.dumps({'selectors':selectors,'names':names,'marker':marker}).replace('<','\\u003c')
+        slot['script']='\n(function(){'+pre_capture_js+';const snapshot=('+COLLECT+')('+args+');window['+json.dumps(channel)+']('+json.dumps(nonce)+',JSON.stringify(snapshot)).catch(()=>{});document.currentScript.remove();})();\n'
+        return slot
 
     def context(self,code,record):
         if not isinstance(record,dict):raise ContextEvidenceError('Evidence packet required')

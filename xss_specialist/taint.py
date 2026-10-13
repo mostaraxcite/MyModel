@@ -52,6 +52,9 @@ class Analyzer:
         self.helper_calls = 0
         self.loop_steps = 0
         self.counter_updates: set[tuple[int, int]] = set()
+        self.deferred_callbacks: list[tuple] = []
+        self.callback_capture_frame = None
+        self.in_deferred_review = False
 
     def literal_string(self, node) -> str | None:
         # Escape sequences require JS decoding; abstain rather than compare
@@ -148,7 +151,7 @@ class Analyzer:
                     ident=self.field(decl,"name") if decl.type == "variable_declarator" else None
                     if ident is not None and ident.type == "identifier":local_names.add(self.text(ident))
         identity=(fn.start_byte,fn.end_byte)
-        supported = (self.call_depth < 3 and len(args) <= 4 and len(args) == len(values)
+        supported = (len(args) <= 4 and len(args) == len(values)
                      and self.helper_calls < 64 and identity not in self.active_functions
                      and all(p.type == "identifier" for p in args)
                      and 1 <= len(statements) <= 12
@@ -310,6 +313,7 @@ class Analyzer:
             self.limitation(call_node, "callback parameter/body not resolvable")
             return False
         name = self.text(param)
+        initial_sink_count=len(self.sinks)
         previous_env = dict(self.env)
         previous_bindings = dict(self.bindings)
         previous_tags = dict(self.dom_tags)
@@ -318,7 +322,7 @@ class Analyzer:
         # A callback may execute after later assignments, or in a different
         # caller scope. Do not certify a captured constant/identity as safe.
         # Plain tracked taint still establishes a potential dangerous path.
-        self.env={k:replace(v,unknown=v.unknown or not v.sources or bool(v.sanitizer),
+        self.env={k:replace(v,unknown=v.unknown or not v.sources or bool(v.sanitizer) or bool(v.properties),
                             sanitizer=None,properties=()) for k,v in self.env.items()}
         self.bindings={};self.dom_tags={};self.functions={}
         # var declarations belong to the callback, including nested blocks;
@@ -346,10 +350,34 @@ class Analyzer:
             self.limitation(call_node, "callback input origin unknown")
             self.env[name] = Value(unknown=True)
         callback_initial_env=dict(self.env)
-        if body.type == "statement_block":
-            self.statement(body)
-        else:
-            self.expression(body)
+        previous_capture_frame=self.callback_capture_frame
+        captures=set()
+        self.callback_capture_frame=(callback_initial_env,callback_locals,captures)
+        try:
+            if body.type == "statement_block":
+                self.statement(body)
+            else:
+                self.expression(body)
+        finally:
+            self.callback_capture_frame=previous_capture_frame
+        # For a direct program-level registration, a global callback sees
+        # later synchronous writes when the async turn runs. Review captures
+        # after completing the program, never at registration-time values.
+        parent=call_node.parent
+        top_level=(parent is not None and parent.type == "expression_statement"
+                   and parent.parent is not None and parent.parent.type == "program")
+        global_definition=(cb.type != "function_declaration" or
+                           cb.parent is not None and cb.parent.type == "program")
+        if captures and top_level and global_definition and not self.in_deferred_review:
+            if len(self.deferred_callbacks)<32:
+                self.deferred_callbacks.append((call_node,cb,source,bound_value))
+                # Provisional closure paths must not count as separate alerts
+                # or survive a later safe overwrite. Parameter-only callbacks
+                # remain reviewed normally; final capture paths replace these.
+                del self.sinks[initial_sink_count:]
+            else:
+                self.limitation(call_node,"deferred callback review exceeds 32 registrations")
+                self.invalidate()
         # A callback runs asynchronously: writes to surrounding bindings may
         # happen before or after other statements, so they cannot be proven
         # safe. Preserve only the pre-registration local state with a warning.
@@ -409,6 +437,11 @@ class Analyzer:
         if kind in ("string", "number", "true", "false", "null", "undefined"):
             return Value()
         if kind == "identifier":
+            if self.callback_capture_frame is not None:
+                initial,locals_,captures=self.callback_capture_frame
+                if path not in locals_ and (path not in self.env or
+                    path in initial and self.env.get(path) is initial[path]):
+                    captures.add(path)
             return self.env.get(path, Value(unknown=True))
         if kind in ("member_expression", "subscript_expression"):
             if path in self.env:
@@ -891,6 +924,10 @@ class Analyzer:
             self.limitations.append("parse error: only JavaScript is supported (no HTML/TS/JSX)")
         else:
             self.statement(root)
+            self.in_deferred_review=True
+            for call,cb,source,bound_value in self.deferred_callbacks:
+                self.callback(call,cb,source=source,bound_value=bound_value)
+            self.in_deferred_review=False
         verdicts = {s["verdict"] for s in self.sinks}
         verdict = "CANDIDATE" if "CANDIDATE" in verdicts else (
             "INCONCLUSIVE" if self.limitations or "INCONCLUSIVE" in verdicts or not self.sinks else "SAFE"

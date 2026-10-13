@@ -12,6 +12,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 from xss_specialist.grounded_advisor import grounded_review
 from evaluation.xss_v7_browser_harness import run_browser
+from evaluation.decision_metrics import score_decisions
 
 def evaluate(cases_path, output_path, manifest_path=None):
     raw=cases_path.read_bytes()
@@ -43,6 +44,7 @@ def evaluate(cases_path, output_path, manifest_path=None):
              'browser_executed_unsafe':sum(row['browser']['executed'] for row in rows if row['label']=='unsafe'),
              'browser_executed_safe':sum(row['browser']['executed'] for row in rows if row['label']=='safe'),
              'browser_label_mismatches':[row['id'] for row in rows if not row['browser']['label_agrees']]}
+    metrics.update(score_decisions(rows,manifest))
     report={'cases_sha256':digest,'manifest':manifest,'confusion':confusion,'metrics':metrics,
             'chromium':version,'model_evaluated':False,'promotion':'DO_NOT_PROMOTE',
             'scope':'synthetic browser fixture execution only; no live targets','results':rows}

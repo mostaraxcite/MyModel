@@ -40,15 +40,12 @@ def test_new_supported_bounded_safe_paths(code):
     assert status(code)=='SAFE'
 
 @pytest.mark.parametrize('code',[
-    "let value='fixed';function receive(e){panel.innerHTML=value;}window.addEventListener('message',receive);value=window.name;",
-    "let value='fixed';window.addEventListener('message',e=>{panel.innerHTML=value;});value=window.name;",
     "let value=window.name;function receive(e){panel.innerHTML=value;}{const value='fixed';window.addEventListener('message',receive);}",
     "let value=window.name;function read(){return value;}{const value='fixed';panel.innerHTML=read();}",
     "let value=window.name;function outer(x){const value='fixed';return inner(x);}function inner(x){return value;}panel.innerHTML=outer('constant');",
     "function receive(e){panel.innerHTML=e.data;}receive=unknown;window.addEventListener('message',receive);",
     "function receive(e){panel.innerHTML=e.data;}unknown();window.onmessage=receive;",
     "function a(x){return b(x);}function b(x){return a(x);}panel.innerHTML=a(window.name);",
-    "function a(x){return b(x);}function b(x){return c(x);}function c(x){return d(x);}function d(x){return x;}panel.innerHTML=a(window.name);",
     "function encode(x){return 'fixed';}function receive(e){panel.innerHTML=encode(e.data);}window.onmessage=receive;encode=unknown;",
     "let x=window.name;for(let i=0;i<3;i++){i-=1;x='fixed';}panel.innerHTML=x;",
     "let x=window.name;for(let i=0;i<3;i++){if(flag){i+=1;}x='fixed';}panel.innerHTML=x;",
@@ -60,3 +57,11 @@ def test_new_supported_bounded_safe_paths(code):
 ])
 def test_unknown_identity_scope_recursion_and_counter_effects_abstain(code):
     assert status(code)=='INCONCLUSIVE'
+
+@pytest.mark.parametrize('code',[
+    "let value='fixed';function receive(e){panel.innerHTML=value;}window.addEventListener('message',receive);value=window.name;",
+    "let value='fixed';window.addEventListener('message',e=>{panel.innerHTML=value;});value=window.name;",
+    "function a(x){return b(x);}function b(x){return c(x);}function c(x){return d(x);}function d(x){return x;}panel.innerHTML=a(window.name);",
+])
+def test_v9_previously_unresolved_global_capture_and_chain(code):
+    assert status(code)=='CANDIDATE'

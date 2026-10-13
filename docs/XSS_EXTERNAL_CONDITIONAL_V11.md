@@ -8,8 +8,9 @@ explicit review/dependency reasons; some are additional writes covered by the
 selected complete SVG callback, not extra independent examples.
 
 The unchanged engine is PR32, revision
-`e45e0ccaa811bdcb16e78306c591e991d976b6ba`. CI verifies no diff under
-`xss_specialist` before scoring. Original fragments, source/context hashes,
+`e45e0ccaa811bdcb16e78306c591e991d976b6ba`. CI restores and verifies that package
+inside this diagnostic job before scoring, so future engine PRs are not blocked
+by a requirement to leave the production package unchanged. Original fragments, source/context hashes,
 case hash and real jQuery 4.0.0 bytes are frozen before any scores are observed.
 The vendor is MIT-licensed with its upstream copyright/license header retained;
 the original Git blob hash also verifies it was not replaced by a fixture stub.

@@ -78,6 +78,9 @@ def test_selector_extraction_tracks_native_ids_and_nested_real_selectors():
 def test_markup_strings_are_not_misclassified_as_selectors():
     assert selectors_and_names('$("<div>markup</div>");')[0]==[]
 
+def test_native_id_with_css_punctuation_cannot_probe_a_different_element():
+    assert selectors_and_names('document.getElementById("foo.bar").value;')[0]==[]
+
 def test_malformed_source_fails_before_any_browser_probe():
     with pytest.raises(ContextEvidenceError):selectors_and_names('const =')
 

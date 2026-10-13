@@ -82,9 +82,9 @@ def _grounded_explanation(path: dict) -> str:
     return "Only the bounded local path is described; broader behavior is not established."
 
 
-def build_oracle_packet(code: str, *, trusted_modules: tuple[str, ...] = ()) -> dict:
+def build_oracle_packet(code: str, *, trusted_modules: tuple[str, ...] = (), dom_context: dict | None = None) -> dict:
     """Return immutable-evidence-shaped fields, derived solely from AST facts."""
-    evidence = review_evidence(code, trusted_modules=trusted_modules)
+    evidence = review_evidence(code, trusted_modules=trusted_modules, dom_context=dom_context)
     paths = []
     for i, record in enumerate(evidence["paths"], 1):
         paths.append({
@@ -94,7 +94,7 @@ def build_oracle_packet(code: str, *, trusted_modules: tuple[str, ...] = ()) -> 
             "sink": record["sink"],
             "defense": record["defense"],
             "decision": record["decision"],
-            "explanation": _grounded_explanation(record),
+            "explanation": ('Conditional on supplied DOM context: ' if evidence.get('dom_context') else '') + _grounded_explanation(record),
         })
     return {
         "schema_version": SCHEMA,
@@ -110,6 +110,7 @@ def build_oracle_packet(code: str, *, trusted_modules: tuple[str, ...] = ()) -> 
         "model_has_final_authority": False,
         "browser_confirmed": False,
         "explanation_provenance": "deterministic_ast_oracle",
+        "dom_context": evidence.get('dom_context'),
     }
 
 
@@ -141,13 +142,13 @@ def validate_model_focus(proposal: Any, packet: dict) -> dict:
 
 
 def grounded_review(code: str, *, model_focus: Any = None,
-                    trusted_modules: tuple[str, ...] = ()) -> dict:
+                    trusted_modules: tuple[str, ...] = (), dom_context: dict | None = None) -> dict:
     """Present immutable oracle facts; allow focus ordering only when validated.
 
     The model focus is not a score, finding, sanitizer policy or verdict.
     Untrusted model prose and added fields are always rejected.
     """
-    packet = build_oracle_packet(code, trusted_modules=trusted_modules)
+    packet = build_oracle_packet(code, trusted_modules=trusted_modules, dom_context=dom_context)
     accepted = None if model_focus is None else validate_model_focus(model_focus, packet)
     # A focus suggestion must never push a suspected or unresolved security
     # path out of the visible priority list. Those are mandatory, even if
@@ -184,6 +185,7 @@ def main() -> None:
     parser.add_argument("file", type=Path, help="Local JavaScript file, not a URL")
     parser.add_argument("--model-focus-json", type=Path,
                         help="Untrusted path-ID selection JSON; never executes model output")
+    parser.add_argument('--dom-context-json', type=Path, help='Reviewed caller-supplied DOM/library assertions; conditional results only')
     parser.add_argument("--trusted-module", action="append", default=[],
                         help="Explicitly audited sanitizer import name")
     args = parser.parse_args()
@@ -194,6 +196,7 @@ def main() -> None:
         args.file.read_text(encoding="utf-8"),
         model_focus=candidate,
         trusted_modules=tuple(args.trusted_module),
+        dom_context=json.loads(args.dom_context_json.read_text()) if args.dom_context_json else None,
     )
     print(json.dumps(report, indent=2, ensure_ascii=False))
 

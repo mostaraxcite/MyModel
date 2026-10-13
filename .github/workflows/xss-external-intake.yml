@@ -1,0 +1,26 @@
+name: XSS external source intake
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  prepare-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pytest tree-sitter==0.25.2 tree-sitter-javascript==0.25.0
+      - run: python -m pytest -q tests/test_external_source_intake.py tests/test_decision_metrics.py tests/test_holdout_protocol.py
+      - name: Reproduce pending review inventory without scoring
+        run: |
+          python -m evaluation.external_source_intake --sources evaluation/fixtures/xss_external_sources_v10.json --engine-revision e45e0ccaa811bdcb16e78306c591e991d976b6ba --output results/xss-external-intake-v10.json
+          cmp docs/evaluations/xss_external_intake_v10.json results/xss-external-intake-v10.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xss-external-intake-v10
+          path: results/xss-external-intake-v10.json

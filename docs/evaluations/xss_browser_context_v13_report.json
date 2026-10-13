@@ -1,0 +1,2813 @@
+{
+  "evaluation_kind": "exposed_automatic_browser_context_regression",
+  "cases_sha256": "f72baa93daee773a84e555ad39f950affe3a5eab649a539064e542fb9f7521ff",
+  "metrics": {
+    "counts": {
+      "cases": 24,
+      "unsafe": 15,
+      "safe": 9,
+      "true_candidates": 15,
+      "false_candidates": 0,
+      "dangerous_reported_safe": 0,
+      "alerts_without_adjudicated_label": 0,
+      "inconclusive": 3,
+      "not_tested": 0
+    },
+    "decision_matrix": {
+      "needs_review": {
+        "CANDIDATE": 0,
+        "INCONCLUSIVE": 0,
+        "NOT_TESTED": 0,
+        "SAFE": 0
+      },
+      "safe": {
+        "CANDIDATE": 0,
+        "INCONCLUSIVE": 3,
+        "NOT_TESTED": 0,
+        "SAFE": 6
+      },
+      "unsafe": {
+        "CANDIDATE": 15,
+        "INCONCLUSIVE": 0,
+        "NOT_TESTED": 0,
+        "SAFE": 0
+      }
+    },
+    "unsafe_candidate_recall": 1,
+    "candidate_precision": 1,
+    "candidate_precision_on_adjudicated_labels": 1,
+    "verified_alert_fraction": 1,
+    "safe_false_positive_rate": 0,
+    "unsafe_static_safe": 0,
+    "unsafe_static_safe_rate": 0,
+    "unsafe_candidate_miss_rate": 0,
+    "unsafe_abstention_rate": 0,
+    "safe_abstention_rate": 0.3333333333333333,
+    "needs_review_overclaim_rate": null,
+    "unsafe_not_tested_rate": 0,
+    "test_coverage": 1,
+    "decision_coverage": 0.875,
+    "nominal_wilson95": {
+      "candidate_recall": {
+        "lower": 0.7961166989641515,
+        "upper": 1,
+        "successes": 15,
+        "trials": 15,
+        "confidence": 0.95,
+        "method": "Wilson",
+        "interpretation": "nominal iid-binomial interval; not proof of external validity"
+      },
+      "candidate_precision": {
+        "lower": 0.7961166989641515,
+        "upper": 1,
+        "successes": 15,
+        "trials": 15,
+        "confidence": 0.95,
+        "method": "Wilson",
+        "interpretation": "nominal iid-binomial interval; not proof of external validity"
+      },
+      "candidate_precision_on_adjudicated_labels": {
+        "lower": 0.7961166989641515,
+        "upper": 1,
+        "successes": 15,
+        "trials": 15,
+        "confidence": 0.95,
+        "method": "Wilson",
+        "interpretation": "nominal iid-binomial interval; not proof of external validity"
+      },
+      "false_positive_rate": {
+        "lower": 0,
+        "upper": 0.2991450484195441,
+        "successes": 0,
+        "trials": 9,
+        "confidence": 0.95,
+        "method": "Wilson",
+        "interpretation": "nominal iid-binomial interval; not proof of external validity"
+      }
+    },
+    "family_case_counts": {
+      "literal-markup": 4,
+      "text-reparse": 2,
+      "dom-node-move": 2,
+      "svg-numeric": 2,
+      "dom-input-html": 13,
+      "bounded-numeric-html": 1
+    },
+    "unique_code_hashes": 21,
+    "repeated_code_hashes": {
+      "6c9b57699e17877f905bb264625be537be78e823b3becad7051764078f50ddcc": 2,
+      "aafc5e937fd0f8b7fdf96da19f5692c198f95adc62e8b4534c95988c6a209a84": 2,
+      "ba0dcc78842543f6698ae25cf4ae24a8b9886019ea8905a079de31320a8b50c2": 2
+    },
+    "evaluation_kind": "exposed_automatic_browser_context_regression",
+    "point_gate_passed": true,
+    "nominal_interval_gate_passed": false,
+    "production_accuracy_established": false,
+    "model_promotion_allowed": false,
+    "limitations": [
+      "Rates use all supplied labels; unsafe abstentions/not-tested cases remain recall misses.",
+      "Labels must come from reviewed semantics; browser non-execution alone is not a safe label.",
+      "Intervals are nominal; shared templates/repos and selected synthetic cases can invalidate iid inference.",
+      "Unit-test success and a point threshold do not establish learned-model or production accuracy.",
+      "Independent external reviewed cases and disjoint source groups are still required."
+    ]
+  },
+  "results": [
+    {
+      "id": "SRC-0-L5-B172",
+      "label": "safe",
+      "fixture_kind": "statement",
+      "family": "literal-markup",
+      "lineage_group": "semgrep-document-write",
+      "original_fragment": "document.write(\"<OPTION value=2>English</OPTION>\");",
+      "fragment_sha256": "efe5dad1e0c41a9a6debb5b3bf01c2e28aad0e6555b6929afc1fc97bdb0b86bd",
+      "code": "document.write(\"<OPTION value=2>English</OPTION>\");",
+      "provenance": {
+        "repository": "semgrep/semgrep-rules",
+        "revision": "9bbf021d0acffa3095fcffd17b2bc7787eb4796d",
+        "path": "javascript/browser/security/dom-based-xss.js",
+        "url": "https://github.com/semgrep/semgrep-rules/blob/9bbf021d0acffa3095fcffd17b2bc7787eb4796d/javascript/browser/security/dom-based-xss.js"
+      },
+      "source_sha256": "949d78a8e9193c33d3f5579a2921a1be53829db8dfc0089224c6bb677b72f8a4",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "document.write receives a literal option element only, with no variable input.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Only the extracted sink or callback is judged; other application paths are not labelled safe.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": false,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "bdebdeacafccebdbcbcddcaafcafdebf",
+        "observed_marker": null,
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "SAFE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:a8fa3a24777a955692aeeb79a5be44c076aade6f81dde290ecc18a8982041394",
+        "context_sha256": "9129a4388cefae9085adccb87d754ad40785e64b22d6a54f9a2f4e2971e00493",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "efe5dad1e0c41a9a6debb5b3bf01c2e28aad0e6555b6929afc1fc97bdb0b86bd",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "1ecb8a32cb1ca5999f4164e53a6b5fb2910d062c7bbdef3fb723d57001e38f19",
+        "captured_at": 82.153522658,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [],
+          "inputs": {},
+          "bindings": {},
+          "nodes": []
+        },
+        "signature": "b5c3f8be697873d8d7e2bced464bdea6501bf9968592920a9fe3f74552b0cb66"
+      }
+    },
+    {
+      "id": "SRC-1-L28-B1019",
+      "label": "unsafe",
+      "fixture_kind": "cite-html",
+      "family": "text-reparse",
+      "lineage_group": "mybb-editor",
+      "original_fragment": "$cite.html($cite.text());",
+      "fragment_sha256": "6c9b57699e17877f905bb264625be537be78e823b3becad7051764078f50ddcc",
+      "code": "$cite.html($cite.text());",
+      "provenance": {
+        "repository": "semgrep/semgrep-rules",
+        "revision": "9bbf021d0acffa3095fcffd17b2bc7787eb4796d",
+        "path": "javascript/browser/security/raw-html-concat.js",
+        "url": "https://github.com/semgrep/semgrep-rules/blob/9bbf021d0acffa3095fcffd17b2bc7787eb4796d/javascript/browser/security/raw-html-concat.js"
+      },
+      "source_sha256": "523c63a364b496dace470471daf65d83998fb02331ed8518e9031af5bfaf1f45",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "Text content containing markup is read with text() then reinterpreted by html(); the fixture provides untrusted cite text.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Input DOM text/value/attribute is attacker-controlled in the isolated fixture. Receiver and dependency types are supplied by the harness; no deployed application exploit is claimed.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": true,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "ceacebedcbdacfeeedaeffefacbcceaa",
+        "observed_marker": "ceacebedcbdacfeeedaeffefacbcceaa",
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "CANDIDATE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:57b4c27af370cc301a3611799e3ea1d68e7d76b3c6b4c33a997056b7c5577f00",
+        "context_sha256": "359f1fb83bbefb63047275d19a2902df8e2d811f9ad6baf9dea3bec9f4f09f0d",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "6c9b57699e17877f905bb264625be537be78e823b3becad7051764078f50ddcc",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "a83edb092745f4fa04c734426dc20398fc7395f0a7ca537f84a0804e1a3a32ed",
+        "captured_at": 82.730983231,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [
+            "cite"
+          ],
+          "inputs": {
+            "cite": [
+              "text",
+              "textContent",
+              "innerText"
+            ]
+          },
+          "bindings": {
+            "$cite": {
+              "selector": "cite",
+              "kind": "jquery",
+              "inert_node": true
+            }
+          },
+          "nodes": [
+            {
+              "selector": "cite",
+              "count": 1,
+              "tag": "CITE",
+              "controlled_fields": [
+                "text",
+                "textContent",
+                "innerText"
+              ]
+            }
+          ]
+        },
+        "signature": "ed2e3a35c61a5bbc68bfcafb0acae97552a2ec802d41675487ebe61d9fb56852"
+      }
+    },
+    {
+      "id": "SRC-1-L39-B1403",
+      "label": "safe",
+      "fixture_kind": "cite-move",
+      "family": "dom-node-move",
+      "lineage_group": "mybb-editor",
+      "original_fragment": "$elm.prepend($cite);",
+      "fragment_sha256": "aafc5e937fd0f8b7fdf96da19f5692c198f95adc62e8b4534c95988c6a209a84",
+      "code": "$elm.prepend($cite);",
+      "provenance": {
+        "repository": "semgrep/semgrep-rules",
+        "revision": "9bbf021d0acffa3095fcffd17b2bc7787eb4796d",
+        "path": "javascript/browser/security/raw-html-concat.js",
+        "url": "https://github.com/semgrep/semgrep-rules/blob/9bbf021d0acffa3095fcffd17b2bc7787eb4796d/javascript/browser/security/raw-html-concat.js"
+      },
+      "source_sha256": "523c63a364b496dace470471daf65d83998fb02331ed8518e9031af5bfaf1f45",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "The supplied cite is an existing jQuery DOM selection; prepend moves that node and does not parse its text content as markup. This does not certify preceding html() operations.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Only the extracted sink or callback is judged; other application paths are not labelled safe.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": false,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "eacfedecccbedaacdfbdcdcabcfebada",
+        "observed_marker": null,
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "SAFE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:64c955969c23dce373a05181e53b171cd5dbf56640b3bd644e8027cb14a06b30",
+        "context_sha256": "536b4eca7f616f32a6d5d8f94069011088237cecfa828d776324c003577e2fba",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "aafc5e937fd0f8b7fdf96da19f5692c198f95adc62e8b4534c95988c6a209a84",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "d29f2d1cf5034394ab4069c2d7c0ec1384a71ffc907fe549c4d46d6d6579616d",
+        "captured_at": 82.823926072,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [
+            "cite",
+            "#quote"
+          ],
+          "inputs": {
+            "cite": [
+              "text",
+              "textContent",
+              "innerText"
+            ],
+            "#quote": [
+              "text",
+              "textContent",
+              "innerText"
+            ]
+          },
+          "bindings": {
+            "$cite": {
+              "selector": "cite",
+              "kind": "jquery",
+              "inert_node": true
+            },
+            "$elm": {
+              "selector": "#quote",
+              "kind": "jquery",
+              "inert_node": true
+            }
+          },
+          "nodes": [
+            {
+              "selector": "cite",
+              "count": 1,
+              "tag": "CITE",
+              "controlled_fields": [
+                "text",
+                "textContent",
+                "innerText"
+              ]
+            },
+            {
+              "selector": "#quote",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": [
+                "text",
+                "textContent",
+                "innerText"
+              ]
+            }
+          ]
+        },
+        "signature": "9e2b56d93762dd472546c4dd57feee33f7f9f0784ed3ca901f4c3790f66bcf0f"
+      }
+    },
+    {
+      "id": "SRC-1-L119-B4483",
+      "label": "safe",
+      "fixture_kind": "svg-callback",
+      "family": "svg-numeric",
+      "lineage_group": "prism-previewers",
+      "original_fragment": "function (value) {\n\n        value = {\n            'linear': '0,0,1,1',\n            'ease': '.25,.1,.25,1',\n            'ease-in': '.42,0,1,1',\n            'ease-out': '0,0,.58,1',\n            'ease-in-out':'.42,0,.58,1'\n        }[value] || value;\n\n        var p = value.match(/-?\\d*\\.?\\d+/g);\n\n        if(p.length === 4) {\n            p = p.map(function(p, i) { return (i % 2? 1 - p : p) * 100; });\n\n            this.querySelector('path').setAttribute('d', 'M0,100 C' + p[0] + ',' + p[1] + ', ' + p[2] + ',' + p[3] + ', 100,0');\n\n            var lines = this.querySelectorAll('line');\n            lines[0].setAttribute('x2', p[0]);\n            lines[0].setAttribute('y2', p[1]);\n            lines[1].setAttribute('x2', p[2]);\n            lines[1].setAttribute('y2', p[3]);\n\n            return true;\n        }\n\n        return false;\n    }",
+      "fragment_sha256": "5b151f67fc15d635752113490b0ab13a758c6925a91f8e863f07f7170d46f7df",
+      "code": "const externalCallback = function (value) {\n\n        value = {\n            'linear': '0,0,1,1',\n            'ease': '.25,.1,.25,1',\n            'ease-in': '.42,0,1,1',\n            'ease-out': '0,0,.58,1',\n            'ease-in-out':'.42,0,.58,1'\n        }[value] || value;\n\n        var p = value.match(/-?\\d*\\.?\\d+/g);\n\n        if(p.length === 4) {\n            p = p.map(function(p, i) { return (i % 2? 1 - p : p) * 100; });\n\n            this.querySelector('path').setAttribute('d', 'M0,100 C' + p[0] + ',' + p[1] + ', ' + p[2] + ',' + p[3] + ', 100,0');\n\n            var lines = this.querySelectorAll('line');\n            lines[0].setAttribute('x2', p[0]);\n            lines[0].setAttribute('y2', p[1]);\n            lines[1].setAttribute('x2', p[2]);\n            lines[1].setAttribute('y2', p[3]);\n\n            return true;\n        }\n\n        return false;\n    };",
+      "provenance": {
+        "repository": "semgrep/semgrep-rules",
+        "revision": "9bbf021d0acffa3095fcffd17b2bc7787eb4796d",
+        "path": "javascript/browser/security/raw-html-concat.js",
+        "url": "https://github.com/semgrep/semgrep-rules/blob/9bbf021d0acffa3095fcffd17b2bc7787eb4796d/javascript/browser/security/raw-html-concat.js"
+      },
+      "source_sha256": "523c63a364b496dace470471daf65d83998fb02331ed8518e9031af5bfaf1f45",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "Complete callback extracts numeric tokens, converts them to numbers and writes only fixed d/x2/y2 SVG geometry attributes; these attributes do not interpret HTML or JavaScript.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Only the extracted sink or callback is judged; other application paths are not labelled safe.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": false,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "cfdcacbbffaafdfdbfecebefffbefaed",
+        "observed_marker": null,
+        "callback_result": true,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "INCONCLUSIVE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:b1f49c1cb3abef3656235e166f062a915f70cab1b706e608dcfb052281fb7c1d",
+        "context_sha256": "8bfbbf2c728e2924ab58fd56d47a8b89f3b1b6565545f86e72e2b2dcca8b33ad",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "24b2d43649a63404f38cd839c251da928f23a8d31886b5b8db831ac10c8b4180",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "92527a1a22725e812e93c65ea4c82642e6761e7c8dd7f777fd9a6c9eb52eb8b7",
+        "captured_at": 83.46026945,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [],
+          "inputs": {},
+          "bindings": {},
+          "nodes": []
+        },
+        "signature": "fd6d1266fc151ed78edacb2a91843b7d6bd5d34492896daf2d302d6c2e1ef3c9"
+      }
+    },
+    {
+      "id": "SRC-2-L2-B16",
+      "label": "unsafe",
+      "fixture_kind": "dom-input",
+      "family": "dom-input-html",
+      "lineage_group": "codeql-dom-inputs",
+      "original_fragment": "$(\"#id\").html($(\"textarea\").val());",
+      "fragment_sha256": "7474376e3c5aa09159a49694adaa6bf6d948977da4cdd1fda0422a3061fd495e",
+      "code": "$(\"#id\").html($(\"textarea\").val());",
+      "provenance": {
+        "repository": "github/codeql",
+        "revision": "4af6ba60e60683f482a583f9d444f1286abafd1f",
+        "path": "javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js",
+        "url": "https://github.com/github/codeql/blob/4af6ba60e60683f482a583f9d444f1286abafd1f/javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js"
+      },
+      "source_sha256": "682fd8dca784da57834336219984b11154e2a96b281316286bd7fc28228e97ce",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "Fixture-controlled DOM text/value/attribute reaches HTML interpretation without encoding or sanitization.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Input DOM text/value/attribute is attacker-controlled in the isolated fixture. Receiver and dependency types are supplied by the harness; no deployed application exploit is claimed.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": true,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "deeececdafbadefddfcdaceebdcbfcdc",
+        "observed_marker": "deeececdafbadefddfcdaceebdcbfcdc",
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "CANDIDATE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:02e87867efb07d380f7fc8d538382233833f1c9d7d0b2e616c9ba9d8fae369bd",
+        "context_sha256": "752c71a38eed1a53399ef878a4c669908787a7900961a8489ee28c0ca2df3329",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "7474376e3c5aa09159a49694adaa6bf6d948977da4cdd1fda0422a3061fd495e",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "87b4c62174be15bd7478c1d6ed2e3fc1b03b566f5eeb86fe706541f0a720980b",
+        "captured_at": 84.040124647,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [
+            "#id",
+            "textarea"
+          ],
+          "inputs": {
+            "textarea": [
+              "value"
+            ]
+          },
+          "bindings": {},
+          "nodes": [
+            {
+              "selector": "#id",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": []
+            },
+            {
+              "selector": "textarea",
+              "count": 1,
+              "tag": "TEXTAREA",
+              "controlled_fields": [
+                "value"
+              ]
+            }
+          ]
+        },
+        "signature": "f0f72f55351a0321215e598205c785b97cd0925c421975170e49eda420d8c715"
+      }
+    },
+    {
+      "id": "SRC-2-L4-B66",
+      "label": "unsafe",
+      "fixture_kind": "dom-input",
+      "family": "dom-input-html",
+      "lineage_group": "codeql-dom-inputs",
+      "original_fragment": "$(\"#id\").html($(\".some-element\").text());",
+      "fragment_sha256": "9b990a9bfa3eebe2edfbb33e388c63c8c51e504602302f433e3a952362e0b450",
+      "code": "$(\"#id\").html($(\".some-element\").text());",
+      "provenance": {
+        "repository": "github/codeql",
+        "revision": "4af6ba60e60683f482a583f9d444f1286abafd1f",
+        "path": "javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js",
+        "url": "https://github.com/github/codeql/blob/4af6ba60e60683f482a583f9d444f1286abafd1f/javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js"
+      },
+      "source_sha256": "682fd8dca784da57834336219984b11154e2a96b281316286bd7fc28228e97ce",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "Fixture-controlled DOM text/value/attribute reaches HTML interpretation without encoding or sanitization.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Input DOM text/value/attribute is attacker-controlled in the isolated fixture. Receiver and dependency types are supplied by the harness; no deployed application exploit is claimed.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": true,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "ecdcccefdfbedeedfdeaedeffefdacaf",
+        "observed_marker": "ecdcccefdfbedeedfdeaedeffefdacaf",
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "CANDIDATE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:6a414b56c6184dd2baf2248efb21c3b68f35ed777c09121a1d2379cfe11bfdd6",
+        "context_sha256": "2e080d4e35c854316caa105643eef78eb07942d8024fcfeea3df81489512f009",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "9b990a9bfa3eebe2edfbb33e388c63c8c51e504602302f433e3a952362e0b450",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "f5bd9751dd7074f0ff8df44acd9d02e85887789b5be282ae118a0a10029345f9",
+        "captured_at": 84.264673625,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [
+            "#id",
+            ".some-element"
+          ],
+          "inputs": {
+            ".some-element": [
+              "text",
+              "textContent",
+              "innerText",
+              "attribute:data-target"
+            ]
+          },
+          "bindings": {},
+          "nodes": [
+            {
+              "selector": "#id",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": []
+            },
+            {
+              "selector": ".some-element",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": [
+                "text",
+                "textContent",
+                "innerText",
+                "attribute:data-target"
+              ]
+            }
+          ]
+        },
+        "signature": "016152014f43e8890d4d5fe084064602de307894f115fcb0fff4814bb4fa4011"
+      }
+    },
+    {
+      "id": "SRC-2-L8-B234",
+      "label": "unsafe",
+      "fixture_kind": "dom-input",
+      "family": "dom-input-html",
+      "lineage_group": "codeql-dom-inputs",
+      "original_fragment": "$(\"#id\").html($(\".some-element\").attr(\"data-target\"));",
+      "fragment_sha256": "bc0326824c2d95f1aa30ce5d5adf3af71b6a52e46c29b203024fb2f64b4e8414",
+      "code": "$(\"#id\").html($(\".some-element\").attr(\"data-target\"));",
+      "provenance": {
+        "repository": "github/codeql",
+        "revision": "4af6ba60e60683f482a583f9d444f1286abafd1f",
+        "path": "javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js",
+        "url": "https://github.com/github/codeql/blob/4af6ba60e60683f482a583f9d444f1286abafd1f/javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js"
+      },
+      "source_sha256": "682fd8dca784da57834336219984b11154e2a96b281316286bd7fc28228e97ce",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "Fixture-controlled DOM text/value/attribute reaches HTML interpretation without encoding or sanitization.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Input DOM text/value/attribute is attacker-controlled in the isolated fixture. Receiver and dependency types are supplied by the harness; no deployed application exploit is claimed.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": true,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "ccaabfdccfdeaadddebdbacbcaccccbf",
+        "observed_marker": "ccaabfdccfdeaadddebdbacbcaccccbf",
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "CANDIDATE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:a029087d52b52aec077a15e48f17974b6add59fce85f4643378c90f5a0bf3322",
+        "context_sha256": "01a124e8f25b49912e9982bbc0f890d095e498d318266b62d858955c1ce185c6",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "bc0326824c2d95f1aa30ce5d5adf3af71b6a52e46c29b203024fb2f64b4e8414",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "428519bbfddfcfa8a1eedde99f7727b8ccb64bc346721e0611807787fb8e7f44",
+        "captured_at": 84.350029797,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [
+            "#id",
+            ".some-element"
+          ],
+          "inputs": {
+            ".some-element": [
+              "text",
+              "textContent",
+              "innerText",
+              "attribute:data-target"
+            ]
+          },
+          "bindings": {},
+          "nodes": [
+            {
+              "selector": "#id",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": []
+            },
+            {
+              "selector": ".some-element",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": [
+                "text",
+                "textContent",
+                "innerText",
+                "attribute:data-target"
+              ]
+            }
+          ]
+        },
+        "signature": "12914ffda9f34bb25b25f76762d395a6fd993aff7e6fa8b2b6848677878ad3e5"
+      }
+    },
+    {
+      "id": "SRC-2-L10-B303",
+      "label": "unsafe",
+      "fixture_kind": "dom-input",
+      "family": "dom-input-html",
+      "lineage_group": "codeql-dom-inputs",
+      "original_fragment": "$(\"#id\").html(\n\t\tdocument.getElementById(\"foo\").innerText // $ Alert\n\t);",
+      "fragment_sha256": "289f1b27062992b0516e0f079cf59f0f5e84d8c6468e878debb55dcef51aee09",
+      "code": "$(\"#id\").html(\n\t\tdocument.getElementById(\"foo\").innerText // $ Alert\n\t);",
+      "provenance": {
+        "repository": "github/codeql",
+        "revision": "4af6ba60e60683f482a583f9d444f1286abafd1f",
+        "path": "javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js",
+        "url": "https://github.com/github/codeql/blob/4af6ba60e60683f482a583f9d444f1286abafd1f/javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js"
+      },
+      "source_sha256": "682fd8dca784da57834336219984b11154e2a96b281316286bd7fc28228e97ce",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "Fixture-controlled DOM text/value/attribute reaches HTML interpretation without encoding or sanitization.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Input DOM text/value/attribute is attacker-controlled in the isolated fixture. Receiver and dependency types are supplied by the harness; no deployed application exploit is claimed.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": true,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "fadafacefcdbdcaccdbcebacadefbecf",
+        "observed_marker": "fadafacefcdbdcaccdbcebacadefbecf",
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "CANDIDATE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:fd67c2985b961b981727654aa59fba9e6be4763271deb0f889cf1284d0287981",
+        "context_sha256": "059cbee917d597abe4331eaa2d3cd35c351c5f82109c03f68ae3697f00056986",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "289f1b27062992b0516e0f079cf59f0f5e84d8c6468e878debb55dcef51aee09",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "1063f60fe22fde79a09d386654488796ddce361d2a13f2270adf78029e613cdb",
+        "captured_at": 84.45786512,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [
+            "#foo",
+            "#id"
+          ],
+          "inputs": {
+            "#foo": [
+              "text",
+              "textContent",
+              "innerText"
+            ]
+          },
+          "bindings": {},
+          "nodes": [
+            {
+              "selector": "#foo",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": [
+                "text",
+                "textContent",
+                "innerText"
+              ]
+            },
+            {
+              "selector": "#id",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": []
+            }
+          ]
+        },
+        "signature": "428a505429d9c5bf69fadac95b4085f387378f5553e0b89d5898e0693f6de112"
+      }
+    },
+    {
+      "id": "SRC-2-L18-B479",
+      "label": "unsafe",
+      "fixture_kind": "dom-input",
+      "family": "dom-input-html",
+      "lineage_group": "codeql-dom-inputs",
+      "original_fragment": "$(\"#id\").html(\n\t\tdocument.getElementById(\"foo\").textContent // $ Alert\n\t);",
+      "fragment_sha256": "e471398da525c8de44a588a719eceafaebacd6e4e37448538b4cacecfcd67a01",
+      "code": "$(\"#id\").html(\n\t\tdocument.getElementById(\"foo\").textContent // $ Alert\n\t);",
+      "provenance": {
+        "repository": "github/codeql",
+        "revision": "4af6ba60e60683f482a583f9d444f1286abafd1f",
+        "path": "javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js",
+        "url": "https://github.com/github/codeql/blob/4af6ba60e60683f482a583f9d444f1286abafd1f/javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js"
+      },
+      "source_sha256": "682fd8dca784da57834336219984b11154e2a96b281316286bd7fc28228e97ce",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "Fixture-controlled DOM text/value/attribute reaches HTML interpretation without encoding or sanitization.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Input DOM text/value/attribute is attacker-controlled in the isolated fixture. Receiver and dependency types are supplied by the harness; no deployed application exploit is claimed.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": true,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "feccbaaabbcdaeaefefecfdbccbbbadb",
+        "observed_marker": "feccbaaabbcdaeaefefecfdbccbbbadb",
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "CANDIDATE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:06dda6667028e390fab57788303632c34f2b8ddb811613b4ea9533cbc9c4ac8e",
+        "context_sha256": "9d583d9df94f849d59bd3116289d69b536d672e56545abd30979278eab728d9c",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "e471398da525c8de44a588a719eceafaebacd6e4e37448538b4cacecfcd67a01",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "1efd216d5b7ec2b1411c395fc8cf8930c1fa1360a4c2d1095afe682e02d07d67",
+        "captured_at": 84.557746985,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [
+            "#foo",
+            "#id"
+          ],
+          "inputs": {
+            "#foo": [
+              "text",
+              "textContent",
+              "innerText"
+            ]
+          },
+          "bindings": {},
+          "nodes": [
+            {
+              "selector": "#foo",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": [
+                "text",
+                "textContent",
+                "innerText"
+              ]
+            },
+            {
+              "selector": "#id",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": []
+            }
+          ]
+        },
+        "signature": "f9f12db202d873dc31ba1fb44bfd746615dfa1da159241d33bc717140b2f8460"
+      }
+    },
+    {
+      "id": "SRC-2-L22-B557",
+      "label": "unsafe",
+      "fixture_kind": "dom-input",
+      "family": "dom-input-html",
+      "lineage_group": "codeql-dom-inputs",
+      "original_fragment": "$(\"#id\").html(\n\t\tdocument.querySelectorAll(\"textarea\")[0].value // $ Alert\n\t);",
+      "fragment_sha256": "5e047fea5f6951deb0f15cc201c8a310d55217f3c532eff869796fafb33fd70d",
+      "code": "$(\"#id\").html(\n\t\tdocument.querySelectorAll(\"textarea\")[0].value // $ Alert\n\t);",
+      "provenance": {
+        "repository": "github/codeql",
+        "revision": "4af6ba60e60683f482a583f9d444f1286abafd1f",
+        "path": "javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js",
+        "url": "https://github.com/github/codeql/blob/4af6ba60e60683f482a583f9d444f1286abafd1f/javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js"
+      },
+      "source_sha256": "682fd8dca784da57834336219984b11154e2a96b281316286bd7fc28228e97ce",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "Fixture-controlled DOM text/value/attribute reaches HTML interpretation without encoding or sanitization.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Input DOM text/value/attribute is attacker-controlled in the isolated fixture. Receiver and dependency types are supplied by the harness; no deployed application exploit is claimed.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": true,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "bcccbbecacbdaaffaeeebacbbdfbcedf",
+        "observed_marker": "bcccbbecacbdaaffaeeebacbbdfbcedf",
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "CANDIDATE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:58deb8ddfd34eaf0782876bd25fe2cfe17e7d85cd525df656ddcc1b4900235bb",
+        "context_sha256": "fe18025aa5d103a6802ff4f21b545ffbf3a0fd38a139a99395171a3f53c2a816",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "5e047fea5f6951deb0f15cc201c8a310d55217f3c532eff869796fafb33fd70d",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "be7d22adf70e41c74da5003c79ab21b3a23bd7b74a9b21bb4c97d7abfb3d2914",
+        "captured_at": 84.645581052,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [
+            "#id",
+            "textarea"
+          ],
+          "inputs": {
+            "textarea": [
+              "value"
+            ]
+          },
+          "bindings": {},
+          "nodes": [
+            {
+              "selector": "#id",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": []
+            },
+            {
+              "selector": "textarea",
+              "count": 1,
+              "tag": "TEXTAREA",
+              "controlled_fields": [
+                "value"
+              ]
+            }
+          ]
+        },
+        "signature": "b7f9c5295e6475af1716641cfa3b989e4686e7826dcc3070bb2b2b24fe4eca3d"
+      }
+    },
+    {
+      "id": "SRC-2-L26-B639",
+      "label": "unsafe",
+      "fixture_kind": "dom-input",
+      "family": "dom-input-html",
+      "lineage_group": "codeql-dom-inputs",
+      "original_fragment": "$(\"#id\").html(\n\t\tdocument.getElementById('div1').getAttribute('data-target') // $ Alert\n\t);",
+      "fragment_sha256": "96665cf8c07736d08fcd5b165a1ec7d72e6dfc0ef711fedec1dd55cd6a7c12a4",
+      "code": "$(\"#id\").html(\n\t\tdocument.getElementById('div1').getAttribute('data-target') // $ Alert\n\t);",
+      "provenance": {
+        "repository": "github/codeql",
+        "revision": "4af6ba60e60683f482a583f9d444f1286abafd1f",
+        "path": "javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js",
+        "url": "https://github.com/github/codeql/blob/4af6ba60e60683f482a583f9d444f1286abafd1f/javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js"
+      },
+      "source_sha256": "682fd8dca784da57834336219984b11154e2a96b281316286bd7fc28228e97ce",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "Fixture-controlled DOM text/value/attribute reaches HTML interpretation without encoding or sanitization.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Input DOM text/value/attribute is attacker-controlled in the isolated fixture. Receiver and dependency types are supplied by the harness; no deployed application exploit is claimed.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": true,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "badcbbebbeadadeabeeecccbcfbdedfd",
+        "observed_marker": "badcbbebbeadadeabeeecccbcfbdedfd",
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "CANDIDATE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:120c817f25d874cd594310a04eb644fe0024b44f0c6275aaff49b38265ff3008",
+        "context_sha256": "9887d79e7b97c31bd5970d73f7d16145629f6e5c9ab3e565b31e025f1432b123",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "96665cf8c07736d08fcd5b165a1ec7d72e6dfc0ef711fedec1dd55cd6a7c12a4",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "bcd6675f9ecbd55b6714c5c6c7c2c219b5ee3fde8068aecad4392815a5d515a1",
+        "captured_at": 84.732425359,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [
+            "#div1",
+            "#id"
+          ],
+          "inputs": {
+            "#div1": [
+              "attribute:data-target"
+            ]
+          },
+          "bindings": {},
+          "nodes": [
+            {
+              "selector": "#div1",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": [
+                "attribute:data-target"
+              ]
+            },
+            {
+              "selector": "#id",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": []
+            }
+          ]
+        },
+        "signature": "0a20ed3519214a47c96248214c03bfd7cf86a18fbb7991579a147dcbb111c891"
+      }
+    },
+    {
+      "id": "SRC-2-L51-B1120",
+      "label": "unsafe",
+      "fixture_kind": "dom-input",
+      "family": "dom-input-html",
+      "lineage_group": "codeql-dom-inputs",
+      "original_fragment": "$(\"#id\").get(0).innerHTML = $(\"textarea\").val();",
+      "fragment_sha256": "0b82af08c6a41c451707804ed2377e6a0e34427db06adb29645c5dc0ad1b5de2",
+      "code": "$(\"#id\").get(0).innerHTML = $(\"textarea\").val();",
+      "provenance": {
+        "repository": "github/codeql",
+        "revision": "4af6ba60e60683f482a583f9d444f1286abafd1f",
+        "path": "javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js",
+        "url": "https://github.com/github/codeql/blob/4af6ba60e60683f482a583f9d444f1286abafd1f/javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js"
+      },
+      "source_sha256": "682fd8dca784da57834336219984b11154e2a96b281316286bd7fc28228e97ce",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "Fixture-controlled DOM text/value/attribute reaches HTML interpretation without encoding or sanitization.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Input DOM text/value/attribute is attacker-controlled in the isolated fixture. Receiver and dependency types are supplied by the harness; no deployed application exploit is claimed.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": true,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "cbedaabefcabfddebeddffdbceacbaef",
+        "observed_marker": "cbedaabefcabfddebeddffdbceacbaef",
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "CANDIDATE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:0e110564ce35e12cacbb0a1d8086532ff2e6f095bdcc09ff88457c9f8f105de9",
+        "context_sha256": "f281085ba110a774ffeb3f4da88ff0bac82b79f4ab7617fcbf79f457cef54d12",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "0b82af08c6a41c451707804ed2377e6a0e34427db06adb29645c5dc0ad1b5de2",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "c9657da564c4aeb4741a571dc53e8e976d29c3529bc92f71e3a366a452da4d13",
+        "captured_at": 84.82011899,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [
+            "#id",
+            "textarea"
+          ],
+          "inputs": {
+            "textarea": [
+              "value"
+            ]
+          },
+          "bindings": {},
+          "nodes": [
+            {
+              "selector": "#id",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": []
+            },
+            {
+              "selector": "textarea",
+              "count": 1,
+              "tag": "TEXTAREA",
+              "controlled_fields": [
+                "value"
+              ]
+            }
+          ]
+        },
+        "signature": "02c0ca99e294c4cf530c736fd1fee1ae1817948f5d7102840503294a5002bef6"
+      }
+    },
+    {
+      "id": "SRC-2-L56-B1270",
+      "label": "unsafe",
+      "fixture_kind": "dom-input",
+      "family": "dom-input-html",
+      "lineage_group": "codeql-dom-inputs",
+      "original_fragment": "$(\"#id\").get(0).innerHTML = $(\"input\").get(0).name;",
+      "fragment_sha256": "a6a8bcf2f867173f50a3b9b235b1e5562786c410353531a267b2aa34ba27308d",
+      "code": "$(\"#id\").get(0).innerHTML = $(\"input\").get(0).name;",
+      "provenance": {
+        "repository": "github/codeql",
+        "revision": "4af6ba60e60683f482a583f9d444f1286abafd1f",
+        "path": "javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js",
+        "url": "https://github.com/github/codeql/blob/4af6ba60e60683f482a583f9d444f1286abafd1f/javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js"
+      },
+      "source_sha256": "682fd8dca784da57834336219984b11154e2a96b281316286bd7fc28228e97ce",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "Fixture-controlled DOM text/value/attribute reaches HTML interpretation without encoding or sanitization.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Input DOM text/value/attribute is attacker-controlled in the isolated fixture. Receiver and dependency types are supplied by the harness; no deployed application exploit is claimed.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": true,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "ccdefffcbabffeddeddebefeaecacbee",
+        "observed_marker": "ccdefffcbabffeddeddebefeaecacbee",
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "CANDIDATE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:c2d7c2e64e4cac64d55e6e5a8a8e5ac289479a5b5d0145475911e505a42dea9a",
+        "context_sha256": "35301ad4fa6adfb5bdfc5219b2265d91dc9c131bd2057c9d3cb628be1775271d",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "a6a8bcf2f867173f50a3b9b235b1e5562786c410353531a267b2aa34ba27308d",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "3102332ac2aba2d78ae8e1178b96e641d904084fc586d538756811247d6e5c69",
+        "captured_at": 84.908021319,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [
+            "#id",
+            "input"
+          ],
+          "inputs": {
+            "input": [
+              "value",
+              "name",
+              "attribute:name"
+            ]
+          },
+          "bindings": {},
+          "nodes": [
+            {
+              "selector": "#id",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": []
+            },
+            {
+              "selector": "input",
+              "count": 2,
+              "tag": "INPUT",
+              "controlled_fields": [
+                "value",
+                "name",
+                "attribute:name"
+              ]
+            }
+          ]
+        },
+        "signature": "a31ba4d6b8d71c62b26fb996232cada4714716edff780955e1fbcda7a5e593b9"
+      }
+    },
+    {
+      "id": "SRC-2-L57-B1334",
+      "label": "unsafe",
+      "fixture_kind": "dom-input",
+      "family": "dom-input-html",
+      "lineage_group": "codeql-dom-inputs",
+      "original_fragment": "$(\"#id\").get(0).innerHTML = $(\"input\").get(0).getAttribute(\"name\");",
+      "fragment_sha256": "88e1915eecbbb1c221f306feff37d33f069446d6434139cdee73ef76ee35000d",
+      "code": "$(\"#id\").get(0).innerHTML = $(\"input\").get(0).getAttribute(\"name\");",
+      "provenance": {
+        "repository": "github/codeql",
+        "revision": "4af6ba60e60683f482a583f9d444f1286abafd1f",
+        "path": "javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js",
+        "url": "https://github.com/github/codeql/blob/4af6ba60e60683f482a583f9d444f1286abafd1f/javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js"
+      },
+      "source_sha256": "682fd8dca784da57834336219984b11154e2a96b281316286bd7fc28228e97ce",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "Fixture-controlled DOM text/value/attribute reaches HTML interpretation without encoding or sanitization.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Input DOM text/value/attribute is attacker-controlled in the isolated fixture. Receiver and dependency types are supplied by the harness; no deployed application exploit is claimed.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": true,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "dcbcfabbbfebedfcadfaecfcdffcadfc",
+        "observed_marker": "dcbcfabbbfebedfcadfaecfcdffcadfc",
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "CANDIDATE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:0e96b8bd00d852bf99132d1dce6c80ec3a1e6a6171b3001d37292fea9f6e85ed",
+        "context_sha256": "7083b2fb2218886848615a9d80971a1793734b44574194a55f37d325dc17cec6",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "88e1915eecbbb1c221f306feff37d33f069446d6434139cdee73ef76ee35000d",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "2cbbd5f1840274adbf7aef34b6b6b463c573b339e124b83fde57710ce0ce31e2",
+        "captured_at": 84.996666387,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [
+            "#id",
+            "input"
+          ],
+          "inputs": {
+            "input": [
+              "value",
+              "name",
+              "attribute:name"
+            ]
+          },
+          "bindings": {},
+          "nodes": [
+            {
+              "selector": "#id",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": []
+            },
+            {
+              "selector": "input",
+              "count": 2,
+              "tag": "INPUT",
+              "controlled_fields": [
+                "value",
+                "name",
+                "attribute:name"
+              ]
+            }
+          ]
+        },
+        "signature": "72ddedbbe511fd6fe4f5b4ae3c8ddbbc9624cc2ac5350a18b04e14a283206fb1"
+      }
+    },
+    {
+      "id": "SRC-2-L61-B1478",
+      "label": "unsafe",
+      "fixture_kind": "dom-input",
+      "family": "dom-input-html",
+      "lineage_group": "codeql-dom-inputs",
+      "original_fragment": "$(\"#id\").get(0).innerHTML = $(document).find(\"option\").attr(\"value\");",
+      "fragment_sha256": "a0def04439678a4750796778471d0e38c66a5849d636ec32b4d826faf9112e1f",
+      "code": "$(\"#id\").get(0).innerHTML = $(document).find(\"option\").attr(\"value\");",
+      "provenance": {
+        "repository": "github/codeql",
+        "revision": "4af6ba60e60683f482a583f9d444f1286abafd1f",
+        "path": "javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js",
+        "url": "https://github.com/github/codeql/blob/4af6ba60e60683f482a583f9d444f1286abafd1f/javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js"
+      },
+      "source_sha256": "682fd8dca784da57834336219984b11154e2a96b281316286bd7fc28228e97ce",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "Fixture-controlled DOM text/value/attribute reaches HTML interpretation without encoding or sanitization.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Input DOM text/value/attribute is attacker-controlled in the isolated fixture. Receiver and dependency types are supplied by the harness; no deployed application exploit is claimed.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": true,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "eeeaaeebbeeffcfecadffdeebfffbbca",
+        "observed_marker": "eeeaaeebbeeffcfecadffdeebfffbbca",
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "CANDIDATE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:7ff1565079b4547e9dda6bcf4f53cb3b44d44e2b28336d89d1af3ed36d93de38",
+        "context_sha256": "2d88b0a205b30dbf46997d23ddfaf7e479157cda15cf992c36f8a0a281c82885",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "a0def04439678a4750796778471d0e38c66a5849d636ec32b4d826faf9112e1f",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "dd66880a25628f37b9dc32c563e1aa839274031f403a060ea312cf04fcf95bed",
+        "captured_at": 85.092551145,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [
+            "#id",
+            "option"
+          ],
+          "inputs": {
+            "option": [
+              "value",
+              "attribute:value"
+            ]
+          },
+          "bindings": {},
+          "nodes": [
+            {
+              "selector": "#id",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": []
+            },
+            {
+              "selector": "option",
+              "count": 1,
+              "tag": "OPTION",
+              "controlled_fields": [
+                "value",
+                "attribute:value"
+              ]
+            }
+          ]
+        },
+        "signature": "24692ecf30675fea9bc83094ed72463c1d1e28340b0fdf37fd61c4864952967f"
+      }
+    },
+    {
+      "id": "SRC-2-L81-B2029",
+      "label": "unsafe",
+      "fixture_kind": "dom-input",
+      "family": "dom-input-html",
+      "lineage_group": "codeql-dom-inputs",
+      "original_fragment": "$(\"#id\").html( $('#foo').prop('innerText') );",
+      "fragment_sha256": "cdae060a945ebf9ecc1a9f0a76dd9d52de16ddf824f38899864921ecf2b4a162",
+      "code": "$(\"#id\").html( $('#foo').prop('innerText') );",
+      "provenance": {
+        "repository": "github/codeql",
+        "revision": "4af6ba60e60683f482a583f9d444f1286abafd1f",
+        "path": "javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js",
+        "url": "https://github.com/github/codeql/blob/4af6ba60e60683f482a583f9d444f1286abafd1f/javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js"
+      },
+      "source_sha256": "682fd8dca784da57834336219984b11154e2a96b281316286bd7fc28228e97ce",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "Fixture-controlled DOM text/value/attribute reaches HTML interpretation without encoding or sanitization.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Input DOM text/value/attribute is attacker-controlled in the isolated fixture. Receiver and dependency types are supplied by the harness; no deployed application exploit is claimed.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": true,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "eaadbcfafdacdbeeaacdfdbeccecbfec",
+        "observed_marker": "eaadbcfafdacdbeeaacdfdbeccecbfec",
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "CANDIDATE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:52025d0f964ac29b641504d1052e02803dafef9d8240326615c72dce52c8ba72",
+        "context_sha256": "fa1d63d56674186fed75fb514b2b94ce6d5a9ea3539a3ca83c93d09db6e7ab2a",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "cdae060a945ebf9ecc1a9f0a76dd9d52de16ddf824f38899864921ecf2b4a162",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "5612961761e736c397279ffd4be75e5c41f6cc3353996f6ce37213a1797ec808",
+        "captured_at": 85.178845881,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [
+            "#foo",
+            "#id"
+          ],
+          "inputs": {
+            "#foo": [
+              "text",
+              "textContent",
+              "innerText"
+            ]
+          },
+          "bindings": {},
+          "nodes": [
+            {
+              "selector": "#foo",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": [
+                "text",
+                "textContent",
+                "innerText"
+              ]
+            },
+            {
+              "selector": "#id",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": []
+            }
+          ]
+        },
+        "signature": "dd6e333c018ed00ce343402999d384d9b3c2a3ee83c56cb80de7ed69be66308d"
+      }
+    },
+    {
+      "id": "SRC-2-L93-B2440",
+      "label": "unsafe",
+      "fixture_kind": "dom-input",
+      "family": "dom-input-html",
+      "lineage_group": "codeql-dom-inputs",
+      "original_fragment": "$(\"#id\").html($(\"#foo\").find(\".bla\")[0].value);",
+      "fragment_sha256": "412880196c4f3894f00daf3add59d2f79e139c27c4965625869e9de20cdd9bdb",
+      "code": "$(\"#id\").html($(\"#foo\").find(\".bla\")[0].value);",
+      "provenance": {
+        "repository": "github/codeql",
+        "revision": "4af6ba60e60683f482a583f9d444f1286abafd1f",
+        "path": "javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js",
+        "url": "https://github.com/github/codeql/blob/4af6ba60e60683f482a583f9d444f1286abafd1f/javascript/ql/test/query-tests/Security/CWE-079/XssThroughDom/xss-through-dom.js"
+      },
+      "source_sha256": "682fd8dca784da57834336219984b11154e2a96b281316286bd7fc28228e97ce",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "Fixture-controlled DOM text/value/attribute reaches HTML interpretation without encoding or sanitization.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Input DOM text/value/attribute is attacker-controlled in the isolated fixture. Receiver and dependency types are supplied by the harness; no deployed application exploit is claimed.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": true,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "ebafbfbdcfeadbebbbfbcffbaaabeacf",
+        "observed_marker": "ebafbfbdcfeadbebbbfbcffbaaabeacf",
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "CANDIDATE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:530e92b4abaf96054843039999382a692e6385813b972761832e3312d670234c",
+        "context_sha256": "47e1382447a6003c6144fc313bb89520b2468a4ca1c9878aa421f57ed2ce9647",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "412880196c4f3894f00daf3add59d2f79e139c27c4965625869e9de20cdd9bdb",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "68dc4156b6907e0f2bf7486d592fee95f5e7d45707d03199ee829554398ebff1",
+        "captured_at": 85.265897658,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [
+            "#foo",
+            "#foo .bla",
+            "#id"
+          ],
+          "inputs": {
+            "#foo": [
+              "text",
+              "textContent",
+              "innerText"
+            ],
+            "#foo .bla": [
+              "value",
+              "name",
+              "attribute:name"
+            ]
+          },
+          "bindings": {},
+          "nodes": [
+            {
+              "selector": "#foo",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": [
+                "text",
+                "textContent",
+                "innerText"
+              ]
+            },
+            {
+              "selector": "#foo .bla",
+              "count": 1,
+              "tag": "INPUT",
+              "controlled_fields": [
+                "value",
+                "name",
+                "attribute:name"
+              ]
+            },
+            {
+              "selector": "#id",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": []
+            }
+          ]
+        },
+        "signature": "a6e39b1006b74afbc0e33bd4f9fde63babdc3d7e66492612941f307def854361"
+      }
+    },
+    {
+      "id": "SRC-4-L185-B5739",
+      "label": "safe",
+      "fixture_kind": "dropdown-callback",
+      "family": "bounded-numeric-html",
+      "lineage_group": "mybb-editor",
+      "original_fragment": "function (editor, caller, callback) {\n\t\t\tvar content = $('<div />'),\n\t\t\t\tclickFunc = function (e) {\n\t\t\t\t\tcallback($(this).data('size'));\n\t\t\t\t\teditor.closeDropDown(true);\n\t\t\t\t\te.preventDefault();\n\t\t\t\t};\n\n\t\t\tfor (var i = 1; i <= 7; i++)\n\t\t\t\tcontent.append($('<a class=\"sceditor-fontsize-option\" data-size=\"' + i + '\" href=\"#\"><font size=\"' + i + '\">' + i + '</font></a>').on('click', clickFunc));\n\n\t\t\teditor.createDropDown(caller, 'fontsize-picker', content.get(0));\n\t\t}",
+      "fragment_sha256": "bb665ed05724ef0a102c2ad4816dcb0bcaac5bad72c9c55f9bdd9b93457f1287",
+      "code": "const externalCallback = function (editor, caller, callback) {\n\t\t\tvar content = $('<div />'),\n\t\t\t\tclickFunc = function (e) {\n\t\t\t\t\tcallback($(this).data('size'));\n\t\t\t\t\teditor.closeDropDown(true);\n\t\t\t\t\te.preventDefault();\n\t\t\t\t};\n\n\t\t\tfor (var i = 1; i <= 7; i++)\n\t\t\t\tcontent.append($('<a class=\"sceditor-fontsize-option\" data-size=\"' + i + '\" href=\"#\"><font size=\"' + i + '\">' + i + '</font></a>').on('click', clickFunc));\n\n\t\t\teditor.createDropDown(caller, 'fontsize-picker', content.get(0));\n\t\t};",
+      "provenance": {
+        "repository": "mybb/mybb",
+        "revision": "897593d36d2db00ac09dd0c0379595354538b85a",
+        "path": "jscripts/bbcodes_sceditor.js",
+        "url": "https://github.com/mybb/mybb/blob/897593d36d2db00ac09dd0c0379595354538b85a/jscripts/bbcodes_sceditor.js"
+      },
+      "source_sha256": "bd68dff2ae5e86a1a28c1e47f522e78e2504b3b0e5eff388fcd64f105e491673",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "Complete callback builds links from fixed markup and a numeric loop bounded to integers 1 through 7; no user input enters the HTML.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Only the extracted sink or callback is judged; other application paths are not labelled safe.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": false,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "aeffadcdafdfdbeaedcaebedaaeaabba",
+        "observed_marker": null,
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "INCONCLUSIVE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:c16802d281a92e69eeb9c46afaa67b2825dd8bfe5aeca3bf908a9466c7df1fb0",
+        "context_sha256": "82a1d718ab87feffa1f95bf0a8625111af1eda7854efa96c917006980654110e",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "1529a667a0ef48c995a3c3cf89193466e2ef8c5bd399a5c4243e9a4881fce12e",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "8f2d4649911ce2793ff7c14e1756a24d7a3fd2ec53bff4b049f85951d8191efb",
+        "captured_at": 85.34968151,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [],
+          "inputs": {},
+          "bindings": {},
+          "nodes": []
+        },
+        "signature": "3839323ff22ceb2f8498634b93a40513b476e48d0f85c197de99ddced7877e0e"
+      }
+    },
+    {
+      "id": "SRC-4-L221-B6716",
+      "label": "unsafe",
+      "fixture_kind": "cite-html",
+      "family": "text-reparse",
+      "lineage_group": "mybb-editor",
+      "original_fragment": "$cite.html($cite.text());",
+      "fragment_sha256": "6c9b57699e17877f905bb264625be537be78e823b3becad7051764078f50ddcc",
+      "code": "$cite.html($cite.text());",
+      "provenance": {
+        "repository": "mybb/mybb",
+        "revision": "897593d36d2db00ac09dd0c0379595354538b85a",
+        "path": "jscripts/bbcodes_sceditor.js",
+        "url": "https://github.com/mybb/mybb/blob/897593d36d2db00ac09dd0c0379595354538b85a/jscripts/bbcodes_sceditor.js"
+      },
+      "source_sha256": "bd68dff2ae5e86a1a28c1e47f522e78e2504b3b0e5eff388fcd64f105e491673",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "Text content containing markup is read with text() then reinterpreted by html(); the fixture provides untrusted cite text.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Input DOM text/value/attribute is attacker-controlled in the isolated fixture. Receiver and dependency types are supplied by the harness; no deployed application exploit is claimed.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": true,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "ebafcbbffcbdfaefbcdabecbbcbfeade",
+        "observed_marker": "ebafcbbffcbdfaefbcdabecbbcbfeade",
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "CANDIDATE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:411b59b7a18a3183445d15bf9ac573351234da5ccf510cee1545af5912d6d945",
+        "context_sha256": "8398c3af15e8aa88e2310f9a6656e9d38c7547dcb59163a53b3413c81b990dae",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "6c9b57699e17877f905bb264625be537be78e823b3becad7051764078f50ddcc",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "3f6db23625c89ee77170f1c421bd7af07650468e680d1004cead68bf7ea5d936",
+        "captured_at": 85.924566643,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [
+            "cite"
+          ],
+          "inputs": {
+            "cite": [
+              "text",
+              "textContent",
+              "innerText"
+            ]
+          },
+          "bindings": {
+            "$cite": {
+              "selector": "cite",
+              "kind": "jquery",
+              "inert_node": true
+            }
+          },
+          "nodes": [
+            {
+              "selector": "cite",
+              "count": 1,
+              "tag": "CITE",
+              "controlled_fields": [
+                "text",
+                "textContent",
+                "innerText"
+              ]
+            }
+          ]
+        },
+        "signature": "26a11d4fc5b7839006c425aa2ad08c29dfa52aec590648610c70bdf277d4eeb6"
+      }
+    },
+    {
+      "id": "SRC-4-L232-B7005",
+      "label": "safe",
+      "fixture_kind": "cite-move",
+      "family": "dom-node-move",
+      "lineage_group": "mybb-editor",
+      "original_fragment": "$elm.prepend($cite);",
+      "fragment_sha256": "aafc5e937fd0f8b7fdf96da19f5692c198f95adc62e8b4534c95988c6a209a84",
+      "code": "$elm.prepend($cite);",
+      "provenance": {
+        "repository": "mybb/mybb",
+        "revision": "897593d36d2db00ac09dd0c0379595354538b85a",
+        "path": "jscripts/bbcodes_sceditor.js",
+        "url": "https://github.com/mybb/mybb/blob/897593d36d2db00ac09dd0c0379595354538b85a/jscripts/bbcodes_sceditor.js"
+      },
+      "source_sha256": "bd68dff2ae5e86a1a28c1e47f522e78e2504b3b0e5eff388fcd64f105e491673",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "The supplied cite is an existing jQuery DOM selection; prepend moves that node and does not parse its text content as markup. This does not certify preceding html() operations.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Only the extracted sink or callback is judged; other application paths are not labelled safe.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": false,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "daeacbdfebfddeccacadbaaeddadcdba",
+        "observed_marker": null,
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "SAFE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:8b6554d25489d88e47ad4044f7fb936017179bde0abc0a3e912c0437efe96329",
+        "context_sha256": "adb686c0c1a11e7da6ff3aafc557503e6fb39fb7da9c6d9b48aa371cd7cefd09",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "aafc5e937fd0f8b7fdf96da19f5692c198f95adc62e8b4534c95988c6a209a84",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "ee214de6874df89f04e17da7be1dd28947832d77ddae987e2a12abf01254c302",
+        "captured_at": 86.012749136,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [
+            "cite",
+            "#quote"
+          ],
+          "inputs": {
+            "cite": [
+              "text",
+              "textContent",
+              "innerText"
+            ],
+            "#quote": [
+              "text",
+              "textContent",
+              "innerText"
+            ]
+          },
+          "bindings": {
+            "$cite": {
+              "selector": "cite",
+              "kind": "jquery",
+              "inert_node": true
+            },
+            "$elm": {
+              "selector": "#quote",
+              "kind": "jquery",
+              "inert_node": true
+            }
+          },
+          "nodes": [
+            {
+              "selector": "cite",
+              "count": 1,
+              "tag": "CITE",
+              "controlled_fields": [
+                "text",
+                "textContent",
+                "innerText"
+              ]
+            },
+            {
+              "selector": "#quote",
+              "count": 1,
+              "tag": "DIV",
+              "controlled_fields": [
+                "text",
+                "textContent",
+                "innerText"
+              ]
+            }
+          ]
+        },
+        "signature": "cacfd8629e5032c0b59ec4d9f13260523ab736a28a1c3f1d025279cb3c918d65"
+      }
+    },
+    {
+      "id": "SRC-6-L142-B5059",
+      "label": "safe",
+      "fixture_kind": "this-literal",
+      "family": "literal-markup",
+      "lineage_group": "prism-previewers",
+      "original_fragment": "this._elt.innerHTML = '<div></div>';",
+      "fragment_sha256": "c6730e3e9f5ebb27bac5a0b20d44b4d64fad1c3acc58204827e209d7fded7402",
+      "code": "this._elt.innerHTML = '<div></div>';",
+      "provenance": {
+        "repository": "PrismJS/prism",
+        "revision": "8403e4537b2fdc23435b7235ad082df1f6e6c6e4",
+        "path": "plugins/previewers/prism-previewers.js",
+        "url": "https://github.com/PrismJS/prism/blob/8403e4537b2fdc23435b7235ad082df1f6e6c6e4/plugins/previewers/prism-previewers.js"
+      },
+      "source_sha256": "e40e5b7345156623f69d13f1c52729c19359aec9bf0a2676cf5170d47acceafb",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "innerHTML receives only fixed literal markup; this output has no external value.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Only the extracted sink or callback is judged; other application paths are not labelled safe.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": false,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "dabbcedbeecbaedfeeaeceefdfdfddba",
+        "observed_marker": null,
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "SAFE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:bbc140357c84388597d3cc768c512575af406f0b302e32997db5e564b01eaaea",
+        "context_sha256": "920f5759c5afa2b1ef0358fc18885b02f2987bcebb2dadaca22a34b822b3d49b",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "c6730e3e9f5ebb27bac5a0b20d44b4d64fad1c3acc58204827e209d7fded7402",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "0621ffc53f7b1292d2f940ab12294c4a5527ccdaa0a7b211ad789d511e015416",
+        "captured_at": 86.589738515,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [],
+          "inputs": {},
+          "bindings": {},
+          "nodes": []
+        },
+        "signature": "552f2f8140a62c60dcc74fef5434d2f40ee4822639e01368ec8fde5358c96cec"
+      }
+    },
+    {
+      "id": "SRC-6-L221-B6923",
+      "label": "safe",
+      "fixture_kind": "this-literal",
+      "family": "literal-markup",
+      "lineage_group": "prism-previewers",
+      "original_fragment": "this._elt.innerHTML = '<svg viewBox=\"0 0 64 64\">' +\n\t\t\t\t\t\t'<circle r=\"16\" cy=\"32\" cx=\"32\"></circle>' +\n\t\t\t\t\t\t'</svg>';",
+      "fragment_sha256": "ba0dcc78842543f6698ae25cf4ae24a8b9886019ea8905a079de31320a8b50c2",
+      "code": "this._elt.innerHTML = '<svg viewBox=\"0 0 64 64\">' +\n\t\t\t\t\t\t'<circle r=\"16\" cy=\"32\" cx=\"32\"></circle>' +\n\t\t\t\t\t\t'</svg>';",
+      "provenance": {
+        "repository": "PrismJS/prism",
+        "revision": "8403e4537b2fdc23435b7235ad082df1f6e6c6e4",
+        "path": "plugins/previewers/prism-previewers.js",
+        "url": "https://github.com/PrismJS/prism/blob/8403e4537b2fdc23435b7235ad082df1f6e6c6e4/plugins/previewers/prism-previewers.js"
+      },
+      "source_sha256": "e40e5b7345156623f69d13f1c52729c19359aec9bf0a2676cf5170d47acceafb",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "innerHTML receives only fixed literal markup; this output has no external value.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Only the extracted sink or callback is judged; other application paths are not labelled safe.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": false,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "fcbceaebecdfcbbddeeaabaecccdcaef",
+        "observed_marker": null,
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "SAFE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:f16aeb0045a4bcbfa6a606ac8d6e24009f211b381c96617df9698bd01e322575",
+        "context_sha256": "19f0b59597cc0c673e6b6dcb4444d187c7121cdf998f10efca7b1a8c9ae26d3f",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "ba0dcc78842543f6698ae25cf4ae24a8b9886019ea8905a079de31320a8b50c2",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "b575453fda781bc9dc10d22f1a16b4386cc0fb9f7146b40cecc17c79af424eb4",
+        "captured_at": 87.159965957,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [],
+          "inputs": {},
+          "bindings": {},
+          "nodes": []
+        },
+        "signature": "5f4e5870f062adfa899e10f0fc044872d45bbd12eb2a27f942fc084cb793b053"
+      }
+    },
+    {
+      "id": "SRC-6-L336-B9871",
+      "label": "safe",
+      "fixture_kind": "svg-callback",
+      "family": "svg-numeric",
+      "lineage_group": "prism-previewers",
+      "original_fragment": "function (value) {\n\n\t\t\t\t\tvalue = {\n\t\t\t\t\t\t'linear': '0,0,1,1',\n\t\t\t\t\t\t'ease': '.25,.1,.25,1',\n\t\t\t\t\t\t'ease-in': '.42,0,1,1',\n\t\t\t\t\t\t'ease-out': '0,0,.58,1',\n\t\t\t\t\t\t'ease-in-out':'.42,0,.58,1'\n\t\t\t\t\t}[value] || value;\n\n\t\t\t\t\tvar p = value.match(/-?\\d*\\.?\\d+/g);\n\n\t\t\t\t\tif(p.length === 4) {\n\t\t\t\t\t\tp = p.map(function(p, i) { return (i % 2? 1 - p : p) * 100; });\n\n\t\t\t\t\t\tthis.querySelector('path').setAttribute('d', 'M0,100 C' + p[0] + ',' + p[1] + ', ' + p[2] + ',' + p[3] + ', 100,0');\n\n\t\t\t\t\t\tvar lines = this.querySelectorAll('line');\n\t\t\t\t\t\tlines[0].setAttribute('x2', p[0]);\n\t\t\t\t\t\tlines[0].setAttribute('y2', p[1]);\n\t\t\t\t\t\tlines[1].setAttribute('x2', p[2]);\n\t\t\t\t\t\tlines[1].setAttribute('y2', p[3]);\n\n\t\t\t\t\t\treturn true;\n\t\t\t\t\t}\n\n\t\t\t\t\treturn false;\n\t\t\t\t}",
+      "fragment_sha256": "073ad7957b7c94fbac3de5e524a84afd65d2b34a1ef27308b2cafd200ae37462",
+      "code": "const externalCallback = function (value) {\n\n\t\t\t\t\tvalue = {\n\t\t\t\t\t\t'linear': '0,0,1,1',\n\t\t\t\t\t\t'ease': '.25,.1,.25,1',\n\t\t\t\t\t\t'ease-in': '.42,0,1,1',\n\t\t\t\t\t\t'ease-out': '0,0,.58,1',\n\t\t\t\t\t\t'ease-in-out':'.42,0,.58,1'\n\t\t\t\t\t}[value] || value;\n\n\t\t\t\t\tvar p = value.match(/-?\\d*\\.?\\d+/g);\n\n\t\t\t\t\tif(p.length === 4) {\n\t\t\t\t\t\tp = p.map(function(p, i) { return (i % 2? 1 - p : p) * 100; });\n\n\t\t\t\t\t\tthis.querySelector('path').setAttribute('d', 'M0,100 C' + p[0] + ',' + p[1] + ', ' + p[2] + ',' + p[3] + ', 100,0');\n\n\t\t\t\t\t\tvar lines = this.querySelectorAll('line');\n\t\t\t\t\t\tlines[0].setAttribute('x2', p[0]);\n\t\t\t\t\t\tlines[0].setAttribute('y2', p[1]);\n\t\t\t\t\t\tlines[1].setAttribute('x2', p[2]);\n\t\t\t\t\t\tlines[1].setAttribute('y2', p[3]);\n\n\t\t\t\t\t\treturn true;\n\t\t\t\t\t}\n\n\t\t\t\t\treturn false;\n\t\t\t\t};",
+      "provenance": {
+        "repository": "PrismJS/prism",
+        "revision": "8403e4537b2fdc23435b7235ad082df1f6e6c6e4",
+        "path": "plugins/previewers/prism-previewers.js",
+        "url": "https://github.com/PrismJS/prism/blob/8403e4537b2fdc23435b7235ad082df1f6e6c6e4/plugins/previewers/prism-previewers.js"
+      },
+      "source_sha256": "e40e5b7345156623f69d13f1c52729c19359aec9bf0a2676cf5170d47acceafb",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "Complete callback extracts numeric tokens, converts them to numbers and writes only fixed d/x2/y2 SVG geometry attributes; these attributes do not interpret HTML or JavaScript.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Only the extracted sink or callback is judged; other application paths are not labelled safe.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": false,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "fbeaedabbaceeecdbbcbbeecbbbeddaf",
+        "observed_marker": null,
+        "callback_result": true,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "INCONCLUSIVE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:eae5a2abfacde7240a8b23979cf5cd255d87522db8dffe42390d6ca243df64a5",
+        "context_sha256": "fd05549869f538ff63fb7f1b3683737eb4956bc2a4a362fb6893c846779da15d",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "661c3e96f22ac91f8254c9c3353698791e32254ee37444088469b895e9e7c55d",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "705cb0c9e227c6e9b8d25ebac5e7fd660f33ca34fc767551cb8e928dfd27f95b",
+        "captured_at": 87.735798838,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [],
+          "inputs": {},
+          "bindings": {},
+          "nodes": []
+        },
+        "signature": "9245ec40b7b609ba61056c0076bfcbcaca6008086188012267bb59432cc71238"
+      }
+    },
+    {
+      "id": "SRC-6-L416-B12427",
+      "label": "safe",
+      "fixture_kind": "this-literal",
+      "family": "literal-markup",
+      "lineage_group": "prism-previewers",
+      "original_fragment": "this._elt.innerHTML = '<svg viewBox=\"0 0 64 64\">' +\n\t\t\t\t\t\t'<circle r=\"16\" cy=\"32\" cx=\"32\"></circle>' +\n\t\t\t\t\t\t'</svg>';",
+      "fragment_sha256": "ba0dcc78842543f6698ae25cf4ae24a8b9886019ea8905a079de31320a8b50c2",
+      "code": "this._elt.innerHTML = '<svg viewBox=\"0 0 64 64\">' +\n\t\t\t\t\t\t'<circle r=\"16\" cy=\"32\" cx=\"32\"></circle>' +\n\t\t\t\t\t\t'</svg>';",
+      "provenance": {
+        "repository": "PrismJS/prism",
+        "revision": "8403e4537b2fdc23435b7235ad082df1f6e6c6e4",
+        "path": "plugins/previewers/prism-previewers.js",
+        "url": "https://github.com/PrismJS/prism/blob/8403e4537b2fdc23435b7235ad082df1f6e6c6e4/plugins/previewers/prism-previewers.js"
+      },
+      "source_sha256": "e40e5b7345156623f69d13f1c52729c19359aec9bf0a2676cf5170d47acceafb",
+      "label_review": {
+        "reviewer": "assistant-engine-author",
+        "review_status": "author_reviewed_conditional_fixture",
+        "semantic_reason": "innerHTML receives only fixed literal markup; this output has no external value.",
+        "safe_by_nonexecution_only": false,
+        "independent_review": false
+      },
+      "assumptions": "Only the extracted sink or callback is judged; other application paths are not labelled safe.",
+      "browser_status": "not_tested",
+      "browser": {
+        "executed": false,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "bcffefbfffaddaddddeddabcfffcffbb",
+        "observed_marker": null,
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      },
+      "static_status": "SAFE",
+      "context_evidence": {
+        "integrity_verified": true,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "scope": "trusted-controller entry-state capture in an isolated fixture",
+        "real_application_attacker_control_verified": false,
+        "independent_review_verified": false
+      },
+      "dom_context": {
+        "evidence_ref": "isolated-browser-entry-state:8ef4e520bf2a5a3d6d88607a01137a84cc42a6018becc35c563ae586d55b9eb9",
+        "context_sha256": "48a291af6722942fe483a235cec74d6d41b5dbb8a193e40c14e95d45652882cd",
+        "verified_by_engine": false,
+        "scope": "conditional on caller-supplied DOM/library identity and input-control assertions"
+      },
+      "entry_state_receipt": {
+        "schema": 1,
+        "session_id": "74b5a32460ad99e5ffc2d93cb94f0486",
+        "code_sha256": "ba0dcc78842543f6698ae25cf4ae24a8b9886019ea8905a079de31320a8b50c2",
+        "vendor_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+        "marker_sha256": "50c68199f4dab5e8cee481c5cccdba2e5f17c83fc836a5f86cc4dc14ac85d65a",
+        "captured_at": 88.305059413,
+        "observations": {
+          "library_identity_verified": true,
+          "native_identity_verified": true,
+          "jquery_version": "4.0.0",
+          "frame_url": "http://audit.local/case",
+          "receivers": [],
+          "inputs": {},
+          "bindings": {},
+          "nodes": []
+        },
+        "signature": "35eaf9f09f9ba7f5d84d3313d19edf4049c1097b9d06bf04fca0a8703b5e9594"
+      }
+    }
+  ],
+  "negative_runtime_checks": [
+    {
+      "mode": "changed_jquery_method",
+      "passed": true,
+      "denials": [
+        "Known fixture library/frame identity was not verified"
+      ],
+      "browser": {
+        "executed": false,
+        "fixture_completed": true,
+        "label_agrees": false,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "dfcbfbaabeabfebeeffcddadffaeecac",
+        "observed_marker": null,
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      }
+    },
+    {
+      "mode": "changed_native_getter",
+      "passed": true,
+      "denials": [
+        "Known fixture library/frame identity was not verified"
+      ],
+      "browser": {
+        "executed": true,
+        "fixture_completed": true,
+        "label_agrees": true,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "dcbbffabbfeecfbebaabdfaeffaecaee",
+        "observed_marker": "dcbbffabbfeecfbebaabdfaeffaecaee",
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/missing",
+            "resource_type": "image"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      }
+    },
+    {
+      "mode": "removed_input_marker",
+      "passed": true,
+      "denials": [],
+      "browser": {
+        "executed": false,
+        "fixture_completed": true,
+        "label_agrees": false,
+        "jquery_version": "4.0.0",
+        "proof_nonce": "fafaffeeabdbabcbbaacbeafccebfabf",
+        "observed_marker": null,
+        "callback_result": null,
+        "errors": [],
+        "requests": [
+          {
+            "url": "http://audit.local/case",
+            "resource_type": "document"
+          },
+          {
+            "url": "http://audit.local/jquery.js",
+            "resource_type": "script"
+          },
+          {
+            "url": "http://audit.local/fixture.js",
+            "resource_type": "script"
+          }
+        ],
+        "network_policy": "every request locally fulfilled or aborted; no live targets",
+        "scope": "conditional extracted output fixture only; safe label is semantic, not inferred from nonexecution"
+      }
+    }
+  ],
+  "browser_validation_passed": true,
+  "context_source": "trusted-controller runtime capture; no manual selector/input profile",
+  "model_evaluated": false,
+  "promotion": "DO_NOT_PROMOTE",
+  "limitations": [
+    "Evidence authenticates capture/session/code, not real-world attacker access.",
+    "Receipts require the live ephemeral controller session; exports alone cannot authorize later analysis.",
+    "These are exposed author-reviewed local fixtures, not an independent holdout."
+  ],
+  "recorded_run_id": 38385449976,
+  "recorded_pr_head": "98c5881947bd9db83892fba019b33c695902aa69"
+}

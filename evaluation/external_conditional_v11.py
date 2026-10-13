@@ -71,7 +71,7 @@ def fixture_script(case):
     return code + '\nwindow.__fixtureCompleted=true;'
 
 
-def run_browser(browser, case, vendor):
+def run_browser(browser, case, vendor, *, before_fixture=None):
     # Letters-only nonce keeps the SVG fixture's four-number validation intact
     # when a markup payload is appended to its numeric input.
     nonce = ''.join(secrets.choice('abcdef') for _ in range(32))
@@ -81,6 +81,9 @@ def run_browser(browser, case, vendor):
     observations, errors, requests = [], [], []
     context.add_init_script("let proofValue=null;Object.defineProperty(window,'__auditProof',{get(){return proofValue;},set(value){proofValue=value;console.debug('__EXTERNAL_XSS_MARKER__'+value);}});")
     setup = '''
+window.__contextBaselineJQ=window.jQuery;
+window.__contextBaselineMethods=Object.fromEntries(['html','text','val','attr','prop','find','get','append','prepend'].map(k=>[k,window.jQuery.fn[k]]));
+window.__contextBaselineNative={query:Document.prototype.querySelectorAll,attribute:Element.prototype.getAttribute,text:Object.getOwnPropertyDescriptor(Node.prototype,'textContent').get,innerText:Object.getOwnPropertyDescriptor(HTMLElement.prototype,'innerText').get,value:Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').get};
 const payload=PAYLOAD;
 document.querySelector('textarea').value=payload;
 document.querySelector('.some-element').textContent=payload;
@@ -108,6 +111,10 @@ window.__editor={createDropDown:function(caller,name,node){document.body.appendC
         elif u.netloc == 'audit.local' and u.path == '/jquery.js':
             route.fulfill(status=200, content_type='text/javascript', body=vendor)
         elif u.netloc == 'audit.local' and u.path == '/fixture.js':
+            if before_fixture is not None:
+                # The parser has completed trusted vendor/setup scripts, but
+                # the original fragment has not been delivered or executed.
+                before_fixture(route.request.frame, case, payload)
             route.fulfill(status=200, content_type='text/javascript', body=fixture_script(case))
         elif u.netloc == 'audit.local' and u.path == '/missing':
             route.fulfill(status=404, content_type='text/plain', body='missing')

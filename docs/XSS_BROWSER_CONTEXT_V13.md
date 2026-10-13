@@ -59,7 +59,7 @@ still incomplete.
 
 ## Validation
 
-Local checkout: 434 tests passed, including 15 new receipt/selector/transport tests.
+Local checkout: 437 tests passed, including 18 new receipt/selector/transport tests.
 CI collects actual entry-state observations for all 24 original V11 fragments,
 reviews them using those observations and rechecks runtime execution. Three
 additional browser checks alter a jQuery method, alter a native getter and
@@ -72,3 +72,27 @@ counted as safe benchmark samples.
 python -m evaluation.browser_context_v13_regression \
   --output results/xss-browser-context-v13.json
 ```
+
+## Recorded runtime evidence
+
+GitHub run [38385449976](https://github.com/mostaraxcite/MyModel/actions/runs/38385449976)
+verified head `98c5881947bd9db83892fba019b33c695902aa69` after repairing the
+capture execution boundary. All 24 original fragments completed without errors;
+no manual V12 selector/input profile was used. Later signature/selector guards
+are verified again before merge. The retained report is
+`docs/evaluations/xss_browser_context_v13_report.json`.
+
+| Observed automatic-context regression | Count |
+|---|---:|
+| Unsafe browser marker execution | 15 / 15 |
+| Unsafe static candidates | 15 / 15 |
+| Unsafe incorrectly SAFE | 0 / 15 |
+| False alerts on safe fixtures | 0 / 9 |
+| Safe abstentions | 3 / 9 |
+| Decisive judgments | 21 / 24 |
+| Negative runtime context checks passed | 3 / 3 |
+
+The three negative checks reject a changed library method and changed native
+getter, and leave the same code inconclusive after its marker input is removed.
+Counts are exposed fixture evidence, not independent field accuracy. The three
+safe callback abstentions and learned-weight evaluation remain unresolved.

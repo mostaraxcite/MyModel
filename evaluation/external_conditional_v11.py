@@ -71,7 +71,7 @@ def fixture_script(case):
     return code + '\nwindow.__fixtureCompleted=true;'
 
 
-def run_browser(browser, case, vendor):
+def run_browser(browser, case, vendor, *, before_fixture=None):
     # Letters-only nonce keeps the SVG fixture's four-number validation intact
     # when a markup payload is appended to its numeric input.
     nonce = ''.join(secrets.choice('abcdef') for _ in range(32))
@@ -79,8 +79,12 @@ def run_browser(browser, case, vendor):
     payload = '<img src="http://audit.local/missing" onerror="' + proof + '">'
     context = browser.new_context(service_workers='block')
     observations, errors, requests = [], [], []
+    main_delivered = False
     context.add_init_script("let proofValue=null;Object.defineProperty(window,'__auditProof',{get(){return proofValue;},set(value){proofValue=value;console.debug('__EXTERNAL_XSS_MARKER__'+value);}});")
     setup = '''
+window.__contextBaselineJQ=window.jQuery;
+window.__contextBaselineMethods=Object.fromEntries(['html','text','val','attr','prop','find','get','append','prepend'].map(k=>[k,window.jQuery.fn[k]]));
+window.__contextBaselineNative={query:Document.prototype.querySelectorAll,attribute:Element.prototype.getAttribute,text:Object.getOwnPropertyDescriptor(Node.prototype,'textContent').get,innerText:Object.getOwnPropertyDescriptor(HTMLElement.prototype,'innerText').get,value:Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').get};
 const payload=PAYLOAD;
 document.querySelector('textarea').value=payload;
 document.querySelector('.some-element').textContent=payload;
@@ -101,10 +105,12 @@ window.__editor={createDropDown:function(caller,name,node){document.body.appendC
     main = '<!doctype html><html><body><div id="id"></div><textarea></textarea><div class="some-element"></div><div id="foo"></div><div id="div1"></div><input><select><option></option></select><div id="quote"></div><svg><path></path><line></line><line></line></svg><script src="/jquery.js"></script><script>' + setup + '</script><script src="/fixture.js"></script></body></html>'
 
     def route_handler(route):
+        nonlocal main_delivered
         u = urlparse(route.request.url)
         requests.append({'url': route.request.url, 'resource_type': route.request.resource_type})
-        if u.netloc == 'audit.local' and u.path == '/case':
-            route.fulfill(status=200, content_type='text/html', body=main)
+        if u.netloc == 'audit.local' and u.path == '/case' and route.request.resource_type=='document' and not main_delivered:
+            main_delivered=True
+            route.fulfill(status=200, content_type='text/html', body=main, headers={'Cache-Control':'no-store'})
         elif u.netloc == 'audit.local' and u.path == '/jquery.js':
             route.fulfill(status=200, content_type='text/javascript', body=vendor)
         elif u.netloc == 'audit.local' and u.path == '/fixture.js':
@@ -118,6 +124,12 @@ window.__editor={createDropDown:function(caller,name,node){document.body.appendC
     page = context.new_page()
     page.on('pageerror', lambda error: errors.append(str(error)))
     page.on('console', lambda msg: observations.append(msg.text) if msg.text == '__EXTERNAL_XSS_MARKER__' + nonce else None)
+    if before_fixture is not None:
+        # The network preloader may request fixture.js before setup executes.
+        # Collect synchronously at the end of trusted setup instead. The hook
+        # registers a private one-shot controller channel before navigation.
+        collector_script=before_fixture(page,case,payload)
+        main=main.replace('</script><script src="/fixture.js">',collector_script+'</script><script src="/fixture.js">')
     try:
         page.goto('http://audit.local/case', wait_until='load')
         try:

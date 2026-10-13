@@ -1,0 +1,98 @@
+# Controller-collected DOM context V13
+
+V12's manual fixture input/receiver profile is now replaceable by a capture
+made by the trusted test controller **before** the original fragment executes. The collector runs synchronously at the end of trusted setup, with a private
+one-shot channel registered by the controller. Network request interception
+alone cannot establish this boundary because browser preload requests can
+arrive before earlier scripts execute. Without a callback, historical execution
+remains unchanged.
+
+The collector parses selector requests from the snippet without executing it.
+It queries actual first elements and records existence/count/tag, then derives
+input-read fields only when their values equal the controller's fresh marker.
+Authentic jQuery DOM selections referenced by the snippet may become external
+bindings; a node is movable only after bounded inert-subtree inspection.
+Fields, selectors and bindings are measured, not copied from the V12 profile.
+Escaped/invalid/oversized selectors, ambiguous global bindings and unsupported
+nodes are omitted or rejected rather than guessed.
+
+The known, hash-checked jQuery 4.0.0 bytes are delivered by the fixture
+controller. Trusted setup retains baseline function identities. Capture checks
+actual library aliases/method references and selected native DOM API/getter
+identities against that baseline; method/version names alone cannot establish
+authenticity. Only ordinary DOM receivers are admitted. This is a controlled
+fixture boundary, not a probe that certifies an already-running hostile page.
+
+## Receipt integrity and lifetime
+
+A live controller session keeps a random signing key in memory. Capture
+receipts bind the observations to source bytes, vendor hash, frame URL,
+fresh marker, monotonic capture time and session. A MAC detects edits;
+verification also rejects another source/session, expired evidence and replay.
+A one-use transport capability accepts only the original main frame; the
+nonce-bearing setup script removes itself and the main HTML response is
+noncacheable and delivered once. The MAC key is never sent to JavaScript
+or written in the report. The trusted controller must retain
+exclusive access to the session object. Untrusted code/model JSON cannot
+assert its own verification flag or supply an authoritative session.
+
+The adapter derives the conditional DOM context after authenticating the
+receipt and passes it to the grounded analyzer. Its result records integrity
+verification separately from semantic trust and browser XSS confirmation.
+Saved receipts alone cannot authorize later analysis: the original live
+session/key is needed. Reports remain inspectable through their hashes and
+retained observations, but they are not portable credentials.
+
+## Limits
+
+Equality to a marker establishes the test controller's input in this local
+fixture. It does not establish attacker access to production DOM fields.
+The controller/setup, known vendor delivery and pre-execution boundary are
+trusted. Receipt authenticity does not certify representative sampling,
+independent label review or whole-application safety. Manual contextual API
+input remains explicitly unverified; this adapter does not relabel it trusted.
+
+This stage runs no live target scan, adds no learned-weight inference and
+provides no automatic global policy for unrelated sites. The original cases
+are exposed regression fixtures. Independent 100 unsafe + 100 safe review is
+still incomplete.
+
+## Validation
+
+Local checkout: 437 tests passed, including 18 new receipt/selector/transport tests.
+CI collects actual entry-state observations for all 24 original V11 fragments,
+reviews them using those observations and rechecks runtime execution. Three
+additional browser checks alter a jQuery method, alter a native getter and
+remove the controlled input marker. No manual source/selector profile is used.
+The pipeline retains every observation, receipt and per-case decision;
+rejected context and runtime negatives remain visible rather than being
+counted as safe benchmark samples.
+
+```
+python -m evaluation.browser_context_v13_regression \
+  --output results/xss-browser-context-v13.json
+```
+
+## Recorded runtime evidence
+
+GitHub run [38385449976](https://github.com/mostaraxcite/MyModel/actions/runs/38385449976)
+verified head `98c5881947bd9db83892fba019b33c695902aa69` after repairing the
+capture execution boundary. All 24 original fragments completed without errors;
+no manual V12 selector/input profile was used. Later signature/selector guards
+are verified again before merge. The retained report is
+`docs/evaluations/xss_browser_context_v13_report.json`.
+
+| Observed automatic-context regression | Count |
+|---|---:|
+| Unsafe browser marker execution | 15 / 15 |
+| Unsafe static candidates | 15 / 15 |
+| Unsafe incorrectly SAFE | 0 / 15 |
+| False alerts on safe fixtures | 0 / 9 |
+| Safe abstentions | 3 / 9 |
+| Decisive judgments | 21 / 24 |
+| Negative runtime context checks passed | 3 / 3 |
+
+The three negative checks reject a changed library method and changed native
+getter, and leave the same code inconclusive after its marker input is removed.
+Counts are exposed fixture evidence, not independent field accuracy. The three
+safe callback abstentions and learned-weight evaluation remain unresolved.

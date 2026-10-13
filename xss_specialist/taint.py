@@ -947,8 +947,12 @@ class Analyzer:
                 "trusted_modules": list(self.trusted_modules)}
 
 
-def analyze(code: str, *, trusted_modules: tuple[str, ...] = (), risk_scores: dict | None = None) -> dict:
-    result = Analyzer(code, trusted_modules).run()
+def analyze(code: str, *, trusted_modules: tuple[str, ...] = (), risk_scores: dict | None = None, dom_context: dict | None = None) -> dict:
+    if dom_context is not None:
+        from xss_specialist.dom_context import DomAnalyzer
+        result = DomAnalyzer(code, trusted_modules, dom_context=dom_context).run()
+    else:
+        result = Analyzer(code, trusted_modules).run()
     # Advisory routing never changes static verdict or skips sink review.
     result["risk_router"] = risk_scores
     result["review_priority"] = "high" if result["verdict"] == "CANDIDATE" else "normal"
@@ -963,12 +967,13 @@ def main():
     parser.add_argument("--trusted-module", action="append", default=[],
                         help="Audited dependency identity; currently supports dompurify default HTML only")
     parser.add_argument("--relation-model", type=Path, help="Optional advisory JSON flow-relation model")
+    parser.add_argument('--dom-context-json', type=Path, help='Reviewed DOM/library context; does not verify its assertions')
     parser.add_argument("--relation-record", type=Path, help="Reviewed relation spans bound to the input SHA256")
     args = parser.parse_args()
     if bool(args.relation_model) != bool(args.relation_record):
         parser.error("--relation-model and --relation-record must be provided together")
     code = args.file.read_text()
-    result = analyze(code, trusted_modules=tuple(args.trusted_module))
+    result = analyze(code, trusted_modules=tuple(args.trusted_module), dom_context=json.loads(args.dom_context_json.read_text()) if args.dom_context_json else None)
     if args.relation_model:
         import hashlib
         from xss_specialist.flow_relations import FlowRelationAdvisor, advise_review

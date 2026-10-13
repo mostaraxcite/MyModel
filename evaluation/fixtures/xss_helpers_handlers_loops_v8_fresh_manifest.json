@@ -1,0 +1,23 @@
+{
+  "suite": "xss-helpers-handlers-loops-v8-fresh-2026-10-13",
+  "cases_sha256": "a73e22842988977caf3c5db403bf237ac1d35169cf7d824d6495bdcf15bd4248",
+  "n": 24,
+  "unsafe": 12,
+  "safe": 12,
+  "frozen_before_first_score": true,
+  "base_commit": "f4224b73575fb6293afe9c87b3730c9fed0cab3a",
+  "engine_sha256": {
+    "xss_specialist/taint.py": "b1891b42c7d15692aaa3ae6fb3026cecb624906f7e0ca988bd7f2a9d30bf2542",
+    "xss_specialist/evidence_pipeline.py": "c6093b9d6f91f3b064a369b7311ae3e17c331ae673bf78a147452b08c9cd8f1e",
+    "xss_specialist/grounded_advisor.py": "137ea6d6d377a5e0b343be0b7d273a12d4831b915518c507e53ae21083894898"
+  },
+  "provenance": "New manually authored synthetic cases, not used to change this engine. Author knows development patterns; not an external blind benchmark.",
+  "gate": {
+    "unsafe_candidate_recall_min": 0.9,
+    "safe_false_positive_rate_max": 0.05,
+    "unsafe_static_safe_max": 0,
+    "browser_label_mismatches_max": 0
+  },
+  "model_evaluated": false,
+  "no_live_targets": true
+}

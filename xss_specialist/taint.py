@@ -1,6 +1,6 @@
 """Offline JavaScript AST review. Never executes code or contacts a target.
 
-Bounded intraprocedural analysis: unsupported syntax and unknown calls abstain.
+Bounded local flow/helper analysis: unsupported syntax and unknown calls abstain.
 SAFE means supported expressions at reviewed sinks, not whole-program safety.
 """
 from __future__ import annotations
@@ -48,6 +48,10 @@ class Analyzer:
         self.dom_tags: dict[str, str] = {}
         self.functions: dict[str, object] = {}
         self.call_depth = 0
+        self.active_functions: list[tuple[int, int]] = []
+        self.helper_calls = 0
+        self.loop_steps = 0
+        self.counter_updates: set[tuple[int, int]] = set()
 
     def literal_string(self, node) -> str | None:
         # Escape sequences require JS decoding; abstain rather than compare
@@ -105,25 +109,31 @@ class Analyzer:
         self.env[name] = Value(unknown=True)
         self.functions[name] = node
 
-    def pure_expression(self, node) -> bool:
+    def pure_expression(self, node, local_names: set[str]) -> bool:
         if node is None:
             return False
-        if node.type in {"identifier", "string", "number", "true", "false", "null", "undefined"}:
+        if node.type == "identifier":
+            # A helper's closure must not accidentally read a caller's
+            # same-named local binding. Unresolved free variables abstain.
+            return self.text(node) in local_names
+        if node.type in {"string", "number", "true", "false", "null", "undefined"}:
             return True
         if node.type in {"member_expression", "subscript_expression"}:
             path=self.path(node)
             return self.source(path) and path.split('.')[0] not in self.env
         if node.type in {"parenthesized_expression", "array", "object", "pair", "property_identifier"}:
-            return all(self.pure_expression(c) for c in node.named_children)
+            return all(self.pure_expression(c,local_names) for c in node.named_children)
         if node.type == "binary_expression":
-            return self.text(self.field(node,"operator")) == "+" and all(self.pure_expression(c) for c in node.named_children)
+            return self.text(self.field(node,"operator")) == "+" and all(self.pure_expression(c,local_names) for c in node.named_children)
         if node.type == "call_expression":
             call = self.path(self.field(node, "function"))
             args = self.field(node, "arguments")
-            return (call in {"encodeURIComponent", "decodeURIComponent", "String"}
-                    and call not in self.env and args is not None
-                    and len(args.named_children) == 1
-                    and self.pure_expression(args.named_children[0]))
+            builtin = call in {"encodeURIComponent", "decodeURIComponent", "String"} and call not in self.env
+            helper = call in self.functions and call not in local_names
+            return ((builtin or helper) and args is not None
+                    and len(args.named_children) <= 4
+                    and (helper or len(args.named_children) == 1)
+                    and all(self.pure_expression(arg,local_names) for arg in args.named_children))
         return False
 
     def local_call(self, node, fn, values) -> Value:
@@ -131,17 +141,25 @@ class Analyzer:
         body = self.field(fn, "body")
         args = params.named_children if params is not None else []
         statements = [c for c in body.named_children if c.type != "comment"] if body else []
+        local_names={self.text(p) for p in args if p.type == "identifier"}
+        for stmt in statements[:-1]:
+            if stmt.type == "lexical_declaration":
+                for decl in stmt.named_children:
+                    ident=self.field(decl,"name") if decl.type == "variable_declarator" else None
+                    if ident is not None and ident.type == "identifier":local_names.add(self.text(ident))
+        identity=(fn.start_byte,fn.end_byte)
         supported = (self.call_depth < 3 and len(args) <= 4 and len(args) == len(values)
+                     and self.helper_calls < 64 and identity not in self.active_functions
                      and all(p.type == "identifier" for p in args)
                      and 1 <= len(statements) <= 12
                      and statements[-1].type == "return_statement"
                      and len(statements[-1].named_children) == 1
-                     and self.pure_expression(statements[-1].named_children[0]))
+                     and self.pure_expression(statements[-1].named_children[0],local_names))
         for stmt in statements[:-1]:
             supported = supported and stmt.type == "lexical_declaration"
             for decl in stmt.named_children:
                 name = self.field(decl,"name") if decl.type == "variable_declarator" else None
-                supported = supported and name is not None and name.type == "identifier" and self.pure_expression(self.field(decl,"value"))
+                supported = supported and name is not None and name.type == "identifier" and self.pure_expression(self.field(decl,"value"),local_names)
         if not supported:
             self.limitation(node,"local function exceeds bounded straight-line return review")
             self.invalidate()
@@ -149,7 +167,14 @@ class Analyzer:
         saved = (dict(self.env),dict(self.bindings),dict(self.dom_tags),dict(self.functions))
         initial_limitations=len(self.limitations)
         self.call_depth += 1
+        self.helper_calls += 1
+        self.active_functions.append(identity)
         try:
+            # Initialize the helper's locals at function entry, including TDZ,
+            # and remove caller bindings with the same name before any read.
+            for name in local_names:
+                self.env[name]=Value(unknown=True)
+                self.bindings.pop(name,None);self.dom_tags.pop(name,None);self.functions.pop(name,None)
             for param,value in zip(args,values):
                 name=self.text(param)
                 self.env[name]=replace(value,trace=value.trace+(name,))
@@ -160,6 +185,7 @@ class Analyzer:
             return replace(result,trace=result.trace+(self.text(self.field(fn,'name'))+' return',))
         finally:
             self.call_depth -= 1
+            self.active_functions.pop()
             self.env,self.bindings,self.dom_tags,self.functions=saved
             if len(self.limitations)>initial_limitations:self.invalidate()
 
@@ -253,7 +279,11 @@ class Analyzer:
         The event could arrive later; this only establishes potential static
         paths and is NEVER proof that browser execution occurred.
         """
-        if cb is None or cb.type not in ("arrow_function", "function_expression"):
+        if cb is not None and cb.type == "identifier":
+            # Only the still-known declaration is reviewable. Assignments,
+            # branches and unknown effects invalidate this registry.
+            cb=self.functions.get(self.text(cb))
+        if cb is None or cb.type not in ("arrow_function", "function_expression", "function_declaration"):
             self.limitation(call_node, "callback body or function identity unresolved")
             return False
         param = self.field(cb, "parameter")
@@ -285,6 +315,12 @@ class Analyzer:
         previous_tags = dict(self.dom_tags)
         previous_functions = dict(self.functions)
         initial_limitations = len(self.limitations)
+        # A callback may execute after later assignments, or in a different
+        # caller scope. Do not certify a captured constant/identity as safe.
+        # Plain tracked taint still establishes a potential dangerous path.
+        self.env={k:replace(v,unknown=v.unknown or not v.sources or bool(v.sanitizer),
+                            sanitizer=None,properties=()) for k,v in self.env.items()}
+        self.bindings={};self.dom_tags={};self.functions={}
         # var declarations belong to the callback, including nested blocks;
         # declarations in a nested function belong to that nested function.
         callback_locals = {name}
@@ -309,6 +345,7 @@ class Analyzer:
         else:
             self.limitation(call_node, "callback input origin unknown")
             self.env[name] = Value(unknown=True)
+        callback_initial_env=dict(self.env)
         if body.type == "statement_block":
             self.statement(body)
         else:
@@ -317,7 +354,7 @@ class Analyzer:
         # happen before or after other statements, so they cannot be proven
         # safe. Preserve only the pre-registration local state with a warning.
         mutated = any(
-            k in previous_env and self.env.get(k) != previous_env[k]
+            k in previous_env and self.env.get(k) != callback_initial_env.get(k)
             for k in self.env if k not in callback_locals
         )
         if mutated:
@@ -358,6 +395,10 @@ class Analyzer:
         if node is None:
             return Value(unknown=True)
         kind = node.type
+        if (node.start_byte,node.end_byte) in self.counter_updates:
+            # Only validated top-level literal numeric increments in a
+            # reviewed loop body are eligible; the loop owns their values.
+            return Value()
         path = self.path(node)
         if self.source(path) and path.split('.')[0] not in self.env:
             self.observed_sources.add(path)
@@ -773,32 +814,70 @@ class Analyzer:
                 self.dom_tags.clear()
                 return
             variable, initial, limit = header.group(1), int(header.group(2)), int(header.group(3))
-            def counter_mutated(n):
+            # Literal top-level body increments can be combined with the
+            # header's ++. Conditional/dynamic writes and shadowed counters
+            # do not establish a numerical bound.
+            updates=set()
+            stride=1
+            body_statements=body.named_children if body.type == "statement_block" else [body]
+            for stmt in body_statements:
+                if stmt.type != "expression_statement" or len(stmt.named_children)!=1:continue
+                expr=stmt.named_children[0]
+                target=self.field(expr,"left") or self.field(expr,"argument")
+                if self.path(target)!=variable:continue
+                operator=self.text(self.field(expr,"operator"))
+                amount=None
+                if expr.type == "update_expression" and operator == "++":amount=1
+                if expr.type == "augmented_assignment_expression" and operator == "+=":
+                    right=self.field(expr,"right")
+                    if right is not None and right.type == "number" and re.fullmatch(r"[0-9]+",self.text(right)):
+                        amount=int(self.text(right))
+                if amount is not None and 1<=amount<=8:
+                    stride+=amount;updates.add((expr.start_byte,expr.end_byte))
+            def unresolved_counter_effect(n):
                 if n.type in {"assignment_expression", "augmented_assignment_expression", "update_expression"}:
                     target=self.field(n,"left") or self.field(n,"argument")
-                    if self.path(target) == variable:return True
-                return any(counter_mutated(c) for c in n.named_children)
-            if counter_mutated(body):
+                    if self.path(target) == variable and (n.start_byte,n.end_byte) not in updates:return True
+                if n.type == "variable_declarator" and self.path(self.field(n,"name")) == variable:return True
+                if updates and n.type in {"call_expression","new_expression"}:
+                    # Arbitrary synchronous code may mutate the counter via
+                    # a closure or direct eval. Do not assume independence.
+                    return True
+                return any(unresolved_counter_effect(c) for c in n.named_children)
+            if unresolved_counter_effect(body):
                 self.limitation(node,"loop counter is mutated in body; iteration bound unresolved")
                 self.invalidate();return
-            iterations = max(0, limit - initial)
+            iterations = max(0, (limit - initial + stride - 1)//stride)
             if iterations > 8:
                 self.limitation(node, "loop exceeds conservative eight-iteration bound")
                 self.env = {k: join(v, Value(unknown=True)) for k, v in self.env.items()}
                 self.bindings.clear()
                 self.dom_tags.clear()
                 return
-            old = self.env.get(variable)
+            saved={attr:getattr(self,attr).get(variable) for attr in ('env','bindings','dom_tags','functions')}
+            initial_limitations=len(self.limitations)
+            for attr in ('bindings','dom_tags','functions'):getattr(self,attr).pop(variable,None)
             self.env[variable] = Value()  # The header is a numeric local.
-            for _ in range(iterations):
-                self.statement(body)
+            prior_updates=set(self.counter_updates)
+            self.counter_updates.update(updates)
+            try:
+                for _ in range(iterations):
+                    if self.loop_steps>=64:
+                        self.limitation(node,"nested loop review exceeds 64 total iterations")
+                        self.invalidate();return
+                    self.loop_steps+=1
+                    self.statement(body)
+            finally:
+                self.counter_updates=prior_updates
             if re.match(r"for\s*\(\s*var\b",code):
                 self.env[variable] = Value(unknown=True)
                 self.bindings.pop(variable,None);self.dom_tags.pop(variable,None);self.functions.pop(variable,None)
-            elif old is None:
-                self.env.pop(variable, None)
             else:
-                self.env[variable] = old
+                for attr,old in saved.items():
+                    current=getattr(self,attr);current.pop(variable,None)
+                    if old is not None:
+                        if attr == 'env':current[variable]=replace(old,unknown=True) if len(self.limitations)>initial_limitations else old
+                        elif len(self.limitations)==initial_limitations:current[variable]=old
         else:
             self.limitation(node, f"unsupported statement: {kind}")
             # Never carry a SAFE value through unanalysed side effects/control flow.
@@ -819,7 +898,7 @@ class Analyzer:
         return {"engine": "xss-taint-v1", "verdict": verdict, "confirmed": False,
                 "requires_oracle": verdict != "SAFE", "sinks": self.sinks,
                 "limitations": list(dict.fromkeys(self.limitations)),
-                "scope": "bounded intraprocedural JavaScript sink review",
+                "scope": "bounded local JavaScript flow and helper review",
                 "observed_sources": sorted(self.observed_sources),
                 "trusted_modules": list(self.trusted_modules)}
 

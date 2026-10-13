@@ -32,6 +32,8 @@ def test_unadjudicated_alerts_do_not_silently_improve_precision():
     r=score_decisions([row(0,'unsafe','CANDIDATE'),row(1,'needs_review','CANDIDATE')])
     assert r['candidate_precision'] is None
     assert r['verified_alert_fraction']==0.5
+    assert r['nominal_wilson95']['candidate_precision'] is None
+    assert r['nominal_wilson95']['candidate_precision_on_adjudicated_labels']['trials']==1
     assert r['needs_review_overclaim_rate']==1
 
 def test_twelve_perfect_unsafe_cases_do_not_prove_ninety_percent_population_recall():

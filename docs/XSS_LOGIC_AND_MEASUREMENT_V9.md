@@ -100,4 +100,25 @@ target scan or model promotion is performed.
 CI verifies all 88 exposed fixtures with intercepted Chromium and prints
 `V9_DIAGNOSTIC_EVIDENCE`. It uploads per-case browser reports, all decision
 counts, nominal intervals, a comparison on the identical V8 cases and the
-external-holdout rejection reasons. Final run results are recorded after CI.
+external-holdout rejection reasons.
+
+## Recorded regression evidence
+
+GitHub CI run [38366617566](https://github.com/mostaraxcite/MyModel/actions/runs/38366617566)
+verified engine commit `7c7f0f55ccba22516a95745e6fe2a4c9e7b5ee49`:
+502 core tests passed, and all three intercepted Chromium fixture jobs passed.
+The retained diagnostic report is `docs/evaluations/xss_v9_exposed_report.json`.
+
+| Exposed regression result | Observed value |
+|---|---:|
+| Unsafe cases reaching candidate status | 44 / 44 |
+| Safe cases producing candidate alerts | 0 / 44 |
+| Unsafe cases incorrectly reported SAFE | 0 / 44 |
+| Safe cases without a decisive judgment | 5 / 44 |
+| Overall decision coverage | 83 / 88 (94.32%) |
+
+These are selected development-case results, not independent accuracy.
+Even the nominal 95% upper false-positive bound is 8.03%, above the proposed
+5% threshold; actual external performance and learned weights remain
+unestablished. Final PR checks also verify the retained report and the
+subsequent precision-interval naming correction.

@@ -1,4 +1,6 @@
 import copy
+import json
+import re
 import pytest
 import xss_specialist.browser_context_evidence as evidence
 from xss_specialist.browser_context_evidence import BrowserContextSession,ContextEvidenceError,selectors_and_names
@@ -78,3 +80,29 @@ def test_markup_strings_are_not_misclassified_as_selectors():
 
 def test_malformed_source_fails_before_any_browser_probe():
     with pytest.raises(ContextEvidenceError):selectors_and_names('const =')
+
+class Page:
+    main_frame=object()
+    def expose_binding(self,name,callback):
+        self.channel=name;self.callback=callback
+
+def test_setup_transport_is_one_shot_and_bound_to_original_frame():
+    page=Page();session=BrowserContextSession('a'*64)
+    slot=session.install(page,CODE,'marker')
+    nonce=re.search(r'window\[[^]]+\]\("([a-f0-9]+)",JSON.stringify',slot['script']).group(1)
+    observations=json.dumps(Frame().observations)
+    assert page.callback({'frame':object()},nonce,observations)['accepted'] is False
+    assert page.callback({'frame':page.main_frame},'wrong',observations)['accepted'] is False
+    assert page.callback({'frame':page.main_frame},nonce,observations)['accepted'] is True
+    original=copy.deepcopy(slot['receipt'])
+    assert page.callback({'frame':page.main_frame},nonce,observations)['accepted'] is False
+    assert slot['receipt']==original
+    assert 'document.currentScript.remove()' in slot['script']
+    assert session.review(CODE,original)['decision']['status']=='CANDIDATE'
+
+def test_setup_transport_rejects_incomplete_observations():
+    page=Page();session=BrowserContextSession('a'*64)
+    slot=session.install(page,CODE,'marker')
+    nonce=re.search(r'window\[[^]]+\]\("([a-f0-9]+)",JSON.stringify',slot['script']).group(1)
+    assert page.callback({'frame':page.main_frame},nonce,'[]')['accepted'] is False
+    assert slot['receipt'] is None and slot['error']

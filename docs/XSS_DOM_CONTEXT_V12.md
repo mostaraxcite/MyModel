@@ -68,3 +68,27 @@ Default and contextual scoring have **different input assumptions**, so they
 are not an independent accuracy gain or an unchanged-input population
 comparison. These examples are exposed regressions. Independent 100+100
 adjudication and learned-weight evaluation remain incomplete. No promotion.
+
+## Retained GitHub evidence
+
+Run [38378668474](https://github.com/mostaraxcite/MyModel/actions/runs/38378668474)
+verified head `e57bd40d7c58d1f5eb3a37739cc6d271ca651eb0`.
+Core CI run 38378668117 passed 502 tests; the DOM job passed all 46 new
+contextual tests and verified every original browser fixture without errors.
+The complete retained result is `docs/evaluations/xss_dom_context_v12_report.json`.
+
+| Supplied-context regression result | Count |
+|---|---:|
+| Unsafe candidates with explicit fixture context | 15 / 15 |
+| Unsafe reported SAFE | 0 / 15 |
+| False alerts on safe fixtures | 0 / 9 |
+| Safe fixtures with a decisive verdict | 6 / 9 |
+| Safe abstentions | 3 / 9 |
+| Total decision coverage | 21 / 24 (87.5%) |
+
+Without context, those same fifteen unsafe snippets still abstain. This is a
+new conditional analysis capability, not automatic trust inference. The three
+safe abstentions are complete SVG numeric/editor callbacks whose invocation
+and side effects remain outside this bounded static support. Runtime execution
+was separately checked using the original fixture. Independent corpus and
+learned-model accuracy remain unestablished.

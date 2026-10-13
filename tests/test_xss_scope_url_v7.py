@@ -56,7 +56,6 @@ def test_protection_does_not_escape_its_context(code):assert status(code)=='CAND
     "function pass(x){return pass(x);}panel.innerHTML=pass(window.name);",
     "function pass(x){return 'fixed';}while(flag){pass=unknown;}panel.innerHTML=pass(window.name);",
     "function pass(x){return 'fixed';}if(flag){pass=unknown;}panel.innerHTML=pass(window.name);",
-    "let x=window.name;for(let i=0;i<1;i++){i+=1;x='fixed';}panel.innerHTML=x;",
     "const packet={content:window.name};const alias=packet;unknown(alias);panel.innerHTML=packet.content;",
     "const packet={get content(){return window.name;}};panel.innerHTML=packet.content;",
     "const encodeURIComponent=unknown;panel.innerHTML=encodeURIComponent(window.name);",
@@ -65,6 +64,9 @@ def test_protection_does_not_escape_its_context(code):assert status(code)=='CAND
     "window.addEventListener('message',e=>{panel.innerHTML=e.data;},options);",
 ])
 def test_unknown_effects_cannot_claim_safe(code):assert status(code)=='INCONCLUSIVE'
+
+def test_literal_monotone_counter_update_can_prove_constant_overwrite():
+    assert status("let x=window.name;for(let i=0;i<1;i++){i+=1;x='fixed';}panel.innerHTML=x;")=='SAFE'
 
 def test_escaped_prefix_is_not_certified_safe():
     assert status("const node=document.createElement('a');node.href='/\\x2f'+encodeURIComponent(window.name);")!='SAFE'

@@ -370,7 +370,7 @@ class Analyzer:
                            cb.parent is not None and cb.parent.type == "program")
         if captures and top_level and global_definition and not self.in_deferred_review:
             if len(self.deferred_callbacks)<32:
-                self.deferred_callbacks.append((call_node,cb,source,bound_value))
+                self.deferred_callbacks.append((call_node,cb,source,bound_value,initial_limitations))
                 # Provisional closure paths must not count as separate alerts
                 # or survive a later safe overwrite. Parameter-only callbacks
                 # remain reviewed normally; final capture paths replace these.
@@ -924,8 +924,15 @@ class Analyzer:
             self.limitations.append("parse error: only JavaScript is supported (no HTML/TS/JSX)")
         else:
             self.statement(root)
+            synchronous_limitations=len(self.limitations)
             self.in_deferred_review=True
-            for call,cb,source,bound_value in self.deferred_callbacks:
+            for call,cb,source,bound_value,registration_limitations in self.deferred_callbacks:
+                # An unknown effect can remove a listener or alter callback
+                # scheduling. A later known value assignment does not restore
+                # evidence that the registered callback remains reachable.
+                if synchronous_limitations>registration_limitations:
+                    self.limitation(call,"deferred callback reachability affected by unsupported effects")
+                    continue
                 self.callback(call,cb,source=source,bound_value=bound_value)
             self.in_deferred_review=False
         verdicts = {s["verdict"] for s in self.sinks}

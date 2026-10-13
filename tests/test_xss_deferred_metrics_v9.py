@@ -25,6 +25,9 @@ def test_deferred_global_capture_sees_final_connected_source(code):assert status
 @pytest.mark.parametrize('code',[
     "let value=window.name;window.onmessage=e=>{panel.innerHTML=value;};value='fixed';",
     "let value='fixed';window.onmessage=e=>{panel.innerHTML=value;};unknown();",
+    "let value='fixed';window.onmessage=e=>{panel.innerHTML=value;};unknown();value=window.name;",
+    "let value='fixed';window.onmessage=e=>{panel.innerHTML=value;};window.onmessage=null;value=window.name;",
+    "let value='fixed';function receive(e){panel.innerHTML=value;}window.addEventListener('message',receive);window.removeEventListener('message',receive);value=window.name;",
     "let value=window.name;function receive(e){panel.innerHTML=value;}{const value='fixed';window.onmessage=receive;}",
     "let value=window.name;function read(){return value;}{const value='fixed';panel.innerHTML=read();}",
 ])

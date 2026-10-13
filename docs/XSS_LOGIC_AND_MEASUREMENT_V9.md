@@ -16,6 +16,9 @@ registration-time false alert. Cross-scope closures, captured object identity
 or sanitization assumptions, unknown effects and more than 32 deferred
 registrations do not establish safety. Deferral is one bounded pass, not a
 browser event-loop simulator or arbitrary inter-callback scheduling proof.
+An unsupported effect after registration blocks deferred capture upgrading:
+a later source assignment cannot prove that a removed or altered listener
+still runs. Such paths remain inconclusive.
 
 Acyclic pure helpers now use known identity, active-stack cycle detection
 and a 64-invocation work budget rather than an arbitrary three-call cutoff.

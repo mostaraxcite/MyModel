@@ -49,6 +49,12 @@ def test_other_controller_session_cannot_accept_a_copied_packet():
     with pytest.raises(ContextEvidenceError,match='integrity'):
         other.review(CODE,record)
 
+@pytest.mark.parametrize('signature',['توقيع',True])
+def test_malformed_signatures_fail_cleanly_before_comparison(signature):
+    session,record=packet();record['signature']=signature
+    with pytest.raises(ContextEvidenceError,match='integrity'):
+        session.review(CODE,record)
+
 def test_replay_is_rejected_after_first_consumption():
     session,record=packet();session.review(CODE,record)
     with pytest.raises(ContextEvidenceError,match='consumed'):

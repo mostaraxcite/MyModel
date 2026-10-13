@@ -1,9 +1,11 @@
 # Controller-collected DOM context V13
 
 V12's manual fixture input/receiver profile is now replaceable by a capture
-made by the trusted test controller **before** it delivers the original
-fragment. The existing isolated browser harness exposes that precise capture
-boundary; without a callback, historical execution remains unchanged.
+made by the trusted test controller **before** the original fragment executes. The collector runs synchronously at the end of trusted setup, with a private
+one-shot channel registered by the controller. Network request interception
+alone cannot establish this boundary because browser preload requests can
+arrive before earlier scripts execute. Without a callback, historical execution
+remains unchanged.
 
 The collector parses selector requests from the snippet without executing it.
 It queries actual first elements and records existence/count/tag, then derives
@@ -27,7 +29,10 @@ A live controller session keeps a random signing key in memory. Capture
 receipts bind the observations to source bytes, vendor hash, frame URL,
 fresh marker, monotonic capture time and session. A MAC detects edits;
 verification also rejects another source/session, expired evidence and replay.
-The key is never written in the report. The trusted controller must retain
+A one-use transport capability accepts only the original main frame; the
+nonce-bearing setup script removes itself and the main HTML response is
+noncacheable and delivered once. The MAC key is never sent to JavaScript
+or written in the report. The trusted controller must retain
 exclusive access to the session object. Untrusted code/model JSON cannot
 assert its own verification flag or supply an authoritative session.
 
@@ -54,7 +59,7 @@ still incomplete.
 
 ## Validation
 
-Local checkout: 432 tests passed, including 13 new receipt/selector tests.
+Local checkout: 434 tests passed, including 15 new receipt/selector/transport tests.
 CI collects actual entry-state observations for all 24 original V11 fragments,
 reviews them using those observations and rechecks runtime execution. Three
 additional browser checks alter a jQuery method, alter a native getter and

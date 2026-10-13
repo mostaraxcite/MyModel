@@ -1,0 +1,19 @@
+{
+  "evidence_ref": "docs/evaluations/xss_external_conditional_v11_report.json: isolated jQuery 4.0.0 fixture setup and browser execution; author-reviewed, not independently verified",
+  "jquery_globals": ["$", "jQuery"],
+  "receivers": ["#id", "#quote"],
+  "inputs": {
+    "textarea": ["value"],
+    ".some-element": ["text", "attribute:data-target"],
+    "#foo": ["innerText", "textContent"],
+    "#foo .bla": ["value"],
+    "#div1": ["attribute:data-target"],
+    "input": ["name", "attribute:name"],
+    "option": ["attribute:value"],
+    "cite": ["text"]
+  },
+  "bindings": {
+    "$cite": {"selector": "cite", "kind": "jquery", "inert_node": true},
+    "$elm": {"selector": "#quote", "kind": "jquery"}
+  }
+}

@@ -47,3 +47,31 @@ aborted browser requests. The initial fresh report and final CI results are
 recorded after the GitHub job completes. The captured-variable and helper
 depth boundaries may legitimately leave additional dangerous examples
 inconclusive; they must not be relabeled safe or dropped from the score.
+
+## Recorded first audit outcome
+
+GitHub run `38358941957` completed successfully: **444 core tests passed**,
+and intercepted Chromium verified the original 40 and exposed V7 24 cases.
+All 32 dangerous regression fixtures were candidates and executed; zero safe
+regression fixtures executed and zero false candidate alerts occurred.
+
+The fresh V8 24-case audit produced 10/12 dangerous candidates (**83.33%**),
+two dangerous inconclusive cases, ten bounded-safe cases and two safe
+inconclusive cases. Chromium executed all twelve dangerous fixtures, none of
+the safe ones; zero dangerous examples were reported SAFE and zero false
+candidate alerts occurred. The fresh audit still fails its predeclared 90%
+recall gate. CI success verifies tests and evidence generation, not this
+accuracy gate or learned-weight production eligibility.
+
+The two dangerous abstentions are a captured variable changed after callback
+registration and a four-helper chain beyond the three-active-call bound.
+These limitations are retained; no engine tuning followed the fresh score.
+The corresponding constant-text capture and four-helper fixed-return safe
+cases were also inconclusive. The first outcome is preserved in
+`docs/evaluations/xss_v8_fresh_report.json`. The full per-path packet artifact
+is attached to the initial workflow run.
+
+Initial evaluated engine commit: `b1ffc7166cced10778cc435cd277eaa0bbab038d`.
+This follow-up records results only; the engine source hashes remain exactly
+those in the frozen manifest. This partition is now exposed.
+

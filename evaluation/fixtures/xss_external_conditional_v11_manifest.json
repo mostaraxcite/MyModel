@@ -1,0 +1,188 @@
+{
+  "schema_version": 1,
+  "evaluation_kind": "external_conditional_diagnostic",
+  "exposure_status": "unscored_at_freeze",
+  "engine_revision": "e45e0ccaa811bdcb16e78306c591e991d976b6ba",
+  "engine_authors": [
+    "assistant-engine-author"
+  ],
+  "independence_verified": false,
+  "development_inventory_complete": false,
+  "labels_independently_reviewed": false,
+  "source_intake_locations": 57,
+  "selected_fixture_count": 24,
+  "unselected_locations": [
+    {
+      "id": "SRC-0-L2-B24",
+      "label": "needs_review",
+      "reason": "Location.href serialization/URL encoding and actual document.write execution need browser-specific review; not assumed exploitable from the rule annotation."
+    },
+    {
+      "id": "SRC-1-L88-B3553",
+      "label": "needs_review",
+      "reason": "Original HTML construction and caller-supplied nodeName control must be reviewed together; append site alone omits the relevant construction sink."
+    },
+    {
+      "id": "SRC-1-L122-B4668",
+      "label": "needs_review",
+      "reason": "Covered by the selected complete numeric SVG callback; do not count its five writes as five independent cases."
+    },
+    {
+      "id": "SRC-1-L123-B4715",
+      "label": "needs_review",
+      "reason": "Covered by the selected complete numeric SVG callback; do not count its five writes as five independent cases."
+    },
+    {
+      "id": "SRC-1-L124-B4762",
+      "label": "needs_review",
+      "reason": "Covered by the selected complete numeric SVG callback; do not count its five writes as five independent cases."
+    },
+    {
+      "id": "SRC-1-L125-B4809",
+      "label": "needs_review",
+      "reason": "Covered by the selected complete numeric SVG callback; do not count its five writes as five independent cases."
+    },
+    {
+      "id": "SRC-1-L142-B5689",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    },
+    {
+      "id": "SRC-2-L6-B122",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    },
+    {
+      "id": "SRC-2-L7-B177",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    },
+    {
+      "id": "SRC-2-L14-B379",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    },
+    {
+      "id": "SRC-2-L46-B997",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    },
+    {
+      "id": "SRC-2-L59-B1416",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    },
+    {
+      "id": "SRC-2-L64-B1598",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    },
+    {
+      "id": "SRC-2-L68-B1735",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    },
+    {
+      "id": "SRC-2-L86-B2166",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    },
+    {
+      "id": "SRC-2-L87-B2217",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    },
+    {
+      "id": "SRC-2-L90-B2308",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    },
+    {
+      "id": "SRC-2-L96-B2542",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    },
+    {
+      "id": "SRC-2-L109-B2733",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    },
+    {
+      "id": "SRC-2-L115-B2997",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    },
+    {
+      "id": "SRC-2-L120-B3118",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    },
+    {
+      "id": "SRC-2-L131-B3488",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    },
+    {
+      "id": "SRC-2-L132-B3527",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    },
+    {
+      "id": "SRC-2-L140-B3718",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    },
+    {
+      "id": "SRC-2-L141-B3756",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    },
+    {
+      "id": "SRC-2-L148-B3959",
+      "label": "needs_review",
+      "reason": "Requires cash-dom and full identity sanitizer definition; sanitizer name must not be treated as real sanitization."
+    },
+    {
+      "id": "SRC-2-L155-B4186",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    },
+    {
+      "id": "SRC-5-L476-B18337",
+      "label": "needs_review",
+      "reason": "Original HTML construction and caller-supplied nodeName control must be reviewed together; append site alone omits the relevant construction sink."
+    },
+    {
+      "id": "SRC-6-L339-B10044",
+      "label": "needs_review",
+      "reason": "Covered by the selected complete numeric SVG callback; do not count its five writes as five independent cases."
+    },
+    {
+      "id": "SRC-6-L340-B10085",
+      "label": "needs_review",
+      "reason": "Covered by the selected complete numeric SVG callback; do not count its five writes as five independent cases."
+    },
+    {
+      "id": "SRC-6-L341-B10126",
+      "label": "needs_review",
+      "reason": "Covered by the selected complete numeric SVG callback; do not count its five writes as five independent cases."
+    },
+    {
+      "id": "SRC-6-L342-B10167",
+      "label": "needs_review",
+      "reason": "Covered by the selected complete numeric SVG callback; do not count its five writes as five independent cases."
+    },
+    {
+      "id": "SRC-6-L349-B10280",
+      "label": "needs_review",
+      "reason": "Requires caller/library/input-control and runtime review; upstream annotations do not adjudicate a label."
+    }
+  ],
+  "model_evaluated": false,
+  "promotion": "DO_NOT_PROMOTE",
+  "cases_sha256": "f72baa93daee773a84e555ad39f950affe3a5eab649a539064e542fb9f7521ff",
+  "jquery_sha256": "f5fb077959ca06faa1dc50761d8bbb836c6c78067932537a2b3fea9e401257c5",
+  "jquery_blob_sha": "097b0883448402989bfd6713267931e592da8975",
+  "jquery_source": "https://github.com/jquery/jquery-dist/blob/main/dist/jquery.js",
+  "jquery_version": "4.0.0"
+}

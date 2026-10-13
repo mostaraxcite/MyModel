@@ -47,6 +47,9 @@ jobs:
           tests/test_xss_async_timer_text_v6.py
           tests/test_xss_scope_url_v7.py
           tests/test_xss_helpers_handlers_loops_v8.py
+          tests/test_xss_deferred_metrics_v9.py
+          tests/test_decision_metrics.py
+          tests/test_holdout_protocol.py
       - name: Score new diagnostic XSS cases (audit partition remains unscored)
         run: uv run python -m evaluation.fresh_static_xss_suite --partition diagnostic
       - name: Audit conservative XSS evidence gate on exposed regression
@@ -91,6 +94,31 @@ jobs:
           --cases evaluation/fixtures/xss_scope_url_v7_fresh.jsonl
           --output results/xss-v8-browser-regression.json
           --regression-gate
+      - name: Verify V8 audit as exposed V9 browser regression
+        run: >
+          python -m evaluation.xss_scope_url_v7_evaluate
+          --cases evaluation/fixtures/xss_helpers_handlers_loops_v8_fresh.jsonl
+          --output results/xss-v9-browser-regression.json
+          --regression-gate
+      - name: Publish honest decision diagnostics and same-case comparison
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from evaluation.decision_metrics import score_decisions,compare_same_cases
+          from evaluation.holdout_protocol import audit_holdout
+          before=json.loads(Path('docs/evaluations/xss_v8_fresh_report.json').read_text())
+          after=json.loads(Path('results/xss-v9-browser-regression.json').read_text())
+          reports=[json.loads(Path(name).read_text()) for name in ['results/xss-v7-browser-regression.json','results/xss-v8-browser-regression.json','results/xss-v9-browser-regression.json']]
+          rows=[row for report in reports for row in report['results']]
+          metrics=score_decisions(rows,{'evaluation_kind':'exposed_regression'})
+          comparison=compare_same_cases(before,after)
+          eligibility=audit_holdout(rows,rows,{'evaluation_kind':'exposed_regression','exposure_status':'exposed'})
+          reduced=[{key:row[key] for key in ['id','label','code','family','static_status','browser']} for row in after['results']]
+          evidence={'evaluation_kind':'exposed_regression','metrics':metrics,'same_case_comparison':comparison,'external_holdout_eligibility':eligibility,'v8_case_report':{'cases_sha256':after['cases_sha256'],'results':reduced},'model_evaluated':False,'promotion':'DO_NOT_PROMOTE'}
+          Path('results/xss-v9-decision-diagnostics.json').write_text(json.dumps(evidence,indent=2)+'\n')
+          print('V9_DIAGNOSTIC_EVIDENCE='+json.dumps(evidence,separators=(',',':')))
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -98,39 +126,6 @@ jobs:
           path: |
             results/xss-v7-browser-regression.json
             results/xss-v8-browser-regression.json
+            results/xss-v9-browser-regression.json
+            results/xss-v9-decision-diagnostics.json
 
-  xss-v8-fresh-synthetic-audit:
-    # Score this frozen engine/case partition only on the initial PR-open
-    # event. Later runs use exposed regressions, not a fresh accuracy claim.
-    if: github.event_name == 'pull_request' && github.event.action == 'opened'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install bounded oracle and browser dependencies
-        run: python -m pip install tree-sitter==0.25.2 tree-sitter-javascript==0.25.0 playwright==1.55.0
-      - name: Install Chromium
-        run: python -m playwright install --with-deps chromium
-      - name: Score frozen fresh synthetic fixtures once
-        run: >
-          python -m evaluation.xss_scope_url_v7_evaluate
-          --cases evaluation/fixtures/xss_helpers_handlers_loops_v8_fresh.jsonl
-          --manifest evaluation/fixtures/xss_helpers_handlers_loops_v8_fresh_manifest.json
-          --output results/xss-v8-fresh-report.json
-      - name: Print case evidence for immutable audit retrieval
-        run: |
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          report=json.loads(Path('results/xss-v8-fresh-report.json').read_text())
-          report['results']=[{k:row[k] for k in ('id','label','family','code','static_status','browser')} for row in report['results']]
-          print('V8_FROZEN_EVIDENCE='+json.dumps(report,separators=(',',':')))
-          PY
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: xss-v8-fresh-synthetic-audit
-          path: results/xss-v8-fresh-report.json

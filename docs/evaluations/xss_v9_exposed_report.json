@@ -1,0 +1,1230 @@
+{
+  "evaluation_kind": "exposed_regression",
+  "metrics": {
+    "counts": {
+      "cases": 88,
+      "unsafe": 44,
+      "safe": 44,
+      "true_candidates": 44,
+      "false_candidates": 0,
+      "dangerous_reported_safe": 0,
+      "alerts_without_adjudicated_label": 0,
+      "inconclusive": 5,
+      "not_tested": 0
+    },
+    "decision_matrix": {
+      "needs_review": {
+        "CANDIDATE": 0,
+        "INCONCLUSIVE": 0,
+        "NOT_TESTED": 0,
+        "SAFE": 0
+      },
+      "safe": {
+        "CANDIDATE": 0,
+        "INCONCLUSIVE": 5,
+        "NOT_TESTED": 0,
+        "SAFE": 39
+      },
+      "unsafe": {
+        "CANDIDATE": 44,
+        "INCONCLUSIVE": 0,
+        "NOT_TESTED": 0,
+        "SAFE": 0
+      }
+    },
+    "unsafe_candidate_recall": 1,
+    "candidate_precision": 1,
+    "candidate_precision_on_adjudicated_labels": 1,
+    "verified_alert_fraction": 1,
+    "safe_false_positive_rate": 0,
+    "unsafe_static_safe": 0,
+    "unsafe_static_safe_rate": 0,
+    "unsafe_candidate_miss_rate": 0,
+    "unsafe_abstention_rate": 0,
+    "safe_abstention_rate": 0.11363636363636363,
+    "needs_review_overclaim_rate": null,
+    "unsafe_not_tested_rate": 0,
+    "test_coverage": 1,
+    "decision_coverage": 0.9431818181818182,
+    "nominal_wilson95": {
+      "candidate_recall": {
+        "lower": 0.9197043962415192,
+        "upper": 1,
+        "successes": 44,
+        "trials": 44,
+        "confidence": 0.95,
+        "method": "Wilson",
+        "interpretation": "nominal iid-binomial interval; not proof of external validity"
+      },
+      "candidate_precision": {
+        "lower": 0.9197043962415192,
+        "upper": 1,
+        "successes": 44,
+        "trials": 44,
+        "confidence": 0.95,
+        "method": "Wilson",
+        "interpretation": "nominal iid-binomial interval; not proof of external validity"
+      },
+      "false_positive_rate": {
+        "lower": 0,
+        "upper": 0.08029560375848066,
+        "successes": 0,
+        "trials": 44,
+        "confidence": 0.95,
+        "method": "Wilson",
+        "interpretation": "nominal iid-binomial interval; not proof of external validity"
+      }
+    },
+    "family_case_counts": {
+      "html-alias": 1,
+      "template": 1,
+      "decode": 1,
+      "array": 1,
+      "json": 1,
+      "message-alias": 1,
+      "message-options": 1,
+      "message-property": 1,
+      "message-destructure": 1,
+      "message-nested": 1,
+      "loop-accumulate": 1,
+      "loop-source": 1,
+      "scope-shadow": 1,
+      "callback-shadow": 1,
+      "function-return": 1,
+      "object-alias": 1,
+      "url-anchor": 1,
+      "url-decode": 1,
+      "remote-script": 1,
+      "timer": 1,
+      "text-alias": 1,
+      "text-adjacent": 1,
+      "text-node": 1,
+      "html-encoded": 1,
+      "overwrite": 1,
+      "loop-zero": 1,
+      "loop-overwrite": 1,
+      "branches-fixed": 1,
+      "message-text": 1,
+      "message-encoded": 1,
+      "safe-attribute": 1,
+      "data-attribute": 1,
+      "href-inert-div": 1,
+      "href-inert-img": 1,
+      "url-relative-raw": 1,
+      "url-dot-relative": 1,
+      "url-fixed-origin": 1,
+      "url-root-encoded": 1,
+      "branch-safe-apis": 1,
+      "disconnected": 1,
+      "nested-block": 1,
+      "object-through-function": 1,
+      "helper-decode": 1,
+      "message-branch": 1,
+      "counter-mutated": 1,
+      "named-message-handler": 1,
+      "helper-local-alias": 1,
+      "script-attribute": 1,
+      "javascript-prefix": 1,
+      "branch-local": 1,
+      "promise-composition": 1,
+      "nested-helper": 1,
+      "scope-overwrite": 1,
+      "object-clean-property": 1,
+      "helper-encoder": 1,
+      "message-property-text": 1,
+      "typed-inert-attribute": 1,
+      "dot-relative-raw": 1,
+      "fixed-origin-raw": 1,
+      "encoded-multiple": 1,
+      "promise-local-shadow": 1,
+      "message-options-object": 1,
+      "unknown-href-type": 1,
+      "fixed-function-return": 1,
+      "named-before-declaration": 1,
+      "named-destructure-property": 1,
+      "named-promise": 1,
+      "three-helpers": 1,
+      "nested-decoding": 1,
+      "numeric-body-stride": 1,
+      "multiple-body-increments": 1,
+      "named-local-block": 1,
+      "captured-later-assignment": 1,
+      "four-helpers": 1,
+      "named-local-anchor": 1,
+      "raw-script-through-helpers": 1,
+      "named-before-declaration-text": 1,
+      "named-destructure-encoded": 1,
+      "named-promise-fixed": 1,
+      "three-helpers-encoded": 1,
+      "nested-fixed-return": 1,
+      "numeric-body-stride-overwrite": 1,
+      "multiple-increments-overwrite": 1,
+      "named-outer-safe-output": 1,
+      "captured-constant-text": 1,
+      "four-helpers-fixed": 1,
+      "named-relative-anchor": 1,
+      "helpers-text-node": 1
+    },
+    "unique_code_hashes": 88,
+    "repeated_code_hashes": {},
+    "evaluation_kind": "exposed_regression",
+    "point_gate_passed": true,
+    "nominal_interval_gate_passed": false,
+    "production_accuracy_established": false,
+    "model_promotion_allowed": false,
+    "limitations": [
+      "Rates use all supplied labels; unsafe abstentions/not-tested cases remain recall misses.",
+      "Labels must come from reviewed semantics; browser non-execution alone is not a safe label.",
+      "Intervals are nominal; shared templates/repos and selected synthetic cases can invalidate iid inference.",
+      "Unit-test success and a point threshold do not establish learned-model or production accuracy.",
+      "Independent external reviewed cases and disjoint source groups are still required."
+    ]
+  },
+  "same_case_comparison": {
+    "cases_sha256": "a73e22842988977caf3c5db403bf237ac1d35169cf7d824d6495bdcf15bd4248",
+    "before": {
+      "counts": {
+        "cases": 24,
+        "unsafe": 12,
+        "safe": 12,
+        "true_candidates": 10,
+        "false_candidates": 0,
+        "dangerous_reported_safe": 0,
+        "alerts_without_adjudicated_label": 0,
+        "inconclusive": 4,
+        "not_tested": 0
+      },
+      "decision_matrix": {
+        "needs_review": {
+          "CANDIDATE": 0,
+          "INCONCLUSIVE": 0,
+          "NOT_TESTED": 0,
+          "SAFE": 0
+        },
+        "safe": {
+          "CANDIDATE": 0,
+          "INCONCLUSIVE": 2,
+          "NOT_TESTED": 0,
+          "SAFE": 10
+        },
+        "unsafe": {
+          "CANDIDATE": 10,
+          "INCONCLUSIVE": 2,
+          "NOT_TESTED": 0,
+          "SAFE": 0
+        }
+      },
+      "unsafe_candidate_recall": 0.8333333333333334,
+      "candidate_precision": 1,
+      "candidate_precision_on_adjudicated_labels": 1,
+      "verified_alert_fraction": 1,
+      "safe_false_positive_rate": 0,
+      "unsafe_static_safe": 0,
+      "unsafe_static_safe_rate": 0,
+      "unsafe_candidate_miss_rate": 0.16666666666666666,
+      "unsafe_abstention_rate": 0.16666666666666666,
+      "safe_abstention_rate": 0.16666666666666666,
+      "needs_review_overclaim_rate": null,
+      "unsafe_not_tested_rate": 0,
+      "test_coverage": 1,
+      "decision_coverage": 0.8333333333333334,
+      "nominal_wilson95": {
+        "candidate_recall": {
+          "lower": 0.5519691377470266,
+          "upper": 0.9530348578161463,
+          "successes": 10,
+          "trials": 12,
+          "confidence": 0.95,
+          "method": "Wilson",
+          "interpretation": "nominal iid-binomial interval; not proof of external validity"
+        },
+        "candidate_precision": {
+          "lower": 0.7224672001371107,
+          "upper": 0.9999999999999999,
+          "successes": 10,
+          "trials": 10,
+          "confidence": 0.95,
+          "method": "Wilson",
+          "interpretation": "nominal iid-binomial interval; not proof of external validity"
+        },
+        "false_positive_rate": {
+          "lower": 2.7755575615628914e-17,
+          "upper": 0.24249400665524085,
+          "successes": 0,
+          "trials": 12,
+          "confidence": 0.95,
+          "method": "Wilson",
+          "interpretation": "nominal iid-binomial interval; not proof of external validity"
+        }
+      },
+      "family_case_counts": {
+        "named-before-declaration": 1,
+        "named-destructure-property": 1,
+        "named-promise": 1,
+        "three-helpers": 1,
+        "nested-decoding": 1,
+        "numeric-body-stride": 1,
+        "multiple-body-increments": 1,
+        "named-local-block": 1,
+        "captured-later-assignment": 1,
+        "four-helpers": 1,
+        "named-local-anchor": 1,
+        "raw-script-through-helpers": 1,
+        "named-before-declaration-text": 1,
+        "named-destructure-encoded": 1,
+        "named-promise-fixed": 1,
+        "three-helpers-encoded": 1,
+        "nested-fixed-return": 1,
+        "numeric-body-stride-overwrite": 1,
+        "multiple-increments-overwrite": 1,
+        "named-outer-safe-output": 1,
+        "captured-constant-text": 1,
+        "four-helpers-fixed": 1,
+        "named-relative-anchor": 1,
+        "helpers-text-node": 1
+      },
+      "unique_code_hashes": 24,
+      "repeated_code_hashes": {},
+      "evaluation_kind": "exposed_or_unspecified",
+      "point_gate_passed": false,
+      "nominal_interval_gate_passed": false,
+      "production_accuracy_established": false,
+      "model_promotion_allowed": false,
+      "limitations": [
+        "Rates use all supplied labels; unsafe abstentions/not-tested cases remain recall misses.",
+        "Labels must come from reviewed semantics; browser non-execution alone is not a safe label.",
+        "Intervals are nominal; shared templates/repos and selected synthetic cases can invalidate iid inference.",
+        "Unit-test success and a point threshold do not establish learned-model or production accuracy.",
+        "Independent external reviewed cases and disjoint source groups are still required."
+      ]
+    },
+    "after": {
+      "counts": {
+        "cases": 24,
+        "unsafe": 12,
+        "safe": 12,
+        "true_candidates": 12,
+        "false_candidates": 0,
+        "dangerous_reported_safe": 0,
+        "alerts_without_adjudicated_label": 0,
+        "inconclusive": 1,
+        "not_tested": 0
+      },
+      "decision_matrix": {
+        "needs_review": {
+          "CANDIDATE": 0,
+          "INCONCLUSIVE": 0,
+          "NOT_TESTED": 0,
+          "SAFE": 0
+        },
+        "safe": {
+          "CANDIDATE": 0,
+          "INCONCLUSIVE": 1,
+          "NOT_TESTED": 0,
+          "SAFE": 11
+        },
+        "unsafe": {
+          "CANDIDATE": 12,
+          "INCONCLUSIVE": 0,
+          "NOT_TESTED": 0,
+          "SAFE": 0
+        }
+      },
+      "unsafe_candidate_recall": 1,
+      "candidate_precision": 1,
+      "candidate_precision_on_adjudicated_labels": 1,
+      "verified_alert_fraction": 1,
+      "safe_false_positive_rate": 0,
+      "unsafe_static_safe": 0,
+      "unsafe_static_safe_rate": 0,
+      "unsafe_candidate_miss_rate": 0,
+      "unsafe_abstention_rate": 0,
+      "safe_abstention_rate": 0.08333333333333333,
+      "needs_review_overclaim_rate": null,
+      "unsafe_not_tested_rate": 0,
+      "test_coverage": 1,
+      "decision_coverage": 0.9583333333333334,
+      "nominal_wilson95": {
+        "candidate_recall": {
+          "lower": 0.7575059933447592,
+          "upper": 1,
+          "successes": 12,
+          "trials": 12,
+          "confidence": 0.95,
+          "method": "Wilson",
+          "interpretation": "nominal iid-binomial interval; not proof of external validity"
+        },
+        "candidate_precision": {
+          "lower": 0.7575059933447592,
+          "upper": 1,
+          "successes": 12,
+          "trials": 12,
+          "confidence": 0.95,
+          "method": "Wilson",
+          "interpretation": "nominal iid-binomial interval; not proof of external validity"
+        },
+        "false_positive_rate": {
+          "lower": 2.7755575615628914e-17,
+          "upper": 0.24249400665524085,
+          "successes": 0,
+          "trials": 12,
+          "confidence": 0.95,
+          "method": "Wilson",
+          "interpretation": "nominal iid-binomial interval; not proof of external validity"
+        }
+      },
+      "family_case_counts": {
+        "named-before-declaration": 1,
+        "named-destructure-property": 1,
+        "named-promise": 1,
+        "three-helpers": 1,
+        "nested-decoding": 1,
+        "numeric-body-stride": 1,
+        "multiple-body-increments": 1,
+        "named-local-block": 1,
+        "captured-later-assignment": 1,
+        "four-helpers": 1,
+        "named-local-anchor": 1,
+        "raw-script-through-helpers": 1,
+        "named-before-declaration-text": 1,
+        "named-destructure-encoded": 1,
+        "named-promise-fixed": 1,
+        "three-helpers-encoded": 1,
+        "nested-fixed-return": 1,
+        "numeric-body-stride-overwrite": 1,
+        "multiple-increments-overwrite": 1,
+        "named-outer-safe-output": 1,
+        "captured-constant-text": 1,
+        "four-helpers-fixed": 1,
+        "named-relative-anchor": 1,
+        "helpers-text-node": 1
+      },
+      "unique_code_hashes": 24,
+      "repeated_code_hashes": {},
+      "evaluation_kind": "exposed_or_unspecified",
+      "point_gate_passed": true,
+      "nominal_interval_gate_passed": false,
+      "production_accuracy_established": false,
+      "model_promotion_allowed": false,
+      "limitations": [
+        "Rates use all supplied labels; unsafe abstentions/not-tested cases remain recall misses.",
+        "Labels must come from reviewed semantics; browser non-execution alone is not a safe label.",
+        "Intervals are nominal; shared templates/repos and selected synthetic cases can invalidate iid inference.",
+        "Unit-test success and a point threshold do not establish learned-model or production accuracy.",
+        "Independent external reviewed cases and disjoint source groups are still required."
+      ]
+    }
+  },
+  "external_holdout_eligibility": {
+    "metadata_checks_passed": false,
+    "reasons": [
+      "dataset_already_exposed_or_unverified",
+      "dataset_is_not_external_holdout",
+      "development_code_overlap",
+      "development_inventory_incomplete",
+      "freeze_order_unverified",
+      "immutable_external_source_missing",
+      "independent_label_review_missing",
+      "insufficient_cases_per_class",
+      "insufficient_disjoint_source_repositories",
+      "negative_browser_result_is_not_safe_ground_truth",
+      "representative_sampling_plan_missing"
+    ],
+    "counts": {
+      "unsafe": 44,
+      "safe": 44
+    },
+    "source_repositories": 0,
+    "families": 88,
+    "independence_verified": false,
+    "model_promotion_allowed": false,
+    "scope": "structural metadata/overlap checks only; reviewer/source/sampling assertions require external verification"
+  },
+  "v8_case_report": {
+    "cases_sha256": "a73e22842988977caf3c5db403bf237ac1d35169cf7d824d6495bdcf15bd4248",
+    "results": [
+      {
+        "id": "V8-U01",
+        "label": "unsafe",
+        "code": "window.addEventListener(\"message\",paint);function paint(event){const markup=event.data;panel.insertAdjacentHTML(\"beforeend\",markup);}",
+        "family": "named-before-declaration",
+        "static_status": "CANDIDATE",
+        "browser": {
+          "executed": true,
+          "expected_execution": true,
+          "label_agrees": true,
+          "proof_nonce": "60e40f5076ca6b7b9ddf823a",
+          "observed_marker": "60e40f5076ca6b7b9ddf823a",
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://sender.local/message",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://audit.local/missing",
+              "resource_type": "image",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "<img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='60e40f5076ca6b7b9ddf823a'\">",
+          "trigger": "message",
+          "synchronous_marker_observations": [
+            "__XSS_AUDIT_MARKER__60e40f5076ca6b7b9ddf823a"
+          ],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-U02",
+        "label": "unsafe",
+        "code": "function render({data: markup}){panel.innerHTML=\"<section>\"+markup+\"</section>\";}window.onmessage=render;",
+        "family": "named-destructure-property",
+        "static_status": "CANDIDATE",
+        "browser": {
+          "executed": true,
+          "expected_execution": true,
+          "label_agrees": true,
+          "proof_nonce": "81d4c24e6f0e0aecfd7c2c2a",
+          "observed_marker": "81d4c24e6f0e0aecfd7c2c2a",
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://sender.local/message",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://audit.local/missing",
+              "resource_type": "image",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "<section><img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='81d4c24e6f0e0aecfd7c2c2a'\"></section>",
+          "trigger": "message",
+          "synchronous_marker_observations": [
+            "__XSS_AUDIT_MARKER__81d4c24e6f0e0aecfd7c2c2a"
+          ],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-U03",
+        "label": "unsafe",
+        "code": "function render(message){const value=message;panel.innerHTML=value;}Promise.resolve(window.name).then(render);",
+        "family": "named-promise",
+        "static_status": "CANDIDATE",
+        "browser": {
+          "executed": true,
+          "expected_execution": true,
+          "label_agrees": true,
+          "proof_nonce": "32a75312ff6899ef9d0c76a7",
+          "observed_marker": "32a75312ff6899ef9d0c76a7",
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://audit.local/missing",
+              "resource_type": "image",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "<img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='32a75312ff6899ef9d0c76a7'\">",
+          "trigger": "none",
+          "synchronous_marker_observations": [
+            "__XSS_AUDIT_MARKER__32a75312ff6899ef9d0c76a7"
+          ],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-U04",
+        "label": "unsafe",
+        "code": "function alpha(value){return beta(value);}function beta(value){const saved=value;return gamma(saved);}function gamma(value){return value;}panel.innerHTML=alpha(window.name);",
+        "family": "three-helpers",
+        "static_status": "CANDIDATE",
+        "browser": {
+          "executed": true,
+          "expected_execution": true,
+          "label_agrees": true,
+          "proof_nonce": "ae6d019778b8d4f372801564",
+          "observed_marker": "ae6d019778b8d4f372801564",
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://audit.local/missing",
+              "resource_type": "image",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "<img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='ae6d019778b8d4f372801564'\">",
+          "trigger": "none",
+          "synchronous_marker_observations": [
+            "__XSS_AUDIT_MARKER__ae6d019778b8d4f372801564"
+          ],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-U05",
+        "label": "unsafe",
+        "code": "function decode(value){return decodeURIComponent(value);}function restore(value){return decode(value);}const encoded=encodeURIComponent(window.name);panel.innerHTML=restore(encoded);",
+        "family": "nested-decoding",
+        "static_status": "CANDIDATE",
+        "browser": {
+          "executed": true,
+          "expected_execution": true,
+          "label_agrees": true,
+          "proof_nonce": "282059316db421e200623fad",
+          "observed_marker": "282059316db421e200623fad",
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://audit.local/missing",
+              "resource_type": "image",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "<img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='282059316db421e200623fad'\">",
+          "trigger": "none",
+          "synchronous_marker_observations": [
+            "__XSS_AUDIT_MARKER__282059316db421e200623fad"
+          ],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-U06",
+        "label": "unsafe",
+        "code": "let result=\"\";for(let cursor=1;cursor<7;cursor++){result=window.name;cursor+=2;}panel.innerHTML=result;",
+        "family": "numeric-body-stride",
+        "static_status": "CANDIDATE",
+        "browser": {
+          "executed": true,
+          "expected_execution": true,
+          "label_agrees": true,
+          "proof_nonce": "f7503a3d0ae818bd59293d70",
+          "observed_marker": "f7503a3d0ae818bd59293d70",
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://audit.local/missing",
+              "resource_type": "image",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "<img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='f7503a3d0ae818bd59293d70'\">",
+          "trigger": "none",
+          "synchronous_marker_observations": [
+            "__XSS_AUDIT_MARKER__f7503a3d0ae818bd59293d70"
+          ],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-U07",
+        "label": "unsafe",
+        "code": "let result=\"\";for(let cursor=0;cursor<8;++cursor){cursor++;result=window.name;cursor+=1;}panel.innerHTML=result;",
+        "family": "multiple-body-increments",
+        "static_status": "CANDIDATE",
+        "browser": {
+          "executed": true,
+          "expected_execution": true,
+          "label_agrees": true,
+          "proof_nonce": "4a84870864a0350ef50ac391",
+          "observed_marker": "4a84870864a0350ef50ac391",
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://audit.local/missing",
+              "resource_type": "image",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "<img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='4a84870864a0350ef50ac391'\">",
+          "trigger": "none",
+          "synchronous_marker_observations": [
+            "__XSS_AUDIT_MARKER__4a84870864a0350ef50ac391"
+          ],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-U08",
+        "label": "unsafe",
+        "code": "function render(e){let value=e.data;{const value=\"fixed\";}panel.innerHTML=value;}window.addEventListener(\"message\",render,false);",
+        "family": "named-local-block",
+        "static_status": "CANDIDATE",
+        "browser": {
+          "executed": true,
+          "expected_execution": true,
+          "label_agrees": true,
+          "proof_nonce": "e5d61da998ce10b1026b9189",
+          "observed_marker": "e5d61da998ce10b1026b9189",
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://sender.local/message",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://audit.local/missing",
+              "resource_type": "image",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "<img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='e5d61da998ce10b1026b9189'\">",
+          "trigger": "message",
+          "synchronous_marker_observations": [
+            "__XSS_AUDIT_MARKER__e5d61da998ce10b1026b9189"
+          ],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-U09",
+        "label": "unsafe",
+        "code": "let value=\"fixed\";function render(e){panel.innerHTML=value;}window.addEventListener(\"message\",render);value=window.name;",
+        "family": "captured-later-assignment",
+        "static_status": "CANDIDATE",
+        "browser": {
+          "executed": true,
+          "expected_execution": true,
+          "label_agrees": true,
+          "proof_nonce": "2f25bbb7875273e39ccc6022",
+          "observed_marker": "2f25bbb7875273e39ccc6022",
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://sender.local/message",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://audit.local/missing",
+              "resource_type": "image",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "<img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='2f25bbb7875273e39ccc6022'\">",
+          "trigger": "message",
+          "synchronous_marker_observations": [
+            "__XSS_AUDIT_MARKER__2f25bbb7875273e39ccc6022"
+          ],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-U10",
+        "label": "unsafe",
+        "code": "function a(value){return b(value);}function b(value){return c(value);}function c(value){return d(value);}function d(value){return value;}panel.innerHTML=a(window.name);",
+        "family": "four-helpers",
+        "static_status": "CANDIDATE",
+        "browser": {
+          "executed": true,
+          "expected_execution": true,
+          "label_agrees": true,
+          "proof_nonce": "24903e1b9bfbfbab7f0c7e12",
+          "observed_marker": "24903e1b9bfbfbab7f0c7e12",
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://audit.local/missing",
+              "resource_type": "image",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "<img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='24903e1b9bfbfbab7f0c7e12'\">",
+          "trigger": "none",
+          "synchronous_marker_observations": [
+            "__XSS_AUDIT_MARKER__24903e1b9bfbfbab7f0c7e12"
+          ],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-U11",
+        "label": "unsafe",
+        "code": "function navigate(e){const a=document.createElement(\"a\");a.href=e.data;a.textContent=\"go\";a.id=\"message-link\";document.body.appendChild(a);a.click();}window.addEventListener(\"message\",navigate);",
+        "family": "named-local-anchor",
+        "static_status": "CANDIDATE",
+        "browser": {
+          "executed": true,
+          "expected_execution": true,
+          "label_agrees": true,
+          "proof_nonce": "3780c19c7baeb9cba05c68a4",
+          "observed_marker": "3780c19c7baeb9cba05c68a4",
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://sender.local/message",
+              "resource_type": "document",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "",
+          "trigger": "message",
+          "synchronous_marker_observations": [
+            "__XSS_AUDIT_MARKER__3780c19c7baeb9cba05c68a4"
+          ],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-U12",
+        "label": "unsafe",
+        "code": "function alpha(value){return beta(value);}function beta(value){return value;}const loader=document.createElement(\"script\");loader.src=alpha(window.name);document.head.appendChild(loader);",
+        "family": "raw-script-through-helpers",
+        "static_status": "CANDIDATE",
+        "browser": {
+          "executed": true,
+          "expected_execution": true,
+          "label_agrees": true,
+          "proof_nonce": "e6ed4147c559cedd7215fc5b",
+          "observed_marker": "e6ed4147c559cedd7215fc5b",
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://audit.local/proof.js",
+              "resource_type": "script",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "",
+          "trigger": "none",
+          "synchronous_marker_observations": [
+            "__XSS_AUDIT_MARKER__e6ed4147c559cedd7215fc5b"
+          ],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-S01",
+        "label": "safe",
+        "code": "window.addEventListener(\"message\",paint);function paint(event){const markup=event.data;panel.insertAdjacentText(\"beforeend\",markup);}",
+        "family": "named-before-declaration-text",
+        "static_status": "SAFE",
+        "browser": {
+          "executed": false,
+          "expected_execution": false,
+          "label_agrees": true,
+          "proof_nonce": "4f95a264a0f4d65105f9825a",
+          "observed_marker": null,
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://sender.local/message",
+              "resource_type": "document",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "&lt;img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='4f95a264a0f4d65105f9825a'\"&gt;",
+          "trigger": "message",
+          "synchronous_marker_observations": [],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-S02",
+        "label": "safe",
+        "code": "function render({data: markup}){panel.innerHTML=encodeURIComponent(markup);}window.onmessage=render;",
+        "family": "named-destructure-encoded",
+        "static_status": "SAFE",
+        "browser": {
+          "executed": false,
+          "expected_execution": false,
+          "label_agrees": true,
+          "proof_nonce": "e8fe816cc6582b18166298ad",
+          "observed_marker": null,
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://sender.local/message",
+              "resource_type": "document",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "%3Cimg%20src%3D%22http%3A%2F%2Faudit.local%2Fmissing%22%20onerror%3D%22window.__auditProof%3D'e8fe816cc6582b18166298ad'%22%3E",
+          "trigger": "message",
+          "synchronous_marker_observations": [],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-S03",
+        "label": "safe",
+        "code": "function render(message){panel.innerHTML=\"<em>fixed</em>\";}Promise.resolve(window.name).then(render);",
+        "family": "named-promise-fixed",
+        "static_status": "SAFE",
+        "browser": {
+          "executed": false,
+          "expected_execution": false,
+          "label_agrees": true,
+          "proof_nonce": "436021d5979e3cef46ced2be",
+          "observed_marker": null,
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "<em>fixed</em>",
+          "trigger": "none",
+          "synchronous_marker_observations": [],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-S04",
+        "label": "safe",
+        "code": "function alpha(value){return beta(value);}function beta(value){const saved=value;return gamma(saved);}function gamma(value){return encodeURIComponent(value);}const encoded=alpha(window.name);panel.innerHTML=\"<main>\"+encoded+\"</main>\";",
+        "family": "three-helpers-encoded",
+        "static_status": "SAFE",
+        "browser": {
+          "executed": false,
+          "expected_execution": false,
+          "label_agrees": true,
+          "proof_nonce": "bc61937e27d95e38b2156844",
+          "observed_marker": null,
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "<main>%3Cimg%20src%3D%22http%3A%2F%2Faudit.local%2Fmissing%22%20onerror%3D%22window.__auditProof%3D'bc61937e27d95e38b2156844'%22%3E</main>",
+          "trigger": "none",
+          "synchronous_marker_observations": [],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-S05",
+        "label": "safe",
+        "code": "function fixed(value){const saved=\"constant\";return saved;}function discard(value){return fixed(value);}panel.innerHTML=discard(window.name);",
+        "family": "nested-fixed-return",
+        "static_status": "SAFE",
+        "browser": {
+          "executed": false,
+          "expected_execution": false,
+          "label_agrees": true,
+          "proof_nonce": "540332113badf753a1ce9def",
+          "observed_marker": null,
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "constant",
+          "trigger": "none",
+          "synchronous_marker_observations": [],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-S06",
+        "label": "safe",
+        "code": "let result=window.name;for(let cursor=1;cursor<7;cursor++){result=\"fixed\";cursor+=2;}panel.innerHTML=result;",
+        "family": "numeric-body-stride-overwrite",
+        "static_status": "SAFE",
+        "browser": {
+          "executed": false,
+          "expected_execution": false,
+          "label_agrees": true,
+          "proof_nonce": "f360e69f6abf18a55058dc8b",
+          "observed_marker": null,
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "fixed",
+          "trigger": "none",
+          "synchronous_marker_observations": [],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-S07",
+        "label": "safe",
+        "code": "let result=window.name;for(let cursor=0;cursor<8;++cursor){cursor++;result=\"fixed\";cursor+=1;}panel.innerHTML=result;",
+        "family": "multiple-increments-overwrite",
+        "static_status": "SAFE",
+        "browser": {
+          "executed": false,
+          "expected_execution": false,
+          "label_agrees": true,
+          "proof_nonce": "93b15d54b0f1a40fb507b775",
+          "observed_marker": null,
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "fixed",
+          "trigger": "none",
+          "synchronous_marker_observations": [],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-S08",
+        "label": "safe",
+        "code": "function render(e){let value=e.data;{const value=\"fixed\";}panel.textContent=value;}window.addEventListener(\"message\",render,false);",
+        "family": "named-outer-safe-output",
+        "static_status": "SAFE",
+        "browser": {
+          "executed": false,
+          "expected_execution": false,
+          "label_agrees": true,
+          "proof_nonce": "08257501fb3481689ccd6ee3",
+          "observed_marker": null,
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://sender.local/message",
+              "resource_type": "document",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "&lt;img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='08257501fb3481689ccd6ee3'\"&gt;",
+          "trigger": "message",
+          "synchronous_marker_observations": [],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-S09",
+        "label": "safe",
+        "code": "const value=\"fixed\";function render(e){panel.textContent=value;}window.addEventListener(\"message\",render);",
+        "family": "captured-constant-text",
+        "static_status": "INCONCLUSIVE",
+        "browser": {
+          "executed": false,
+          "expected_execution": false,
+          "label_agrees": true,
+          "proof_nonce": "34391211e20ce2808177e3cb",
+          "observed_marker": null,
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://sender.local/message",
+              "resource_type": "document",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "fixed",
+          "trigger": "message",
+          "synchronous_marker_observations": [],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-S10",
+        "label": "safe",
+        "code": "function a(value){return b(value);}function b(value){return c(value);}function c(value){return d(value);}function d(value){return \"constant\";}panel.innerHTML=a(window.name);",
+        "family": "four-helpers-fixed",
+        "static_status": "SAFE",
+        "browser": {
+          "executed": false,
+          "expected_execution": false,
+          "label_agrees": true,
+          "proof_nonce": "761ea1c6b5a17725920b3623",
+          "observed_marker": null,
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "constant",
+          "trigger": "none",
+          "synchronous_marker_observations": [],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-S11",
+        "label": "safe",
+        "code": "function navigate(e){const a=document.createElement(\"a\");a.href=\"/show?q=\"+encodeURIComponent(e.data);}window.addEventListener(\"message\",navigate);",
+        "family": "named-relative-anchor",
+        "static_status": "SAFE",
+        "browser": {
+          "executed": false,
+          "expected_execution": false,
+          "label_agrees": true,
+          "proof_nonce": "0f9ac7d33916e15b68f5b173",
+          "observed_marker": null,
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            },
+            {
+              "url": "http://sender.local/message",
+              "resource_type": "document",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "",
+          "trigger": "message",
+          "synchronous_marker_observations": [],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      },
+      {
+        "id": "V8-S12",
+        "label": "safe",
+        "code": "function alpha(value){return beta(value);}function beta(value){return value;}const text=alpha(window.name);panel.replaceChildren(document.createTextNode(text));",
+        "family": "helpers-text-node",
+        "static_status": "SAFE",
+        "browser": {
+          "executed": false,
+          "expected_execution": false,
+          "label_agrees": true,
+          "proof_nonce": "9b25415c0f1c832ae80af4f2",
+          "observed_marker": null,
+          "errors": [],
+          "requests": [
+            {
+              "url": "http://audit.local/case",
+              "resource_type": "document",
+              "method": "GET"
+            }
+          ],
+          "network_policy": "all requests locally fulfilled or aborted; no external network",
+          "panel_html": "&lt;img src=\"http://audit.local/missing\" onerror=\"window.__auditProof='9b25415c0f1c832ae80af4f2'\"&gt;",
+          "trigger": "none",
+          "synchronous_marker_observations": [],
+          "scope": "synthetic fixture proof only; created links mounted and user-clicked by harness"
+        }
+      }
+    ]
+  },
+  "model_evaluated": false,
+  "promotion": "DO_NOT_PROMOTE",
+  "evaluated_engine_commit": "7c7f0f55ccba22516a95745e6fe2a4c9e7b5ee49",
+  "github_ci_run": 38366617566,
+  "core_tests_passed": 502
+}

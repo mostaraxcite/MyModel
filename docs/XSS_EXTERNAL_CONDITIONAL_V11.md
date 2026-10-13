@@ -64,3 +64,35 @@ The output retains exact inputs, browser marker/error/network evidence, static
 statuses and separate rates. CI uploads the complete report and prints it as
 `V11_EXTERNAL_CONDITIONAL_EVIDENCE`. No training, adapter inference or model
 promotion occurs.
+
+## Recorded first-run evidence
+
+GitHub run [38372645071](https://github.com/mostaraxcite/MyModel/actions/runs/38372645071)
+verified head `be4e393643d2dda5ae755967d1d43d84aff4eb3b` with Chromium 140.0.7339.16.
+All 24 fixtures completed without JavaScript errors or browser/label mismatches.
+The report is retained in `docs/evaluations/xss_external_conditional_v11_report.json`.
+
+| Conditional-corpus observation | Count |
+|---|---:|
+| Unsafe fixtures executing marker in browser | 15 / 15 |
+| Unsafe fixtures statically reaching candidate | 0 / 15 |
+| Unsafe fixtures statically reported safe | 0 / 15 |
+| Unsafe fixtures statically inconclusive | 15 / 15 |
+| Safe fixtures producing static alerts | 0 / 9 |
+| Safe fixtures statically bounded-safe | 4 / 9 |
+| Safe fixtures statically inconclusive | 5 / 9 |
+| Decisive static judgments | 4 / 24 |
+
+The observed candidate recall is zero **on these selected conditional DOM-input
+fixtures**, not a universal model accuracy score. Static snippets omit harness
+trust assumptions, and neither a DOM value nor a function named `html` proves
+attacker control or authentic jQuery identity by itself. Current unresolved
+DOM getters/library methods show an unsupported practical source/sink family;
+abstention avoids a false safety claim but does not provide detection coverage.
+
+Next engine work needs verified DOM identity and caller/input trust provenance,
+plus an explicitly supported library model for HTML-vs-text and getter-vs-setter
+operations. It must not trust arbitrary function names or blanket-mark all DOM
+values attacker-controlled. These 24 cases are now exposed diagnostics; any
+future repair result on them is regression performance. A new independently
+reviewed corpus is still required, and no learned model was tested here.

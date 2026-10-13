@@ -48,7 +48,12 @@ def selectors_and_names(code):
             value=literal(args[0])
             return value if value and not value.lstrip().startswith('<') else None
         if name in {'document.getElementById','document.querySelector','document.querySelectorAll'} and len(args)==1:
-            value=literal(args[0]);return '#'+value if value and name.endswith('getElementById') else value
+            value=literal(args[0])
+            if name.endswith('getElementById'):
+                # Raw IDs containing CSS punctuation cannot be substituted by
+                # an unescaped #selector referring to a different element.
+                return '#'+value if value and re.fullmatch(r'[A-Za-z_][A-Za-z0-9_-]*',value) else None
+            return value
         if fn.type=='member_expression':
             base=selector(fn.child_by_field_name('object'));prop=text(fn.child_by_field_name('property'))
             if base and prop=='find' and len(args)==1:

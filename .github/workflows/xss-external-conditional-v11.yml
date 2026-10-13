@@ -1,0 +1,31 @@
+name: XSS external conditional diagnostics
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  conditional-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pytest tree-sitter==0.25.2 tree-sitter-javascript==0.25.0 playwright==1.55.0
+      - run: python -m playwright install --with-deps chromium
+      - run: python -m pytest -q tests/test_external_conditional_v11.py
+      - name: Load and verify frozen PR32 engine in this diagnostic job
+        run: |
+          git fetch --depth=1 origin e45e0ccaa811bdcb16e78306c591e991d976b6ba
+          git restore --source=e45e0ccaa811bdcb16e78306c591e991d976b6ba --staged --worktree -- xss_specialist
+          git diff --exit-code e45e0ccaa811bdcb16e78306c591e991d976b6ba -- xss_specialist
+      - name: Browser verification and exposed external diagnosis
+        run: python -m evaluation.external_conditional_v11 --output results/xss-external-conditional-v11.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xss-external-conditional-v11
+          path: results/xss-external-conditional-v11.json

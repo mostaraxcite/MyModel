@@ -1,0 +1,19 @@
+{
+  "evaluation_kind": "unscored_external_followup_intake",
+  "review_status": "pending",
+  "source": {
+    "repository": "semgrep/semgrep-rules",
+    "revision": "9bbf021d0acffa3095fcffd17b2bc7787eb4796d",
+    "path": "javascript/lang/security/detect-eval-with-expression.js",
+    "blob_sha": "81d4795e01f3b983b1b26a474dae8ab84f4a43cd",
+    "url": "https://github.com/semgrep/semgrep-rules/blob/9bbf021d0acffa3095fcffd17b2bc7787eb4796d/javascript/lang/security/detect-eval-with-expression.js",
+    "code": "// ok:detect-eval-with-expression\neval('alert')\n\n// ok:detect-eval-with-expression\nwindow.eval('alert')\n\n\n// ruleid:detect-eval-with-expression\nwindow.eval(`alert('${location.href}')`)\n\nlet funcName = new URLSearchParams(window.location.search).get('a')\n// ruleid:detect-eval-with-expression\nvar x = new Function(`return ${funcName}(a,b)`)\n"
+  },
+  "review_notes": [
+    "Literal eval calls and upstream ok comments do not define broad safe application labels.",
+    "URL serialization and JavaScript string context require explicit browser validation.",
+    "Constructing a Function does not itself execute its body; invocation reachability is required."
+  ],
+  "model_evaluated": false,
+  "promotion": "DO_NOT_PROMOTE"
+}

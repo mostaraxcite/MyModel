@@ -95,7 +95,7 @@ def _sink_evidence(item: dict) -> dict:
     }
 
 
-def review_evidence(code: str, *, trusted_modules: tuple[str, ...] = ()) -> dict:
+def review_evidence(code: str, *, trusted_modules: tuple[str, ...] = (), dom_context: dict | None = None) -> dict:
     """Ground all facts in the actual syntax tree and tracked values.
 
     CANDIDATE means a reviewable static path; NOT browser-confirmed XSS.
@@ -104,8 +104,13 @@ def review_evidence(code: str, *, trusted_modules: tuple[str, ...] = ()) -> dict
     """
     if not isinstance(code, str):
         raise TypeError("JavaScript source text must be a string")
-    static = analyze_taint(code, trusted_modules=trusted_modules)
+    static = analyze_taint(code, trusted_modules=trusted_modules, dom_context=dom_context)
     records = [_sink_evidence(s) for s in static["sinks"]]
+    if static.get('dom_context'):
+        for record in records:
+            if any(s.startswith('DOM_CONTEXT[') for s in record['source']['expressions']):
+                record['source']['trust_basis']='caller_supplied_dom_context'
+                record['source']['evidence_ref']=static['dom_context']['evidence_ref']
     limitations = list(static["limitations"])
     candidate = any(r["decision"]["status"] == "CANDIDATE" for r in records)
     # The taint engine is the authoritative static gate, not the SLM's text.
@@ -127,7 +132,7 @@ def review_evidence(code: str, *, trusted_modules: tuple[str, ...] = ()) -> dict
         "language": "javascript",
         "source": {
             "observed": list(static.get("observed_sources", [])),
-            "status": "OBSERVED" if static.get("observed_sources") else
+            "status": "CONDITIONAL_DOM_CONTEXT" if any(s.startswith('DOM_CONTEXT[') for s in static.get('observed_sources', [])) else "OBSERVED" if static.get("observed_sources") else
                       "UNKNOWN" if limitations else "NOT_OBSERVED",
         },
         "flow": {"per_sink": [r["flow"] for r in records]},
@@ -147,6 +152,7 @@ def review_evidence(code: str, *, trusted_modules: tuple[str, ...] = ()) -> dict
         ),
         "source_static_verdict": static["verdict"],
         "model_has_final_authority": False,
+        "dom_context": static.get('dom_context'),
     }
 
 

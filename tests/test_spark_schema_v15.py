@@ -25,3 +25,18 @@ def test_external_snippets_never_enter_training():
     external,_=load_frozen()
     known={c['code'] for c in external}
     assert not any(r['code'] in known for r in candidate_rows())
+
+
+def test_workflow_shell_and_embedded_python_parse():
+    from pathlib import Path
+    import subprocess
+    root=Path(__file__).resolve().parents[1]
+    workflow=yaml.safe_load((root/'.github/workflows/spark-schema-v15.yml').read_text())
+    for job in workflow['jobs'].values():
+        for step in job['steps']:
+            script=step.get('run')
+            if not script: continue
+            subprocess.run(['bash','-n'],input=script,text=True,check=True)
+            if "python - <<'PY'\n" in script:
+                code=script.split("python - <<'PY'\n",1)[1].split('\nPY',1)[0]
+                compile(code,'workflow-python','exec')

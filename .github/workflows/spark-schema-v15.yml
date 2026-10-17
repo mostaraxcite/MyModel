@@ -1,0 +1,163 @@
+name: Spark Schema V15 Train and Evaluate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spark-schema-v15-candidate
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pytest pyyaml tree-sitter==0.25.2 tree-sitter-javascript==0.25.0
+      - run: python -m pytest -q tests/test_spark_schema_v15.py tests/test_spark_external_v14.py
+      - run: python -m compileall -q training/spark_schema_v15.py evaluation/spark_schema_v15_eval.py kaggle/spark_schema_v15_train.py
+  train:
+    needs: preflight
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[launch-spark-schema-v15]')
+    name: Launch separate evidence-only QLoRA training on Kaggle
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify evidence gates and balanced three-state training labels
+        run: |
+          python -m pip install -q pytest pyyaml tree-sitter tree-sitter-javascript
+          python -m pytest -q tests/test_evidence_first.py tests/test_spark_schema_v15.py
+          python -m compileall -q xss_specialist/evidence_pipeline.py training/spark_schema_v15.py kaggle/spark_schema_v15_train.py
+          python -m training.spark_schema_v15 --output-dir "$RUNNER_TEMP/spark-evidence-preflight"
+      - name: Package pinned dedicated Kaggle notebook
+        env:
+          PINNED_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import hashlib,json,os,pathlib,re
+          sha=os.environ["PINNED_SHA"]
+          if not re.fullmatch("[a-f0-9]{40}",sha): raise SystemExit("source SHA not pinned")
+          src=pathlib.Path("kaggle/spark_schema_v15_train.py").read_text()
+          assert src.count("__MYMODEL_SHA__")==1
+          src=src.replace('REPO_SHA = "__MYMODEL_SHA__"',f'REPO_SHA = "{sha}"')
+          folder=pathlib.Path("kaggle-schema-v15-dist");folder.mkdir(exist_ok=True)
+          (folder/"spark_schema_v15_train.py").write_text(src)
+          meta={
+            "id":"dody2004/spark-schema-v15",
+            "title":"Spark Schema V15",
+            "code_file":"spark_schema_v15_train.py",
+            "language":"python","kernel_type":"script","is_private":True,
+            "enable_gpu":True,"enable_internet":True,"machine_shape":"NvidiaTeslaT4",
+            "dataset_sources":[],"competition_sources":[],"kernel_sources":[],"model_sources":[],
+          }
+          (folder/"kernel-metadata.json").write_text(json.dumps(meta,indent=2)+"\n")
+          print("Evidence-only candidate:",meta["id"],"Pinned:",sha)
+          print("Code sha256:",hashlib.sha256(src.encode()).hexdigest())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: spark-schema-v15-package-${{ github.run_id }}
+          path: kaggle-schema-v15-dist
+          retention-days: 14
+      - name: Submit one GPU candidate (no overwrite of v1/v2)
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KAGGLE_API_TOKEN" ]; then
+            echo "::error::KAGGLE_API_TOKEN secret missing; no GPU run submitted."
+            exit 1
+          fi
+          python -m pip install -q "git+https://github.com/Kaggle/kaggle-cli.git@9c57dd74c29904c40ff7879eed33644be89d2e2f"
+          kaggle kernels push -p kaggle-schema-v15-dist --accelerator NvidiaTeslaT4 --timeout 18000
+          echo "::notice::Kernel submitted. This is not proof of training/adapter completion."
+          echo "https://www.kaggle.com/code/dody2004/spark-schema-v15"
+      - name: Inspect run status without starting another GPU session
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p kaggle-v3-status
+          kernel="dody2004/spark-schema-v15"
+          finished=0
+          for i in $(seq 1 48); do
+            state="$(kaggle kernels status "$kernel" 2>&1)" || { echo "::error::Status inaccessible"; exit 1; }
+            printf 'V3 candidate status %s/48: %s\n' "$i" "$state"
+            echo "$state" > kaggle-v3-status/last-kernel-status.txt
+            if echo "$state" | grep -Eqi 'KernelWorkerStatus.COMPLETE'; then
+              finished=1
+              break
+            fi
+            if echo "$state" | grep -Eqi 'KernelWorkerStatus.ERROR|KernelWorkerStatus.CANCELLED|Permission .* denied'; then
+              echo "::error::V3 job failed or status inaccessible. Check Kaggle notebook logs."
+              exit 1
+            fi
+            sleep 60
+          done
+          if [ "$finished" = 0 ]; then
+            echo "::warning::Kaggle candidate still queued or running; no adapter completion claimed."
+            exit 0
+          fi
+          kaggle kernels output "$kernel" -p kaggle-v3-status/output --file-pattern '(run_status|evaluation)[.]json -o > kaggle-v3-status/download.txt 2>&1 || true
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          matches=list(Path("kaggle-v3-status/output").rglob("run_status.json"))
+          if len(matches)!=1: raise SystemExit("No verified v3 run_status.json")
+          state=json.loads(matches[0].read_text())
+          assert state.get("status")=="candidate_saved_evaluated_internal_only",state
+          assert state.get("training_variant")=="schema_explicit_v15",state
+          assert state.get("training_rows")==220 and state.get("eval_rows")==120,state
+          assert state.get("model_has_final_authority") is False,state
+          assert state.get("model_promoted") is False,state
+          assert state.get("evaluation_complete") is True,state
+          reports=list(Path("kaggle-v3-status/output").rglob("evaluation.json"))
+          assert len(reports)==1
+          report=json.loads(reports[0].read_text())
+          assert report["base"]["n"]==12 and report["schema_v15"]["n"]==12
+          print("V15_RUN_STATE="+json.dumps(state))
+          print("V15_MODEL_REPORT="+json.dumps(report,separators=(",",":")))
+          PY
+      - name: Save submission and validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spark-schema-v15-status-${{ github.run_id }}
+          path: kaggle-v3-status
+          retention-days: 30
+          if-no-files-found: warn
+ -o > kaggle-v3-status/download.txt 2>&1 || true
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          matches=list(Path("kaggle-v3-status/output").rglob("run_status.json"))
+          if len(matches)!=1: raise SystemExit("No verified v3 run_status.json")
+          state=json.loads(matches[0].read_text())
+          assert state.get("status")=="candidate_saved_evaluated_internal_only",state
+          assert state.get("training_variant")=="schema_explicit_v15",state
+          assert state.get("training_rows")==220 and state.get("eval_rows")==120,state
+          assert state.get("model_has_final_authority") is False,state
+          assert state.get("model_promoted") is False,state
+          print("Evidence-only adapter saved; independent evaluation not yet performed.")
+          PY
+      - name: Save submission and validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spark-schema-v15-status-${{ github.run_id }}
+          path: kaggle-v3-status
+          retention-days: 30
+          if-no-files-found: warn
+

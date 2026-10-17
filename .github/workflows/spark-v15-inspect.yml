@@ -1,0 +1,47 @@
+name: Inspect existing Spark V15
+on:
+  push:
+    branches: [inspect/spark-v15-status]
+    paths: [.github/workflows/spark-v15-inspect.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -q "git+https://github.com/Kaggle/kaggle-cli.git@9c57dd74c29904c40ff7879eed33644be89d2e2f"
+      - name: Read existing training status and outputs
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p inspection
+          kernel="dody2004/spark-schema-v15"
+          kaggle kernels status "$kernel" | tee inspection/status.txt
+          if grep -Eqi 'KernelWorkerStatus.COMPLETE|KernelWorkerStatus.ERROR|KernelWorkerStatus.CANCELLED' inspection/status.txt; then
+            kaggle kernels output "$kernel" -p inspection/output --file-pattern '(run_status|evaluation)[.]json$' -o
+            python - <<'PY'
+          import json
+          from pathlib import Path
+          for p in Path("inspection/output").rglob("*.json"):
+              data=json.loads(p.read_text())
+              if p.name=="run_status.json":
+                  assert data["my_model_sha"]=="de8a0f51d3273fd3abc9fb9771f4d58671f411ba",data
+                  print("V15_RUN_STATE="+json.dumps(data))
+              elif p.name=="evaluation.json":
+                  print("V15_MODEL_REPORT="+json.dumps(data,separators=(",",":")))
+          PY
+          else
+            echo "V15_PENDING_NO_COMPLETION_CONFIRMED"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spark-v15-inspection
+          path: inspection
+          retention-days: 30

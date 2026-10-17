@@ -1,0 +1,1128 @@
+{
+  "benchmark": "exposed_external_code_only_conformance_not_independent_accuracy",
+  "status": "success",
+  "model_evaluated": true,
+  "base_model_revision": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+  "training_commit": "131bbeb6600537a0635047bd62dca688da72a7fe",
+  "adapter_sha256": {
+    "adapter_config.json": "c42165c32f1e3f3566944a3680967bceb768055d2f881d2abf1c4f87bbfdbc22",
+    "adapter_model.safetensors": "0e8d45b6196d2ff69b47a5ee6901761ae2e881ba0176c4300618b539d90a24c8"
+  },
+  "cases_sha256": "f72baa93daee773a84e555ad39f950affe3a5eab649a539064e542fb9f7521ff",
+  "input_mode": "code_only_no_labels_no_fixture_setup_no_oracle_fields",
+  "independence_verified": false,
+  "promotion": "DO_NOT_PROMOTE",
+  "model_has_final_authority": false,
+  "browser_confirmations": 0,
+  "limitations": [
+    "Exposed author-reviewed cases used in engine development; not a holdout.",
+    "Exact AST agreement measures schema/conformance, not independent semantic truth.",
+    "24 fixture cases contain 21 unique snippets, from five source repositories.",
+    "Conditional attacker-controlled DOM setup is intentionally absent from model input.",
+    "Source-disjoint 100 unsafe + 100 safe independently adjudicated acceptance set remains incomplete."
+  ],
+  "predictions": {
+    "base": [
+      {
+        "case_id": "SRC-0-L5-B172",
+        "raw": "{\n  \"snippet_sha256\": \"efe5dad1e0c41a9a6debb5b3bf01c2e28aad0e6555b6929afc1fc97bdb0b86bd\",\n  \"source\": \"document.write\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"UNKNOWN\",\n  \"defense\": \"N/A\",\n  \"limitations\": \"AST-grounded path not fully resolved; text-only DOM API context limits local output path confirmation.\"\n}"
+      },
+      {
+        "case_id": "SRC-1-L28-B1019",
+        "raw": "{\n  \"snippet_sha256\": \"6c9b57699e17877f905bb264625be537be78e823b3becad7051764078f50ddcc\",\n  \"source\": \"Unknown\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"Unknown\",\n  \"defense\": \"None\",\n  \"limitations\": \"AST-grounded path unresolved; text-only DOM API context limits local output classification.\"\n}"
+      },
+      {
+        "case_id": "SRC-1-L39-B1403",
+        "raw": "{\n  \"snippet_sha256\": \"aafc5e937fd0f8b7fdf96da19f5692c198f95adc62e8b4534c95988c6a209a84\",\n  \"source\": \"Unknown\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"UNKNOWN\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded extraction only; source, sink, and defense details are unresolved for this text-only snippet.\"\n}"
+      },
+      {
+        "case_id": "SRC-1-L119-B4483",
+        "raw": "{\n  \"snippet_sha256\": \"24b2d43649a63404f38cd839c251da928f23a8d31886b5b8db831ac10c8b4180\",\n  \"source\": \"externalCallback\",\n  \"flow\": \"externalCallback -> this.querySelector('path').setAttribute('d', ...) -> this.querySelectorAll('line').setAttribute('x2', ...) / setAttribute('y2', ...)\",\n  \"sink\": \"DOM attribute setters (setAttribute) on path and line elements\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded trace only; no sanitizer observed in the provided snippet; text-only DOM API context noted as safe for local output path.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L2-B16",
+        "raw": "{\n  \"snippet_sha256\": \"7474376e3c5aa09159a49694adaa6bf6d948977da4cdd1fda0422a3061fd495e\",\n  \"source\": \"textarea\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"html\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified, but sanitization behavior and execution context are unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L4-B66",
+        "raw": "{\n  \"snippet_sha256\": \"9b990a9bfa3eebe2edfbb33e388c63c8c51e504602302f433e3a952362e0b450\",\n  \"source\": \"$.some-element.text()\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html()\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified; sanitizer presence and execution context unresolved for local evidence extraction.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L8-B234",
+        "raw": "{\n  \"snippet_sha256\": \"bc0326824c2d95f1aa30ce5d5adf3af71b6a52e46c29b203024fb2f64b4e8414\",\n  \"source\": \"$.some-element.attr('data-target')\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html()\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified; sanitizer presence and execution context unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L10-B303",
+        "raw": "{\n  \"snippet_sha256\": \"289f1b27062992b0516e0f079cf59f0f5e84d8c6468e878debb55dcef51aee09\",\n  \"source\": \"document.getElementById('foo').innerText\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded trace identifies source and sink, but flow and sanitizer status are unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L18-B479",
+        "raw": "{\n  \"snippet_sha256\": \"e471398da525c8de44a588a719eceafaebacd6e4e37448538b4cacecfcd67a01\",\n  \"source\": \"document.getElementById('foo').textContent\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified, but sanitizer presence and execution context are unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L22-B557",
+        "raw": "{\n  \"snippet_sha256\": \"5e047fea5f6951deb0f15cc201c8a310d55217f3c532eff869796fafb33fd70d\",\n  \"source\": \"document.querySelectorAll(\\\"textarea\\\")[0].value\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified, but flow resolution and sanitizer verification are unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L26-B639",
+        "raw": "{\n  \"snippet_sha256\": \"96665cf8c07736d08fcd5b165a1ec7d72e6dfc0ef711fedec1dd55cd6a7c12a4\",\n  \"source\": \"document.getElementById('div1').getAttribute('data-target')\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html\",\n  \"defense\": \"N/A\",\n  \"limitations\": \"AST-grounded path traced; text-only DOM API context implies local output path; sanitizer status unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L51-B1120",
+        "raw": "{\n  \"snippet_sha256\": \"0b82af08c6a41c451707804ed2377e6a0e34427db06adb29645c5dc0ad1b5de2\",\n  \"source\": \"get(0)\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded trace identifies source and sink, but flow and sanitizer status remain unresolved without further context.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L56-B1270",
+        "raw": "{\n  \"snippet_sha256\": \"a6a8bcf2f867173f50a3b9b235b1e5562786c410353531a267b2aa34ba27308d\",\n  \"source\": \"input\",\n  \"flow\": \"DOM\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"Text-only DOM API observed; sanitizer status unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L57-B1334",
+        "raw": "{\n  \"snippet_sha256\": \"88e1915eecbbb1c221f306feff37d33f069446d6434139cdee73ef76ee35000d\",\n  \"source\": \"getAttribute\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified; sanitization and execution context unresolved for local evidence extraction.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L61-B1478",
+        "raw": "{\n  \"snippet_sha256\": \"a0def04439678a4750796778471d0e38c66a5849d636ec32b4d826faf9112e1f\",\n  \"source\": \"$(document).find(\\\"option\\\").attr(\\\"value\\\")\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified, but flow resolution and sanitizer identification are unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L81-B2029",
+        "raw": "{\n  \"snippet_sha256\": \"cdae060a945ebf9ecc1a9f0a76dd9d52de16ddf824f38899864921ecf2b4a162\",\n  \"source\": \"getElementById('foo')\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"getElementById('id').html()\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified; flow and sanitizer status unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L93-B2440",
+        "raw": "{\n  \"snippet_sha256\": \"412880196c4f3894f00daf3add59d2f79e139c27c4965625869e9de20cdd9bdb\",\n  \"source\": \"DOM API: .value\",\n  \"flow\": \"DOM API -> DOM Property\",\n  \"sink\": \"DOM API: .html()\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"Text-only DOM API output path; no sanitizer observed in AST; unresolved flow\"\n}"
+      },
+      {
+        "case_id": "SRC-4-L185-B5739",
+        "raw": "{\n  \"snippet_sha256\": \"1529a667a0ef48c995a3c3cf89193466e2ef8c5bd399a5c4243e9a4881fce12e\",\n  \"source\": \"JavaScript: content.append($('<a class=\\\"sceditor-fontsize-option\\\" data-size=\\\"' + i + '\\\" href=\\\"#\\\"><font size=\\\"' + i + '\\\">' + i + '</font></a>').on('click', clickFunc));\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"UNKNOWN\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded trace identifies source DOM construction and event binding but does not resolve the downstream sink, sanitizer, or execution path.\"\n}"
+      },
+      {
+        "case_id": "SRC-4-L221-B6716",
+        "raw": "{\n  \"snippet_sha256\": \"6c9b57699e17877f905bb264625be537be78e823b3becad7051764078f50ddcc\",\n  \"source\": \"Unknown\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"Unknown\",\n  \"defense\": \"None\",\n  \"limitations\": \"AST-grounded path unresolved; text-only DOM API context limits local output classification.\"\n}"
+      },
+      {
+        "case_id": "SRC-4-L232-B7005",
+        "raw": "{\n  \"snippet_sha256\": \"aafc5e937fd0f8b7fdf96da19f5692c198f95adc62e8b4534c95988c6a209a84\",\n  \"source\": \"Unknown\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"UNKNOWN\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded extraction only; source, sink, and defense details are unresolved for this text-only snippet.\"\n}"
+      },
+      {
+        "case_id": "SRC-6-L142-B5059",
+        "raw": "{\n  \"snippet_sha256\": \"c6730e3e9f5ebb27bac5a0b20d44b4d64fad1c3acc58204827e209d7fded7402\",\n  \"source\": \"this._elt.innerHTML = '<div></div>';\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"UNKNOWN\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path not fully resolved; text-only DOM API context indicates local output path is safe, but exact sink and sanitizer details remain unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-6-L221-B6923",
+        "raw": "{\n  \"snippet_sha256\": \"ba0dcc78842543f6698ae25cf4ae24a8b9886019ea8905a079de31320a8b50c2\",\n  \"source\": \"JavaScript string concatenation\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"Text-only DOM API\",\n  \"limitations\": \"Unknown sanitizer name; text-only DOM API is safe for this local output path\"\n}"
+      },
+      {
+        "case_id": "SRC-6-L336-B9871",
+        "raw": "{\n  \"snippet_sha256\": \"661c3e96f22ac91f8254c9c3353698791e32254ee37444088469b895e9e7c55d\",\n  \"source\": \"externalCallback\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"setAttribute\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded trace identifies a setAttribute sink within the externalCallback flow, but the origin of the value and the presence of any sanitization are unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-6-L416-B12427",
+        "raw": "{\n  \"snippet_sha256\": \"ba0dcc78842543f6698ae25cf4ae24a8b9886019ea8905a079de31320a8b50c2\",\n  \"source\": \"JavaScript string concatenation\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"Text-only DOM API\",\n  \"limitations\": \"Unknown sanitizer name; text-only DOM API is safe for this local output path\"\n}"
+      }
+    ],
+    "evidence_v3": [
+      {
+        "case_id": "SRC-0-L5-B172",
+        "raw": "{\n  \"snippet_sha256\": \"efe5dad1e0c41a9a6debb5b3bf01c2e28aad0e6555b6929afc1fc97bdb0b86bd\",\n  \"source\": \"document.write\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"UNKNOWN\",\n  \"defense\": \"N/A\",\n  \"limitations\": \"AST-grounded path not fully resolved; text-only DOM API context limits local output path classification.\"\n}"
+      },
+      {
+        "case_id": "SRC-1-L28-B1019",
+        "raw": "{\n  \"snippet_sha256\": \"6c9b57699e17877f905bb264625be537be78e823b3becad7051764078f50ddcc\",\n  \"source\": \"Unknown\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"Unknown\",\n  \"defense\": \"None\",\n  \"limitations\": \"AST-grounded path unresolved; text-only DOM API context indicates local output path is safe.\"\n}"
+      },
+      {
+        "case_id": "SRC-1-L39-B1403",
+        "raw": "{\n  \"snippet_sha256\": \"aafc5e937fd0f8b7fdf96da19f5692c198f95adc62e8b4534c95988c6a209a84\",\n  \"source\": \"Unknown\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"UNKNOWN\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded extraction incomplete; source, sink, and defense details are unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-1-L119-B4483",
+        "raw": "{\n  \"snippet_sha256\": \"24b2d43649a63404f38cd839c251da928f23a8d31886b5b8db831ac10c8b4180\",\n  \"source\": \"externalCallback\",\n  \"flow\": \"externalCallback -> this.querySelector('path').setAttribute('d', ...) -> this.querySelectorAll('line').setAttribute('x2', ...) / setAttribute('y2', ...)\",\n  \"sink\": \"DOM attribute setters (setAttribute) on path and line elements\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path traced; text-only DOM API context implies local output path; sanitizer name unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L2-B16",
+        "raw": "{\n  \"snippet_sha256\": \"7474376e3c5aa09159a49694adaa6bf6d948977da4cdd1fda0422a3061fd495e\",\n  \"source\": \"textarea\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"html\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified; sanitizer presence and execution context unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L4-B66",
+        "raw": "{\n  \"snippet_sha256\": \"9b990a9bfa3eebe2edfbb33e388c63c8c51e504602302f433e3a952362e0b450\",\n  \"source\": \"$.some-element.text()\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html()\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"Text-only DOM API output path; sanitizer presence and bypass capabilities unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L8-B234",
+        "raw": "{\n  \"snippet_sha256\": \"bc0326824c2d95f1aa30ce5d5adf3af71b6a52e46c29b203024fb2f64b4e8414\",\n  \"source\": \"$.some-element.attr('data-target')\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html()\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified; sanitizer presence and execution context unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L10-B303",
+        "raw": "{\n  \"snippet_sha256\": \"289f1b27062992b0516e0f079cf59f0f5e84d8c6468e878debb55dcef51aee09\",\n  \"source\": \"document.getElementById('foo').innerText\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html\",\n  \"defense\": \"None\",\n  \"limitations\": \"Text-only DOM API is safe for this local output path; flow unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L18-B479",
+        "raw": "{\n  \"snippet_sha256\": \"e471398da525c8de44a588a719eceafaebacd6e4e37448538b4cacecfcd67a01\",\n  \"source\": \"document.getElementById('foo').textContent\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path traced; text-only DOM API local output path considered safe; sanitizer name unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L22-B557",
+        "raw": "{\n  \"snippet_sha256\": \"5e047fea5f6951deb0f15cc201c8a310d55217f3c532eff869796fafb33fd70d\",\n  \"source\": \"document.querySelectorAll(\\\"textarea\\\")[0].value\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$ Alert\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path traced; text-only DOM API local output path identified as safe; sanitizer name unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L26-B639",
+        "raw": "{\n  \"snippet_sha256\": \"96665cf8c07736d08fcd5b165a1ec7d72e6dfc0ef711fedec1dd55cd6a7c12a4\",\n  \"source\": \"document.getElementById('div1').getAttribute('data-target')\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html\",\n  \"defense\": \"N/A\",\n  \"limitations\": \"AST-grounded path traced; text-only DOM API context implies local output path; sanitizer status unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L51-B1120",
+        "raw": "{\n  \"snippet_sha256\": \"0b82af08c6a41c451707804ed2377e6a0e34427db06adb29645c5dc0ad1b5de2\",\n  \"source\": \"get(0)\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified; text-only DOM API context limits local output classification.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L56-B1270",
+        "raw": "{\n  \"snippet_sha256\": \"a6a8bcf2f867173f50a3b9b235b1e5562786c410353531a267b2aa34ba27308d\",\n  \"source\": \"input\",\n  \"flow\": \"DOM\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"Text-only DOM API output path\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L57-B1334",
+        "raw": "{\n  \"snippet_sha256\": \"88e1915eecbbb1c221f306feff37d33f069446d6434139cdee73ef76ee35000d\",\n  \"source\": \"getAttribute\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified; sanitizer presence and execution context unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L61-B1478",
+        "raw": "{\n  \"snippet_sha256\": \"a0def04439678a4750796778471d0e38c66a5849d636ec32b4d826faf9112e1f\",\n  \"source\": \"$(document).find(\\\"option\\\").attr(\\\"value\\\")\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path traced; text-only DOM API context limits resolution of exact execution flow and sanitizer state.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L81-B2029",
+        "raw": "{\n  \"snippet_sha256\": \"cdae060a945ebf9ecc1a9f0a76dd9d52de16ddf824f38899864921ecf2b4a162\",\n  \"source\": \"DOM API: $('#foo').prop('innerText')\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"DOM API: $('#id').html()\",\n  \"defense\": \"Text-only DOM API\",\n  \"limitations\": \"AST-grounded path traced; flow marked UNKNOWN due to lack of observed sanitizer execution context.\"\n}"
+      },
+      {
+        "case_id": "SRC-2-L93-B2440",
+        "raw": "{\n  \"snippet_sha256\": \"412880196c4f3894f00daf3add59d2f79e139c27c4965625869e9de20cdd9bdb\",\n  \"source\": \"DOM API: .value\",\n  \"flow\": \"DOM API -> DOM API\",\n  \"sink\": \"DOM API: .html\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"Text-only DOM API path; no sanitizer observed in AST; local output path only.\"\n}"
+      },
+      {
+        "case_id": "SRC-4-L185-B5739",
+        "raw": "{\n  \"snippet_sha256\": \"1529a667a0ef48c995a3c3cf89193466e2ef8c5bd399a5c4243e9a4881fce12e\",\n  \"source\": \"content.append($('<a class=\\\"sceditor-fontsize-option\\\" data-size=\\\"' + i + '\\\" href=\\\"#\\\"><font size=\\\"' + i + '\\\">' + i + '</font></a>').on('click', clickFunc))\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"UNKNOWN\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded trace identifies source DOM construction and event binding, but the exact sink path and sanitizer application are unresolved for this local output.\"\n}"
+      },
+      {
+        "case_id": "SRC-4-L221-B6716",
+        "raw": "{\n  \"snippet_sha256\": \"6c9b57699e17877f905bb264625be537be78e823b3becad7051764078f50ddcc\",\n  \"source\": \"Unknown\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"Unknown\",\n  \"defense\": \"None\",\n  \"limitations\": \"AST-grounded path unresolved; text-only DOM API context indicates local output path is safe.\"\n}"
+      },
+      {
+        "case_id": "SRC-4-L232-B7005",
+        "raw": "{\n  \"snippet_sha256\": \"aafc5e937fd0f8b7fdf96da19f5692c198f95adc62e8b4534c95988c6a209a84\",\n  \"source\": \"Unknown\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"UNKNOWN\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded extraction incomplete; source, sink, and defense details are unresolved.\"\n}"
+      },
+      {
+        "case_id": "SRC-6-L142-B5059",
+        "raw": "{\n  \"snippet_sha256\": \"c6730e3e9f5ebb27bac5a0b20d44b4d64fad1c3acc58204827e209d7fded7402\",\n  \"source\": \"this._elt.innerHTML = '<div></div>';\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"UNKNOWN\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path not resolved; text-only DOM API context indicates local output path is safe.\"\n}"
+      },
+      {
+        "case_id": "SRC-6-L221-B6923",
+        "raw": "{\n  \"snippet_sha256\": \"ba0dcc78842543f6698ae25cf4ae24a8b9886019ea8905a079de31320a8b50c2\",\n  \"source\": \"this._elt.innerHTML\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"Text-only DOM API\",\n  \"limitations\": \"Unknown sanitizer name; text-only DOM API is safe for this local output path\"\n}"
+      },
+      {
+        "case_id": "SRC-6-L336-B9871",
+        "raw": "{\n  \"snippet_sha256\": \"661c3e96f22ac91f8254c9c3353698791e32254ee37444088469b895e9e7c55d\",\n  \"source\": \"externalCallback\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"setAttribute\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified, but origin of 'value' and execution context are unresolved; local DOM API output path is safe.\"\n}"
+      },
+      {
+        "case_id": "SRC-6-L416-B12427",
+        "raw": "{\n  \"snippet_sha256\": \"ba0dcc78842543f6698ae25cf4ae24a8b9886019ea8905a079de31320a8b50c2\",\n  \"source\": \"this._elt.innerHTML\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"Text-only DOM API\",\n  \"limitations\": \"Unknown sanitizer name; text-only DOM API is safe for this local output path\"\n}"
+      }
+    ]
+  },
+  "base": {
+    "n": 24,
+    "unique_snippets": 21,
+    "json_schema_keys_rate": 1,
+    "grounded_exact_rate": 0,
+    "unique_snippet_grounded_rate": 0,
+    "field_exact_agreement": {
+      "snippet_sha256": 1,
+      "source": 0,
+      "flow": 0,
+      "sink": 0,
+      "defense": 0,
+      "limitations": 0
+    },
+    "oracle_status_counts": {
+      "SAFE": 4,
+      "INCONCLUSIVE": 20
+    },
+    "details": [
+      {
+        "case_id": "SRC-0-L5-B172",
+        "code_sha256": "efe5dad1e0c41a9a6debb5b3bf01c2e28aad0e6555b6929afc1fc97bdb0b86bd",
+        "prompt_sha256": "1ea04e902b82cb2daadf3c9ec35f3c46ff51c0e0da63fdfe9f91d7ed1ba22151",
+        "raw": "{\n  \"snippet_sha256\": \"efe5dad1e0c41a9a6debb5b3bf01c2e28aad0e6555b6929afc1fc97bdb0b86bd\",\n  \"source\": \"document.write\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"UNKNOWN\",\n  \"defense\": \"N/A\",\n  \"limitations\": \"AST-grounded path not fully resolved; text-only DOM API context limits local output path confirmation.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "SAFE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-1-L28-B1019",
+        "code_sha256": "6c9b57699e17877f905bb264625be537be78e823b3becad7051764078f50ddcc",
+        "prompt_sha256": "37c88a983829a499db3370119ac6bde683d2750301c2dcb4caf885c3818d172e",
+        "raw": "{\n  \"snippet_sha256\": \"6c9b57699e17877f905bb264625be537be78e823b3becad7051764078f50ddcc\",\n  \"source\": \"Unknown\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"Unknown\",\n  \"defense\": \"None\",\n  \"limitations\": \"AST-grounded path unresolved; text-only DOM API context limits local output classification.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-1-L39-B1403",
+        "code_sha256": "aafc5e937fd0f8b7fdf96da19f5692c198f95adc62e8b4534c95988c6a209a84",
+        "prompt_sha256": "e547681631decc456bebdd75e603fd5c97c059d5bdfa380d8fb44007a8638a6f",
+        "raw": "{\n  \"snippet_sha256\": \"aafc5e937fd0f8b7fdf96da19f5692c198f95adc62e8b4534c95988c6a209a84\",\n  \"source\": \"Unknown\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"UNKNOWN\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded extraction only; source, sink, and defense details are unresolved for this text-only snippet.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-1-L119-B4483",
+        "code_sha256": "24b2d43649a63404f38cd839c251da928f23a8d31886b5b8db831ac10c8b4180",
+        "prompt_sha256": "8fda7bc256311c6c8eb493232b944ef62e4aa3053627ca58b12ebe2cf48e288c",
+        "raw": "{\n  \"snippet_sha256\": \"24b2d43649a63404f38cd839c251da928f23a8d31886b5b8db831ac10c8b4180\",\n  \"source\": \"externalCallback\",\n  \"flow\": \"externalCallback -> this.querySelector('path').setAttribute('d', ...) -> this.querySelectorAll('line').setAttribute('x2', ...) / setAttribute('y2', ...)\",\n  \"sink\": \"DOM attribute setters (setAttribute) on path and line elements\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded trace only; no sanitizer observed in the provided snippet; text-only DOM API context noted as safe for local output path.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L2-B16",
+        "code_sha256": "7474376e3c5aa09159a49694adaa6bf6d948977da4cdd1fda0422a3061fd495e",
+        "prompt_sha256": "5feef98061c9e4df7b03cfd19ddafca3c9eaf498186bf277bfab13a9a5e8ebfd",
+        "raw": "{\n  \"snippet_sha256\": \"7474376e3c5aa09159a49694adaa6bf6d948977da4cdd1fda0422a3061fd495e\",\n  \"source\": \"textarea\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"html\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified, but sanitization behavior and execution context are unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L4-B66",
+        "code_sha256": "9b990a9bfa3eebe2edfbb33e388c63c8c51e504602302f433e3a952362e0b450",
+        "prompt_sha256": "3e1d70526dc34ffc50fe93ae1c86c2dc18bea66a3f6cb94d82c8130b8ec850ed",
+        "raw": "{\n  \"snippet_sha256\": \"9b990a9bfa3eebe2edfbb33e388c63c8c51e504602302f433e3a952362e0b450\",\n  \"source\": \"$.some-element.text()\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html()\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified; sanitizer presence and execution context unresolved for local evidence extraction.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L8-B234",
+        "code_sha256": "bc0326824c2d95f1aa30ce5d5adf3af71b6a52e46c29b203024fb2f64b4e8414",
+        "prompt_sha256": "288ea7c155a0ecb0dd710e22428f2a3147613f5a3cb7b7c302d233907de098e5",
+        "raw": "{\n  \"snippet_sha256\": \"bc0326824c2d95f1aa30ce5d5adf3af71b6a52e46c29b203024fb2f64b4e8414\",\n  \"source\": \"$.some-element.attr('data-target')\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html()\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified; sanitizer presence and execution context unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L10-B303",
+        "code_sha256": "289f1b27062992b0516e0f079cf59f0f5e84d8c6468e878debb55dcef51aee09",
+        "prompt_sha256": "cd0773b79b3f317f522cb7667ba92151a592219b854d7dd78000c5ef760462b4",
+        "raw": "{\n  \"snippet_sha256\": \"289f1b27062992b0516e0f079cf59f0f5e84d8c6468e878debb55dcef51aee09\",\n  \"source\": \"document.getElementById('foo').innerText\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded trace identifies source and sink, but flow and sanitizer status are unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L18-B479",
+        "code_sha256": "e471398da525c8de44a588a719eceafaebacd6e4e37448538b4cacecfcd67a01",
+        "prompt_sha256": "0926a9d9411148ecf640c73da695f3feabd6b0d7b3cfd3f29ba096ea6850b0df",
+        "raw": "{\n  \"snippet_sha256\": \"e471398da525c8de44a588a719eceafaebacd6e4e37448538b4cacecfcd67a01\",\n  \"source\": \"document.getElementById('foo').textContent\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified, but sanitizer presence and execution context are unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L22-B557",
+        "code_sha256": "5e047fea5f6951deb0f15cc201c8a310d55217f3c532eff869796fafb33fd70d",
+        "prompt_sha256": "569984439540ddcf8c0d3803011a2114da691767dfa322d0253c4f5c7f62191d",
+        "raw": "{\n  \"snippet_sha256\": \"5e047fea5f6951deb0f15cc201c8a310d55217f3c532eff869796fafb33fd70d\",\n  \"source\": \"document.querySelectorAll(\\\"textarea\\\")[0].value\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified, but flow resolution and sanitizer verification are unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L26-B639",
+        "code_sha256": "96665cf8c07736d08fcd5b165a1ec7d72e6dfc0ef711fedec1dd55cd6a7c12a4",
+        "prompt_sha256": "fdfdcc609a94335d073a3b4ebe2eaceff319a87f3b6aed117f5def8d977334a5",
+        "raw": "{\n  \"snippet_sha256\": \"96665cf8c07736d08fcd5b165a1ec7d72e6dfc0ef711fedec1dd55cd6a7c12a4\",\n  \"source\": \"document.getElementById('div1').getAttribute('data-target')\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html\",\n  \"defense\": \"N/A\",\n  \"limitations\": \"AST-grounded path traced; text-only DOM API context implies local output path; sanitizer status unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L51-B1120",
+        "code_sha256": "0b82af08c6a41c451707804ed2377e6a0e34427db06adb29645c5dc0ad1b5de2",
+        "prompt_sha256": "78576dc872173c8b6366702cdbfffbf2033f36e09bd0e0e8725830143a2e04bf",
+        "raw": "{\n  \"snippet_sha256\": \"0b82af08c6a41c451707804ed2377e6a0e34427db06adb29645c5dc0ad1b5de2\",\n  \"source\": \"get(0)\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded trace identifies source and sink, but flow and sanitizer status remain unresolved without further context.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L56-B1270",
+        "code_sha256": "a6a8bcf2f867173f50a3b9b235b1e5562786c410353531a267b2aa34ba27308d",
+        "prompt_sha256": "9eca1f106e19e53f8b1228a57816b1edd72b10edfd7146550f5c3b1e235eab54",
+        "raw": "{\n  \"snippet_sha256\": \"a6a8bcf2f867173f50a3b9b235b1e5562786c410353531a267b2aa34ba27308d\",\n  \"source\": \"input\",\n  \"flow\": \"DOM\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"Text-only DOM API observed; sanitizer status unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L57-B1334",
+        "code_sha256": "88e1915eecbbb1c221f306feff37d33f069446d6434139cdee73ef76ee35000d",
+        "prompt_sha256": "d8f28476f206babea7c76c82ae370cbd757c5445601013df08973490fcdbcf52",
+        "raw": "{\n  \"snippet_sha256\": \"88e1915eecbbb1c221f306feff37d33f069446d6434139cdee73ef76ee35000d\",\n  \"source\": \"getAttribute\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified; sanitization and execution context unresolved for local evidence extraction.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L61-B1478",
+        "code_sha256": "a0def04439678a4750796778471d0e38c66a5849d636ec32b4d826faf9112e1f",
+        "prompt_sha256": "d50a44b7203b237d3ffd46cb48233521778c4d12e6afbe68774811d5f19207c9",
+        "raw": "{\n  \"snippet_sha256\": \"a0def04439678a4750796778471d0e38c66a5849d636ec32b4d826faf9112e1f\",\n  \"source\": \"$(document).find(\\\"option\\\").attr(\\\"value\\\")\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified, but flow resolution and sanitizer identification are unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L81-B2029",
+        "code_sha256": "cdae060a945ebf9ecc1a9f0a76dd9d52de16ddf824f38899864921ecf2b4a162",
+        "prompt_sha256": "438af99f301d46fb69bd90ef14e3e1496d034a37059bba3b68d943979a0c77cd",
+        "raw": "{\n  \"snippet_sha256\": \"cdae060a945ebf9ecc1a9f0a76dd9d52de16ddf824f38899864921ecf2b4a162\",\n  \"source\": \"getElementById('foo')\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"getElementById('id').html()\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified; flow and sanitizer status unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L93-B2440",
+        "code_sha256": "412880196c4f3894f00daf3add59d2f79e139c27c4965625869e9de20cdd9bdb",
+        "prompt_sha256": "00a26c94c772811e4ba37c24892af6fa63716b56a9afbfef967f6851239947c3",
+        "raw": "{\n  \"snippet_sha256\": \"412880196c4f3894f00daf3add59d2f79e139c27c4965625869e9de20cdd9bdb\",\n  \"source\": \"DOM API: .value\",\n  \"flow\": \"DOM API -> DOM Property\",\n  \"sink\": \"DOM API: .html()\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"Text-only DOM API output path; no sanitizer observed in AST; unresolved flow\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-4-L185-B5739",
+        "code_sha256": "1529a667a0ef48c995a3c3cf89193466e2ef8c5bd399a5c4243e9a4881fce12e",
+        "prompt_sha256": "470b8b92c8d84c564999073c838f27c1a2bc0b01a2cc026a4bc5fde5bd69cafa",
+        "raw": "{\n  \"snippet_sha256\": \"1529a667a0ef48c995a3c3cf89193466e2ef8c5bd399a5c4243e9a4881fce12e\",\n  \"source\": \"JavaScript: content.append($('<a class=\\\"sceditor-fontsize-option\\\" data-size=\\\"' + i + '\\\" href=\\\"#\\\"><font size=\\\"' + i + '\\\">' + i + '</font></a>').on('click', clickFunc));\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"UNKNOWN\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded trace identifies source DOM construction and event binding but does not resolve the downstream sink, sanitizer, or execution path.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-4-L221-B6716",
+        "code_sha256": "6c9b57699e17877f905bb264625be537be78e823b3becad7051764078f50ddcc",
+        "prompt_sha256": "37c88a983829a499db3370119ac6bde683d2750301c2dcb4caf885c3818d172e",
+        "raw": "{\n  \"snippet_sha256\": \"6c9b57699e17877f905bb264625be537be78e823b3becad7051764078f50ddcc\",\n  \"source\": \"Unknown\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"Unknown\",\n  \"defense\": \"None\",\n  \"limitations\": \"AST-grounded path unresolved; text-only DOM API context limits local output classification.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-4-L232-B7005",
+        "code_sha256": "aafc5e937fd0f8b7fdf96da19f5692c198f95adc62e8b4534c95988c6a209a84",
+        "prompt_sha256": "e547681631decc456bebdd75e603fd5c97c059d5bdfa380d8fb44007a8638a6f",
+        "raw": "{\n  \"snippet_sha256\": \"aafc5e937fd0f8b7fdf96da19f5692c198f95adc62e8b4534c95988c6a209a84\",\n  \"source\": \"Unknown\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"UNKNOWN\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded extraction only; source, sink, and defense details are unresolved for this text-only snippet.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-6-L142-B5059",
+        "code_sha256": "c6730e3e9f5ebb27bac5a0b20d44b4d64fad1c3acc58204827e209d7fded7402",
+        "prompt_sha256": "be27f23e0e9cffe0a61bf87ab4e0eacebe46592aee62d3f48dd2a1e50324ac93",
+        "raw": "{\n  \"snippet_sha256\": \"c6730e3e9f5ebb27bac5a0b20d44b4d64fad1c3acc58204827e209d7fded7402\",\n  \"source\": \"this._elt.innerHTML = '<div></div>';\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"UNKNOWN\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path not fully resolved; text-only DOM API context indicates local output path is safe, but exact sink and sanitizer details remain unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "SAFE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-6-L221-B6923",
+        "code_sha256": "ba0dcc78842543f6698ae25cf4ae24a8b9886019ea8905a079de31320a8b50c2",
+        "prompt_sha256": "3a8ae79bece6ef2ca5e367eee3b83c2bbfa19339ac3329c8491099ad643cc492",
+        "raw": "{\n  \"snippet_sha256\": \"ba0dcc78842543f6698ae25cf4ae24a8b9886019ea8905a079de31320a8b50c2\",\n  \"source\": \"JavaScript string concatenation\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"Text-only DOM API\",\n  \"limitations\": \"Unknown sanitizer name; text-only DOM API is safe for this local output path\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "SAFE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-6-L336-B9871",
+        "code_sha256": "661c3e96f22ac91f8254c9c3353698791e32254ee37444088469b895e9e7c55d",
+        "prompt_sha256": "4ae4c223fd45d48aa8cbf4ac22857107b5c24b9bc03a294d4e6cf91278a22029",
+        "raw": "{\n  \"snippet_sha256\": \"661c3e96f22ac91f8254c9c3353698791e32254ee37444088469b895e9e7c55d\",\n  \"source\": \"externalCallback\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"setAttribute\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded trace identifies a setAttribute sink within the externalCallback flow, but the origin of the value and the presence of any sanitization are unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-6-L416-B12427",
+        "code_sha256": "ba0dcc78842543f6698ae25cf4ae24a8b9886019ea8905a079de31320a8b50c2",
+        "prompt_sha256": "3a8ae79bece6ef2ca5e367eee3b83c2bbfa19339ac3329c8491099ad643cc492",
+        "raw": "{\n  \"snippet_sha256\": \"ba0dcc78842543f6698ae25cf4ae24a8b9886019ea8905a079de31320a8b50c2\",\n  \"source\": \"JavaScript string concatenation\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"Text-only DOM API\",\n  \"limitations\": \"Unknown sanitizer name; text-only DOM API is safe for this local output path\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "SAFE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      }
+    ]
+  },
+  "evidence_v3": {
+    "n": 24,
+    "unique_snippets": 21,
+    "json_schema_keys_rate": 1,
+    "grounded_exact_rate": 0,
+    "unique_snippet_grounded_rate": 0,
+    "field_exact_agreement": {
+      "snippet_sha256": 1,
+      "source": 0,
+      "flow": 0,
+      "sink": 0,
+      "defense": 0,
+      "limitations": 0
+    },
+    "oracle_status_counts": {
+      "SAFE": 4,
+      "INCONCLUSIVE": 20
+    },
+    "details": [
+      {
+        "case_id": "SRC-0-L5-B172",
+        "code_sha256": "efe5dad1e0c41a9a6debb5b3bf01c2e28aad0e6555b6929afc1fc97bdb0b86bd",
+        "prompt_sha256": "1ea04e902b82cb2daadf3c9ec35f3c46ff51c0e0da63fdfe9f91d7ed1ba22151",
+        "raw": "{\n  \"snippet_sha256\": \"efe5dad1e0c41a9a6debb5b3bf01c2e28aad0e6555b6929afc1fc97bdb0b86bd\",\n  \"source\": \"document.write\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"UNKNOWN\",\n  \"defense\": \"N/A\",\n  \"limitations\": \"AST-grounded path not fully resolved; text-only DOM API context limits local output path classification.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "SAFE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-1-L28-B1019",
+        "code_sha256": "6c9b57699e17877f905bb264625be537be78e823b3becad7051764078f50ddcc",
+        "prompt_sha256": "37c88a983829a499db3370119ac6bde683d2750301c2dcb4caf885c3818d172e",
+        "raw": "{\n  \"snippet_sha256\": \"6c9b57699e17877f905bb264625be537be78e823b3becad7051764078f50ddcc\",\n  \"source\": \"Unknown\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"Unknown\",\n  \"defense\": \"None\",\n  \"limitations\": \"AST-grounded path unresolved; text-only DOM API context indicates local output path is safe.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-1-L39-B1403",
+        "code_sha256": "aafc5e937fd0f8b7fdf96da19f5692c198f95adc62e8b4534c95988c6a209a84",
+        "prompt_sha256": "e547681631decc456bebdd75e603fd5c97c059d5bdfa380d8fb44007a8638a6f",
+        "raw": "{\n  \"snippet_sha256\": \"aafc5e937fd0f8b7fdf96da19f5692c198f95adc62e8b4534c95988c6a209a84\",\n  \"source\": \"Unknown\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"UNKNOWN\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded extraction incomplete; source, sink, and defense details are unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-1-L119-B4483",
+        "code_sha256": "24b2d43649a63404f38cd839c251da928f23a8d31886b5b8db831ac10c8b4180",
+        "prompt_sha256": "8fda7bc256311c6c8eb493232b944ef62e4aa3053627ca58b12ebe2cf48e288c",
+        "raw": "{\n  \"snippet_sha256\": \"24b2d43649a63404f38cd839c251da928f23a8d31886b5b8db831ac10c8b4180\",\n  \"source\": \"externalCallback\",\n  \"flow\": \"externalCallback -> this.querySelector('path').setAttribute('d', ...) -> this.querySelectorAll('line').setAttribute('x2', ...) / setAttribute('y2', ...)\",\n  \"sink\": \"DOM attribute setters (setAttribute) on path and line elements\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path traced; text-only DOM API context implies local output path; sanitizer name unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L2-B16",
+        "code_sha256": "7474376e3c5aa09159a49694adaa6bf6d948977da4cdd1fda0422a3061fd495e",
+        "prompt_sha256": "5feef98061c9e4df7b03cfd19ddafca3c9eaf498186bf277bfab13a9a5e8ebfd",
+        "raw": "{\n  \"snippet_sha256\": \"7474376e3c5aa09159a49694adaa6bf6d948977da4cdd1fda0422a3061fd495e\",\n  \"source\": \"textarea\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"html\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified; sanitizer presence and execution context unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L4-B66",
+        "code_sha256": "9b990a9bfa3eebe2edfbb33e388c63c8c51e504602302f433e3a952362e0b450",
+        "prompt_sha256": "3e1d70526dc34ffc50fe93ae1c86c2dc18bea66a3f6cb94d82c8130b8ec850ed",
+        "raw": "{\n  \"snippet_sha256\": \"9b990a9bfa3eebe2edfbb33e388c63c8c51e504602302f433e3a952362e0b450\",\n  \"source\": \"$.some-element.text()\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html()\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"Text-only DOM API output path; sanitizer presence and bypass capabilities unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L8-B234",
+        "code_sha256": "bc0326824c2d95f1aa30ce5d5adf3af71b6a52e46c29b203024fb2f64b4e8414",
+        "prompt_sha256": "288ea7c155a0ecb0dd710e22428f2a3147613f5a3cb7b7c302d233907de098e5",
+        "raw": "{\n  \"snippet_sha256\": \"bc0326824c2d95f1aa30ce5d5adf3af71b6a52e46c29b203024fb2f64b4e8414\",\n  \"source\": \"$.some-element.attr('data-target')\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html()\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified; sanitizer presence and execution context unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L10-B303",
+        "code_sha256": "289f1b27062992b0516e0f079cf59f0f5e84d8c6468e878debb55dcef51aee09",
+        "prompt_sha256": "cd0773b79b3f317f522cb7667ba92151a592219b854d7dd78000c5ef760462b4",
+        "raw": "{\n  \"snippet_sha256\": \"289f1b27062992b0516e0f079cf59f0f5e84d8c6468e878debb55dcef51aee09\",\n  \"source\": \"document.getElementById('foo').innerText\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html\",\n  \"defense\": \"None\",\n  \"limitations\": \"Text-only DOM API is safe for this local output path; flow unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L18-B479",
+        "code_sha256": "e471398da525c8de44a588a719eceafaebacd6e4e37448538b4cacecfcd67a01",
+        "prompt_sha256": "0926a9d9411148ecf640c73da695f3feabd6b0d7b3cfd3f29ba096ea6850b0df",
+        "raw": "{\n  \"snippet_sha256\": \"e471398da525c8de44a588a719eceafaebacd6e4e37448538b4cacecfcd67a01\",\n  \"source\": \"document.getElementById('foo').textContent\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path traced; text-only DOM API local output path considered safe; sanitizer name unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L22-B557",
+        "code_sha256": "5e047fea5f6951deb0f15cc201c8a310d55217f3c532eff869796fafb33fd70d",
+        "prompt_sha256": "569984439540ddcf8c0d3803011a2114da691767dfa322d0253c4f5c7f62191d",
+        "raw": "{\n  \"snippet_sha256\": \"5e047fea5f6951deb0f15cc201c8a310d55217f3c532eff869796fafb33fd70d\",\n  \"source\": \"document.querySelectorAll(\\\"textarea\\\")[0].value\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$ Alert\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path traced; text-only DOM API local output path identified as safe; sanitizer name unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L26-B639",
+        "code_sha256": "96665cf8c07736d08fcd5b165a1ec7d72e6dfc0ef711fedec1dd55cd6a7c12a4",
+        "prompt_sha256": "fdfdcc609a94335d073a3b4ebe2eaceff319a87f3b6aed117f5def8d977334a5",
+        "raw": "{\n  \"snippet_sha256\": \"96665cf8c07736d08fcd5b165a1ec7d72e6dfc0ef711fedec1dd55cd6a7c12a4\",\n  \"source\": \"document.getElementById('div1').getAttribute('data-target')\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"$('#id').html\",\n  \"defense\": \"N/A\",\n  \"limitations\": \"AST-grounded path traced; text-only DOM API context implies local output path; sanitizer status unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L51-B1120",
+        "code_sha256": "0b82af08c6a41c451707804ed2377e6a0e34427db06adb29645c5dc0ad1b5de2",
+        "prompt_sha256": "78576dc872173c8b6366702cdbfffbf2033f36e09bd0e0e8725830143a2e04bf",
+        "raw": "{\n  \"snippet_sha256\": \"0b82af08c6a41c451707804ed2377e6a0e34427db06adb29645c5dc0ad1b5de2\",\n  \"source\": \"get(0)\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified; text-only DOM API context limits local output classification.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L56-B1270",
+        "code_sha256": "a6a8bcf2f867173f50a3b9b235b1e5562786c410353531a267b2aa34ba27308d",
+        "prompt_sha256": "9eca1f106e19e53f8b1228a57816b1edd72b10edfd7146550f5c3b1e235eab54",
+        "raw": "{\n  \"snippet_sha256\": \"a6a8bcf2f867173f50a3b9b235b1e5562786c410353531a267b2aa34ba27308d\",\n  \"source\": \"input\",\n  \"flow\": \"DOM\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"Text-only DOM API output path\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L57-B1334",
+        "code_sha256": "88e1915eecbbb1c221f306feff37d33f069446d6434139cdee73ef76ee35000d",
+        "prompt_sha256": "d8f28476f206babea7c76c82ae370cbd757c5445601013df08973490fcdbcf52",
+        "raw": "{\n  \"snippet_sha256\": \"88e1915eecbbb1c221f306feff37d33f069446d6434139cdee73ef76ee35000d\",\n  \"source\": \"getAttribute\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified; sanitizer presence and execution context unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L61-B1478",
+        "code_sha256": "a0def04439678a4750796778471d0e38c66a5849d636ec32b4d826faf9112e1f",
+        "prompt_sha256": "d50a44b7203b237d3ffd46cb48233521778c4d12e6afbe68774811d5f19207c9",
+        "raw": "{\n  \"snippet_sha256\": \"a0def04439678a4750796778471d0e38c66a5849d636ec32b4d826faf9112e1f\",\n  \"source\": \"$(document).find(\\\"option\\\").attr(\\\"value\\\")\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path traced; text-only DOM API context limits resolution of exact execution flow and sanitizer state.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L81-B2029",
+        "code_sha256": "cdae060a945ebf9ecc1a9f0a76dd9d52de16ddf824f38899864921ecf2b4a162",
+        "prompt_sha256": "438af99f301d46fb69bd90ef14e3e1496d034a37059bba3b68d943979a0c77cd",
+        "raw": "{\n  \"snippet_sha256\": \"cdae060a945ebf9ecc1a9f0a76dd9d52de16ddf824f38899864921ecf2b4a162\",\n  \"source\": \"DOM API: $('#foo').prop('innerText')\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"DOM API: $('#id').html()\",\n  \"defense\": \"Text-only DOM API\",\n  \"limitations\": \"AST-grounded path traced; flow marked UNKNOWN due to lack of observed sanitizer execution context.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-2-L93-B2440",
+        "code_sha256": "412880196c4f3894f00daf3add59d2f79e139c27c4965625869e9de20cdd9bdb",
+        "prompt_sha256": "00a26c94c772811e4ba37c24892af6fa63716b56a9afbfef967f6851239947c3",
+        "raw": "{\n  \"snippet_sha256\": \"412880196c4f3894f00daf3add59d2f79e139c27c4965625869e9de20cdd9bdb\",\n  \"source\": \"DOM API: .value\",\n  \"flow\": \"DOM API -> DOM API\",\n  \"sink\": \"DOM API: .html\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"Text-only DOM API path; no sanitizer observed in AST; local output path only.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-4-L185-B5739",
+        "code_sha256": "1529a667a0ef48c995a3c3cf89193466e2ef8c5bd399a5c4243e9a4881fce12e",
+        "prompt_sha256": "470b8b92c8d84c564999073c838f27c1a2bc0b01a2cc026a4bc5fde5bd69cafa",
+        "raw": "{\n  \"snippet_sha256\": \"1529a667a0ef48c995a3c3cf89193466e2ef8c5bd399a5c4243e9a4881fce12e\",\n  \"source\": \"content.append($('<a class=\\\"sceditor-fontsize-option\\\" data-size=\\\"' + i + '\\\" href=\\\"#\\\"><font size=\\\"' + i + '\\\">' + i + '</font></a>').on('click', clickFunc))\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"UNKNOWN\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded trace identifies source DOM construction and event binding, but the exact sink path and sanitizer application are unresolved for this local output.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-4-L221-B6716",
+        "code_sha256": "6c9b57699e17877f905bb264625be537be78e823b3becad7051764078f50ddcc",
+        "prompt_sha256": "37c88a983829a499db3370119ac6bde683d2750301c2dcb4caf885c3818d172e",
+        "raw": "{\n  \"snippet_sha256\": \"6c9b57699e17877f905bb264625be537be78e823b3becad7051764078f50ddcc\",\n  \"source\": \"Unknown\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"Unknown\",\n  \"defense\": \"None\",\n  \"limitations\": \"AST-grounded path unresolved; text-only DOM API context indicates local output path is safe.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-4-L232-B7005",
+        "code_sha256": "aafc5e937fd0f8b7fdf96da19f5692c198f95adc62e8b4534c95988c6a209a84",
+        "prompt_sha256": "e547681631decc456bebdd75e603fd5c97c059d5bdfa380d8fb44007a8638a6f",
+        "raw": "{\n  \"snippet_sha256\": \"aafc5e937fd0f8b7fdf96da19f5692c198f95adc62e8b4534c95988c6a209a84\",\n  \"source\": \"Unknown\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"UNKNOWN\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded extraction incomplete; source, sink, and defense details are unresolved.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-6-L142-B5059",
+        "code_sha256": "c6730e3e9f5ebb27bac5a0b20d44b4d64fad1c3acc58204827e209d7fded7402",
+        "prompt_sha256": "be27f23e0e9cffe0a61bf87ab4e0eacebe46592aee62d3f48dd2a1e50324ac93",
+        "raw": "{\n  \"snippet_sha256\": \"c6730e3e9f5ebb27bac5a0b20d44b4d64fad1c3acc58204827e209d7fded7402\",\n  \"source\": \"this._elt.innerHTML = '<div></div>';\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"UNKNOWN\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path not resolved; text-only DOM API context indicates local output path is safe.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "SAFE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-6-L221-B6923",
+        "code_sha256": "ba0dcc78842543f6698ae25cf4ae24a8b9886019ea8905a079de31320a8b50c2",
+        "prompt_sha256": "3a8ae79bece6ef2ca5e367eee3b83c2bbfa19339ac3329c8491099ad643cc492",
+        "raw": "{\n  \"snippet_sha256\": \"ba0dcc78842543f6698ae25cf4ae24a8b9886019ea8905a079de31320a8b50c2\",\n  \"source\": \"this._elt.innerHTML\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"Text-only DOM API\",\n  \"limitations\": \"Unknown sanitizer name; text-only DOM API is safe for this local output path\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "SAFE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-6-L336-B9871",
+        "code_sha256": "661c3e96f22ac91f8254c9c3353698791e32254ee37444088469b895e9e7c55d",
+        "prompt_sha256": "4ae4c223fd45d48aa8cbf4ac22857107b5c24b9bc03a294d4e6cf91278a22029",
+        "raw": "{\n  \"snippet_sha256\": \"661c3e96f22ac91f8254c9c3353698791e32254ee37444088469b895e9e7c55d\",\n  \"source\": \"externalCallback\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"setAttribute\",\n  \"defense\": \"UNKNOWN\",\n  \"limitations\": \"AST-grounded path identified, but origin of 'value' and execution context are unresolved; local DOM API output path is safe.\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "INCONCLUSIVE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      },
+      {
+        "case_id": "SRC-6-L416-B12427",
+        "code_sha256": "ba0dcc78842543f6698ae25cf4ae24a8b9886019ea8905a079de31320a8b50c2",
+        "prompt_sha256": "3a8ae79bece6ef2ca5e367eee3b83c2bbfa19339ac3329c8491099ad643cc492",
+        "raw": "{\n  \"snippet_sha256\": \"ba0dcc78842543f6698ae25cf4ae24a8b9886019ea8905a079de31320a8b50c2\",\n  \"source\": \"this._elt.innerHTML\",\n  \"flow\": \"UNKNOWN\",\n  \"sink\": \"innerHTML\",\n  \"defense\": \"Text-only DOM API\",\n  \"limitations\": \"Unknown sanitizer name; text-only DOM API is safe for this local output path\"\n}",
+        "json_schema_keys_valid": true,
+        "field_exact_agreement": {
+          "snippet_sha256": true,
+          "source": false,
+          "flow": false,
+          "sink": false,
+          "defense": false,
+          "limitations": false
+        },
+        "oracle_status": "SAFE",
+        "advisory_accepted": false,
+        "advisory_reason": "unsupported_source"
+      }
+    ]
+  }
+}

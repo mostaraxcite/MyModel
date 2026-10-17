@@ -110,7 +110,7 @@ jobs:
             echo "::warning::Kaggle candidate still queued or running; no adapter completion claimed."
             exit 0
           fi
-          kaggle kernels output "$kernel" -p kaggle-v3-status/output --file-pattern '(run_status|evaluation)[.]json -o > kaggle-v3-status/download.txt 2>&1 || true
+          kaggle kernels output "$kernel" -p kaggle-v3-status/output --file-pattern '(run_status|evaluation)[.]json$' -o > kaggle-v3-status/download.txt 2>&1 || true
           python - <<'PY'
           import json
           from pathlib import Path
@@ -138,26 +138,3 @@ jobs:
           path: kaggle-v3-status
           retention-days: 30
           if-no-files-found: warn
- -o > kaggle-v3-status/download.txt 2>&1 || true
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          matches=list(Path("kaggle-v3-status/output").rglob("run_status.json"))
-          if len(matches)!=1: raise SystemExit("No verified v3 run_status.json")
-          state=json.loads(matches[0].read_text())
-          assert state.get("status")=="candidate_saved_evaluated_internal_only",state
-          assert state.get("training_variant")=="schema_explicit_v15",state
-          assert state.get("training_rows")==220 and state.get("eval_rows")==120,state
-          assert state.get("model_has_final_authority") is False,state
-          assert state.get("model_promoted") is False,state
-          print("Evidence-only adapter saved; independent evaluation not yet performed.")
-          PY
-      - name: Save submission and validation evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: spark-schema-v15-status-${{ github.run_id }}
-          path: kaggle-v3-status
-          retention-days: 30
-          if-no-files-found: warn
-

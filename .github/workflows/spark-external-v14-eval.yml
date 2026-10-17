@@ -88,7 +88,7 @@ jobs:
           out.mkdir(exist_ok=True)
           (out/"spark_external_v14_eval.py").write_text(src)
           meta={
-            "id":"dody2004/spark-external-v14-evaluation",
+            "id":"dody2004/spark-external-v14-model-evaluation",
             "title":"Spark External V14 Model Evaluation",
             "code_file":"spark_external_v14_eval.py",
             "language":"python","kernel_type":"script","is_private":True,
@@ -112,7 +112,7 @@ jobs:
         run: |
           set -euo pipefail
           kaggle kernels push -p kaggle-v14-eval-dist --accelerator NvidiaTeslaT4 --timeout 18000
-          echo "https://www.kaggle.com/code/dody2004/spark-external-v14-evaluation"
+          echo "https://www.kaggle.com/code/dody2004/spark-external-v14-model-evaluation"
           echo "::notice::Submitted; GPU execution and model quality are not yet verified."
       - name: Poll and archive GPU evidence extraction report
         env:
@@ -120,10 +120,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p field-results
-          kernel="dody2004/spark-external-v14-evaluation"
+          kernel="dody2004/spark-external-v14-model-evaluation"
           complete=0
           for i in $(seq 1 48); do
-            status="$(kaggle kernels status "$kernel" 2>&1 || true)"
+            status="$(kaggle kernels status "$kernel" 2>&1)" || { echo "::error::Cannot read Kaggle status; stop instead of polling access errors."; exit 1; }
             echo "Field evaluation $i/48: $status"
             echo "$status" > field-results/kaggle-status.txt
             if echo "$status" | grep -q 'KernelWorkerStatus.COMPLETE';then

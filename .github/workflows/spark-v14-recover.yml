@@ -1,0 +1,47 @@
+name: Recover existing Spark V14 result
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  recover:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[recover-spark-v14]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -q "git+https://github.com/Kaggle/kaggle-cli.git@9c57dd74c29904c40ff7879eed33644be89d2e2f"
+      - name: Read original notebook outputs without submitting GPU work
+        env:
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p recovered
+          kernel="dody2004/spark-external-v14-model-evaluation"
+          kaggle kernels status "$kernel" | tee recovered/status.txt
+          kaggle kernels logs "$kernel" > recovered/logs.txt 2>&1 || true
+          kaggle kernels output "$kernel" -p recovered/output --file-pattern '(report|status)[.]json$' -o
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("recovered/output/spark-external-v14-evaluation")
+          state=json.loads((root/"status.json").read_text())
+          print("RECOVERED_STATE="+json.dumps(state))
+          assert state["github_evaluation_sha"]=="863df1ba554cea2b95aa1796e8f29e3c2b60bf4e"
+          p=root/"report.json"
+          if p.exists():
+              r=json.loads(p.read_text())
+              print("V14_MODEL_REPORT="+json.dumps(r,separators=(",",":")))
+          else:
+              print("No model report; retained runtime state and logs")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: recovered-spark-v14
+          path: recovered
+          retention-days: 30
